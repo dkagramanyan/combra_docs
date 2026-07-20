@@ -46,7 +46,7 @@ Median-filter, Otsu, and contour-extract the input. Pass ``labeled_cnts=True`` (
 
 **Example**
 
-From ``crack_graph/graph_unlabeled.ipynb``:
+From ``wc_cv/graph_unlabeled.ipynb``:
 
 ```python
 >>> from combra import graph, data
@@ -62,7 +62,7 @@ From ``crack_graph/graph_unlabeled.ipynb``:
 
 ````{py:function} combra.graph.create_crack_graph(img_shape, cnts, nodes_metadata, eps=100, line_eps=3, border=30, border_eps=0, border_number_min=2, border_pixel=255, same_node_eps=5, labels=False, labeled_line_eps=10, workers=10) -> tuple[networkx.DiGraph, ndarray]
 
-Build the directed graph. ``eps`` is the maximum edge length in pixels; ``line_eps`` is the perpendicular tolerance used when classifying edges.
+Build the directed graph. ``eps`` is the maximum edge length in pixels; ``line_eps`` is the perpendicular tolerance used when classifying edges. Each edge carries ``edge_type`` and ``path_len``; ``weight`` and ``path_len_pixels`` are seeded from ``path_len`` so shortest-path searches work without a manual seeding loop.
 
 :param img_shape: ``(H, W)`` of the source image.
 :type img_shape: tuple[int, int]
@@ -192,7 +192,56 @@ Same as ``get_edge_type`` but uses hand labels carried in ``nodes_metadata``. Us
 ```
 ````
 
+````{py:function} combra.graph.remove_edges_of_type(g, edge_type) -> networkx.DiGraph
+
+Drop every edge of a given ``edge_type`` (0=Co, 1=WC-Co, 2=WC, 3=WC-WC) from the graph, in place. Replaces the hand-written edge-filter + ``remove_edges_from`` in the crack notebooks; pass a ``copy.deepcopy`` to keep the original.
+
+:param g: Crack graph from ``create_crack_graph``.
+:type g: networkx.DiGraph
+:param edge_type: Edge-type code to remove.
+:type edge_type: int
+:returns: **g** (*networkx.DiGraph*) – The same graph with matching edges removed.
+:rtype: networkx.DiGraph
+
+**Example**
+
+```python
+>>> import copy
+>>> from combra import graph
+>>> # remove WC (edge_type 2) edges from a working copy, keeping g intact
+>>> g_cleaned = graph.remove_edges_of_type(copy.deepcopy(g), 2)
+```
+````
+
 ## Energies and paths
+
+````{py:function} combra.graph.build_energy_grid(rows, cols, const, row_key=None, col_key=None) -> list[list[dict]]
+
+Build the ``(rows, cols)`` edge-weight grid consumed by ``get_energies``. Every cell starts from ``const`` (a ``{edge_type: weight}`` dict); ``row_key`` / ``col_key`` override that edge type with the row / column index. Replaces the ``np.zeros((N, M)).tolist()`` + double-``for`` builders in the crack notebooks.
+
+:param rows: Grid rows.
+:type rows: int
+:param cols: Grid columns.
+:type cols: int
+:param const: Fixed ``{edge_type: weight}`` entries applied to every cell (0=Co, 1=WC-Co, 2=WC, 3=WC-WC).
+:type const: dict
+:param row_key: Edge type swept along the rows (set to the row index). Default: ``None``.
+:type row_key: int or None, optional
+:param col_key: Edge type swept along the columns (set to the column index). Default: ``None``.
+:type col_key: int or None, optional
+:returns: **grid** (*list[list[dict]]*) – ``rows`` × ``cols`` grid of edge-weight dicts.
+:rtype: list[list[dict]]
+
+**Example**
+
+```python
+>>> from combra import graph
+>>> # sweep WC-Co (rows) × WC-WC (cols), Co fixed at 10
+>>> energy_conf = graph.build_energy_grid(20, 20, const={0: 10}, row_key=1, col_key=3)
+>>> # a single fixed configuration
+>>> base = graph.build_energy_grid(1, 1, const={0: 15, 1: 15, 2: 20, 3: 0})
+```
+````
 
 ````{py:function} combra.graph.get_energies(energy_conf, g, cnts, nodes_metadata, entry_nodes, exit_nodes, first_k_paths=2, parallel=False, workers=23, recalculate_paths=False) -> list[list[list[DataFrame]]]
 
@@ -272,6 +321,35 @@ Find the ``k`` shortest paths between one entry/exit pair and return per-path le
 ```
 ````
 
+````{py:function} combra.graph.shortest_energy_paths_all_pairs(g, cnts, nodes_metadata, entry_nodes, exit_nodes, k=1) -> pandas.DataFrame
+
+Collect the ``k`` shortest-energy paths for every ``(entry, exit)`` pair by calling ``find_shortest_energy_paths`` on each pair, skipping unconnected pairs, and concatenating. Replaces the hand-written double loop in the crack notebooks.
+
+:param g: Weighted crack graph from ``create_crack_graph``.
+:type g: networkx.DiGraph
+:param cnts: Contours.
+:type cnts: list[ndarray]
+:param nodes_metadata: Node lookup tables.
+:type nodes_metadata: dict
+:param entry_nodes: Entry endpoint pool.
+:type entry_nodes: list[int]
+:param exit_nodes: Exit endpoint pool.
+:type exit_nodes: list[int]
+:param k: Shortest paths to keep per pair. Default: ``1``.
+:type k: int, optional
+:returns: **df** (*pandas.DataFrame*) – Concatenated path tables (see ``find_shortest_energy_paths``).
+:rtype: pandas.DataFrame
+
+**Example**
+
+```python
+>>> from combra import graph
+>>> paths = graph.shortest_energy_paths_all_pairs(
+...     g, cnts, nodes_metadata, entry_nodes, exit_nodes, k=1)
+>>> shortest_entry = graph.shortest_paths_per_endpoint(paths, by='entry', k=1)
+```
+````
+
 ````{py:function} combra.graph.shortest_paths_per_endpoint(df, by='entry', k=1) -> pandas.DataFrame
 
 Select the ``k`` shortest paths (by ``path_len_pixels``) for every entry — or exit — node in a path table. Replaces the per-endpoint ``groupby``/``sort`` loop hand-written in the crack notebooks.
@@ -311,6 +389,30 @@ Compute energies along a fixed set of paths (no optimisation).
 ...     g, cnts, nodes_metadata,
 ...     entry_nodes=[0, 1, 3], exit_nodes=[63, 64, 67], workers=8,
 ... )
+```
+````
+
+````{py:function} combra.graph.all_simple_paths_within_radius(g, epsilon=100, cutoff=10, workers=23) -> pandas.DataFrame
+
+Pair each node with every other node within ``epsilon`` pixels, then enumerate all simple paths (up to ``cutoff`` edges) for each pair across a worker pool. Replaces the ``find_paths`` closure and node-pairing block hand-written in the crack notebooks.
+
+:param g: Weighted crack graph from ``create_crack_graph`` (edges carry ``weight``).
+:type g: networkx.DiGraph
+:param epsilon: Maximum pixel distance for two nodes to be paired. Default: ``100``.
+:type epsilon: int, optional
+:param cutoff: Maximum edges per enumerated path. Default: ``10``.
+:type cutoff: int, optional
+:param workers: Worker-process count. Default: ``23``.
+:type workers: int, optional
+:returns: **df** (*pandas.DataFrame*) – One row per path with ``path``, ``path_len_edges``, ``path_len_pixels``, ``entry_node`` and ``exit_node``.
+:rtype: pandas.DataFrame
+
+**Example**
+
+```python
+>>> from combra import graph
+>>> df = graph.all_simple_paths_within_radius(g, epsilon=100, cutoff=10, workers=23)
+>>> graph.plot_paths_dist(df['path_len_pixels'], 'all_pixels.jpg')
 ```
 ````
 
@@ -457,6 +559,36 @@ Overlay the energy-optimised paths from ``get_energies`` on the contour image at
 >>> from combra import graph
 >>> # Cell (10, 10) in a 20x20 (Co × WC-Co) weight grid → draw the best path there.
 >>> graph.plot_optimized_paths(g, energies_paths, img_contours_o, param_1=10, param_2=10)
+```
+````
+
+````{py:function} combra.graph.plot_paths_dist(data, name=None, title=False, folder='tmp', save=False, bins=60, xlim=None) -> None
+
+Histogram of crack-path lengths with vertical markers at the mean and ±1σ / ±2σ, plus a legend reporting count, mean and std. Replaces the ``plot_paths_dist`` helper hand-written in the crack notebooks.
+
+:param data: Path-length values to histogram.
+:type data: array-like
+:param name: Filename under ``folder`` when ``save=True``. Default: ``None``.
+:type name: str or None, optional
+:param title: Plot title; falsy for none. Default: ``False``.
+:type title: str or bool, optional
+:param folder: Output directory (created if missing). Default: ``'tmp'``.
+:type folder: str, optional
+:param save: Write the figure to ``folder/name``. Default: ``False``.
+:type save: bool, optional
+:param bins: Histogram bins. Default: ``60``.
+:type bins: int, optional
+:param xlim: ``(low, high)`` x-axis limits. Default: ``None``.
+:type xlim: tuple or None, optional
+:returns: Nothing. Renders the histogram and, when ``save=True``, writes it to disk.
+:rtype: None
+
+**Example**
+
+```python
+>>> from combra import graph
+>>> df = graph.all_simple_paths_within_radius(g, epsilon=100)
+>>> graph.plot_paths_dist(df['path_len_pixels'], title='all paths')
 ```
 ````
 

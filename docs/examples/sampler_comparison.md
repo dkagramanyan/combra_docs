@@ -1,4 +1,4 @@
-# Comparing samplers — how many steps for good quality?
+# Comparing diffusion samplers
 
 A trained diffusion model can be sampled with different reverse-diffusion
 samplers, and each needs a different number of steps `k` to reach good quality.
