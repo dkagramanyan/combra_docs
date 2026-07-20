@@ -96,6 +96,23 @@ Load the label-studio annotation that matches {py:func}`combra.data.crack_images
 :rtype: dict
 ````
 
+````{py:function} combra.data.crack_labeled_contours() -> tuple[list[ndarray], ndarray]
+
+Parse the bundled crack annotation into pixel-space contours and their class labels — the ready-to-use form of {py:func}`combra.data.crack_labeled_json`. Feed the results straight to {py:func}`combra.graph.preprocess_graph_image` as ``labeled_cnts`` / ``labels``.
+
+:returns: **cnts** (*list[ndarray]*) – one ``(N, 2)`` ``int32`` contour per annotated polygon, in pixel coordinates; and **labels** (*ndarray*) – the polygon class label for each contour.
+:rtype: tuple(list[ndarray], ndarray)
+
+**Example**
+
+```python
+>>> from combra import data, graph
+>>> (name, image) = data.crack_images()[0]
+>>> cnts, labels = data.crack_labeled_contours()
+>>> out = graph.preprocess_graph_image(image, labeled_cnts=cnts, labels=labels)
+```
+````
+
 ## PobeditDataset
 
 `````{py:class} combra.data.PobeditDataset(path=None, max_images_num_per_class=100, print_depth=3, compression='lzf')

@@ -272,6 +272,28 @@ Find the ``k`` shortest paths between one entry/exit pair and return per-path le
 ```
 ````
 
+````{py:function} combra.graph.shortest_paths_per_endpoint(df, by='entry', k=1) -> pandas.DataFrame
+
+Select the ``k`` shortest paths (by ``path_len_pixels``) for every entry — or exit — node in a path table. Replaces the per-endpoint ``groupby``/``sort`` loop hand-written in the crack notebooks.
+
+:param df: Path table with ``entry_node``, ``exit_node`` and ``path_len_pixels`` columns (e.g. from ``find_shortest_energy_paths``).
+:type df: pandas.DataFrame
+:param by: Group by the entry node (``'entry'``) or the exit node (``'exit'``). Default: ``'entry'``.
+:type by: str, optional
+:param k: Number of shortest paths to keep per node. Default: ``1``.
+:type k: int, optional
+:returns: **df** (*pandas.DataFrame*) – The selected rows, sorted within each node by ``path_len_pixels``.
+:rtype: pandas.DataFrame
+
+**Example**
+
+```python
+>>> from combra import graph
+>>> shortest_entry = graph.shortest_paths_per_endpoint(df, by='entry', k=1)
+>>> shortest_exit = graph.shortest_paths_per_endpoint(df, by='exit', k=1)
+```
+````
+
 ````{py:function} combra.graph.fixed_paths_energies(g, cnts, nodes_metadata, entry_nodes, exit_nodes, workers=23, ...) -> list[list[list[DataFrame]]]
 
 Compute energies along a fixed set of paths (no optimisation).
