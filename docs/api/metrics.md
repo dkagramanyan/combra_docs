@@ -6,6 +6,7 @@ The `combra.metrics` module bundles three families of metrics:
 - **Distribution comparison helpers** — for comparing per-class angle distributions stored as parquet files.
 - **Sampler comparison** — sweep a diffusion sampler over a range of step counts, score each batch with the training-loop metrics, and plot metric-vs-steps (`compare_samplers`, `plot_sampler_comparison`) to see how many steps a sampler needs for good quality.
 - **Convergence analysis** — N-sweep aggregation, Kendall trend tests, plateau fits, and the convergence-grid / gain-distribution plots used by `3_metrics_convergence.ipynb`.
+- **TensorBoard training curves** — read the metrics/losses a training run logged as TensorBoard scalars (`read_tb_scalars`, `progress_fraction`) and plot them as a models × metric-family grid (`plot_training_curve_grid`) to compare convergence *shape* across runs on different scales.
 
 ```python
 from combra import metrics
@@ -1145,6 +1146,84 @@ Small-multiples of **every metric for a single `(resolution, class)`**: one subp
 ...     records_by_panel, 256, 'class_Ultra_Co11', METRICS,
 ...     kind_labels={'real': 'original', 'san': 'SAN', 'diffit': 'DiffiT'},
 ...     save_path='metrics_grid_Co11_256.png')
+```
+````
+
+## TensorBoard training curves
+
+Rebuild the training-progress plots straight from the `tfevents` scalar logs a run wrote — no TensorBoard UI, no pandas. {py:func}`combra.metrics.read_tb_scalars` pulls every scalar series out of one event file as sorted `(steps, values)` arrays; {py:func}`combra.metrics.progress_fraction` maps event steps onto a common `kimg / max kimg` x-axis so runs on very different step/kimg scales line up; and {py:func}`combra.metrics.plot_training_curve_grid` tiles them into a models × metric-family grid, each curve EMA-smoothed then min-max normalized to `[0, 1]` so the panels show convergence *shape*. Used by `wc_cv/2_metric_consistensy.ipynb` for the per-resolution san-vs-diffit grid.
+
+````{py:function} combra.metrics.read_tb_scalars(path) -> dict[str, tuple[numpy.ndarray, numpy.ndarray]]
+
+Read every scalar series in one `tfevents` file into `{tag: (steps, values)}`, each a 1-D numpy array sorted by step. Both the legacy `simple_value` encoding and the tensor-encoded scalars newer TensorBoard writes are decoded; non-numeric summaries (e.g. the text log) are skipped.
+
+:param path: A single `*.tfevents.*` file (one run / one writer).
+:type path: str or pathlib.Path
+:returns: `{tag: (steps, values)}` with numeric tags only.
+:rtype: dict[str, tuple[numpy.ndarray, numpy.ndarray]]
+````
+
+````{py:function} combra.metrics.progress_fraction(scalars, steps, kimg_tag) -> numpy.ndarray
+
+Map event `steps` to a training-progress fraction in `[0, 1]` by interpolating them onto the run's kimg series and dividing by its max. `kimg_tag` names the scalar mapping event-step → training kimg for this run (e.g. `'Train/kimg'` for diffit, `'Progress/kimg'` for san).
+
+:param scalars: Output of {py:func}`combra.metrics.read_tb_scalars` for one run; must contain `kimg_tag`.
+:type scalars: dict[str, tuple[numpy.ndarray, numpy.ndarray]]
+:param steps: Event steps to place (typically another tag's `steps`).
+:type steps: numpy.ndarray
+:param kimg_tag: Tag whose `(steps, kimg)` series defines the kimg axis.
+:type kimg_tag: str
+:returns: `steps` mapped to `kimg / max(kimg)`.
+:rtype: numpy.ndarray
+````
+
+````{py:function} combra.metrics.plot_training_curve_grid(models, rows, columns, kimg_tags, resolution=None, ema_alpha=0.5, overrides=None, title=None, save_path=None, png_meta=None, fonts=None, height_per_row=360, width_per_col=560) -> plotly.graph_objects.Figure
+
+Grid of min-max-normalized training curves: one column per model, one row per metric family. Within each cell every present tag is a colored curve, lightly EMA-smoothed then min-max normalized to `[0, 1]` on a shared x = training-progress fraction (via {py:func}`combra.metrics.progress_fraction`), so runs on different scales become directly comparable in shape. The library stays dataset-agnostic; per-run cosmetic surgery (trim a divergent tail, bridge a transient burst) is injected through `overrides`.
+
+:param models: `{model_name: scalars}` where each `scalars` is {py:func}`combra.metrics.read_tb_scalars` output for that run.
+:type models: dict[str, dict]
+:param rows: One `(label, tags, prefix)` per metric-family row. `tags` is a list shared by all models, or a `{model: [tags]}` dict for per-model tags (e.g. losses); `prefix` is prepended for the scalar lookup (e.g. `'Metrics/'`). Tags absent from a model are skipped.
+:type rows: list[tuple[str, list or dict, str]]
+:param columns: Model names giving the left-to-right column order (keys into `models`).
+:type columns: list[str]
+:param kimg_tags: `{model: kimg_tag}` naming each run's kimg scalar for the shared x.
+:type kimg_tags: dict[str, str]
+:param resolution: Passed through to `overrides` and used in the default title. Default: `None`.
+:type resolution: int or None, optional
+:param ema_alpha: EMA weight on the new sample; lower is smoother. Default: `0.5`.
+:type ema_alpha: float, optional
+:param overrides: `(model, resolution, tag, x, y) -> (x, y, bridge_mask) | None` hook to trim/patch one raw curve before smoothing. Return `None` to leave it untouched. `bridge_mask` (bool array over the returned `x`, or `None`) marks a span to break out of the solid line and redraw dashed. Default: `None`.
+:type overrides: callable or None, optional
+:param title: Figure title. Defaults to `'{resolution}×{resolution} — per-curve min-max normalized'`. Default: `None`.
+:type title: str or None, optional
+:param save_path: PNG output path. `None` skips saving. Default: `None`.
+:type save_path: str or None, optional
+:param png_meta: `{key: value}` written as PNG tEXt chunks. Default: `None`.
+:type png_meta: dict or None, optional
+:param fonts: Override the `title/axis/tick/legend` font sizes. Default: `None`.
+:type fonts: dict or None, optional
+:param height_per_row: Per-row height in pixels. Default: `360`.
+:type height_per_row: int, optional
+:param width_per_col: Per-column width in pixels. Default: `560`.
+:type width_per_col: int, optional
+:returns: **fig** (*plotly.graph_objects.Figure*) – The grid figure.
+:rtype: plotly.graph_objects.Figure
+
+**Example**
+
+```python
+>>> from combra.metrics import read_tb_scalars, plot_training_curve_grid
+>>> models = {m: read_tb_scalars(f'tensorboards/{m}-256x256') for m in ('san', 'diffit')}
+>>> rows = [
+...     ('physical metrics', ['combra_mu1', 'combra_mu2', 'combra_sigma1'], 'Metrics/'),
+...     ('training metrics', ['combra_fid10k', 'combra_cmmd10k'], 'Metrics/'),
+...     ('losses', {'san': ['Loss/G/loss'], 'diffit': ['Train/Loss/mse']}, ''),
+... ]
+>>> fig = plot_training_curve_grid(
+...     models, rows, ['san', 'diffit'],
+...     {'san': 'Progress/kimg', 'diffit': 'Train/kimg'},
+...     resolution=256, save_path='tb_grid_256.png')
 ```
 ````
 
