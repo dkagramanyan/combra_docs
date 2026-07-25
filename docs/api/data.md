@@ -171,7 +171,7 @@ a `_p<V>` preprocessing-version tag so a stale cache is never silently reused.
 >>> img, class_idx = ds[0]          # (image_uint8, class_idx) — DataLoader-ready
 ```
 
-````{py:method} generate_angles(save_path, types_dict, step, workers=20, angles_tol=3, min_segment_len=10.0, keep_contours=False, chunksize=64, run_meta=None, force_rebuild_cache=False) -> Path
+````{py:method} generate_angles(save_path, types_dict, step, workers=20, angles_tol=3, min_segment_len=10.0, keep_contours=False, chunksize=None, run_meta=None, force_rebuild_cache=False) -> Path
 
 Compute angle distributions for every image and write them as parquet. One row per
 class; per-step Gaussian-fit results are stored as a list under `prep_per_step`.
@@ -193,8 +193,8 @@ source h5, code commit, generation timestamp, and the exact extraction params us
 :type min_segment_len: float, optional
 :param keep_contours: If `True`, the heavy `contours_angles` / `contours_angles_per_image` columns are populated. Off by default to keep parquets small. Default: `False`.
 :type keep_contours: bool, optional
-:param chunksize: Worker chunk size for `pool.imap_unordered`. Default: `64`.
-:type chunksize: int, optional
+:param chunksize: Tasks handed to each worker per `pool.imap_unordered` round-trip. `None` (the default) derives `max(1, n_per_class // (4 * workers))`, which keeps the whole pool busy. A chunksize near `n_per_class` splits a class into fewer chunks than there are workers and leaves most of them idle — the previous default of `64` against `max_images_num_per_class=100` made 2 chunks, so only 2 of 20 workers ran. Pass an explicit value to override. Default: `None`.
+:type chunksize: int or None, optional
 :param run_meta: Caller-supplied provenance. May set `family`, `resolution`, `tags`, `notes`. Everything else (`model_tag`, `kimg`, `source_h5`, `code_commit`, `generated_at`, `extraction_params`) is filled automatically. Default: `None`.
 :type run_meta: dict or None, optional
 :param force_rebuild_cache: If `True`, rebuild the preprocessed-image cache from scratch instead of reusing an existing `.npy` memmap. The reuse check only validates shape and dtype, not the preprocessing version, so a stale cache from older preprocessing is otherwise reused silently — pass `True` to rule that out. Default: `False`.
