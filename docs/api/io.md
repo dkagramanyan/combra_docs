@@ -1,8 +1,5 @@
 # combra.io
 
-```{versionadded} 0.4
-```
-
 The `combra.io` module is the single home for reading and writing combra's on-disk
 artifacts — the angle/beam **parquet** files and the image **HDF5** containers —
 plus the parquet **schemas** and run **provenance**. It follows the `skimage.io`

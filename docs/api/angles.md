@@ -17,12 +17,7 @@ Douglas–Peucker simplified, short segments are pruned, and the angle at every
 remaining vertex is computed (signed, counter-clockwise traversal — values
 above 180° are preserved).
 
-```{versionchanged} 0.4
-Renamed from ``get_angles`` (dropping the ``get_`` prefix, scikit-image
-convention). The old name is removed (no alias).
-```
-
-:param image: Preprocessed image, shape $(H, W)$ or $(H, W, 1)$. Use {py:func}`combra.image.do_otsu` upstream.
+:param image: Preprocessed image, shape $(H, W)$ or $(H, W, 1)$. Binarise upstream (e.g. `cv2.threshold(..., cv2.THRESH_BINARY | cv2.THRESH_OTSU)`).
 :type image: ndarray
 :param border_eps: Distance from the image edge in pixels — contours whose bounding box sits inside this margin are dropped. Default: ``5``.
 :type border_eps: int, optional
@@ -36,9 +31,10 @@ convention). The old name is removed (no alias).
 **Example**
 
 ```python
->>> from combra import angles, data, image
+>>> import cv2
+>>> from combra import angles, data
 >>> _, img = data.microstructure_images()[0]
->>> processed = image.do_otsu(img)
+>>> _, processed = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
 >>> arr, contours = angles.vertex_angles(processed, border_eps=5, tol=3, min_segment_len=10.0)
 >>> print(f'{len(arr)} angles  mean={arr.mean():.1f}°')
 ```
@@ -361,9 +357,6 @@ scikit-learn's `*Display` convention (cf. `RocCurveDisplay`): the *computed*
 values are stored as attributes, drawing is a separate `plot` step, and
 alternate constructors build one from stored data. `plot` accepts an existing
 plotly figure (the `ax=` analogue) and **never** calls `fig.show()`.
-
-```{versionadded} 0.4
-```
 
 **Attributes**
 

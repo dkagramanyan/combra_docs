@@ -20,9 +20,10 @@ Extract raw contours via Canny edges + Suzuki contour finding. No simplification
 **Example**
 
 ```python
->>> from combra import contours, image, data
+>>> import cv2
+>>> from combra import contours, data
 >>> _, img = data.microstructure_images()[0]
->>> processed = image.do_otsu(img)
+>>> _, processed = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
 >>> raw = contours.get_row_contours(processed)
 >>> print(f'{len(raw)} contours; first has {len(raw[0])} vertices')
 ```
@@ -31,12 +32,6 @@ Extract raw contours via Canny edges + Suzuki contour finding. No simplification
 ````{py:function} combra.contours.find_contours(image, tol=3) -> list[ndarray]
 
 Same as `get_row_contours` but applies Douglas–Peucker simplification with tolerance `tol` to every contour. This is what most downstream code calls.
-
-```{versionchanged} 0.4
-Renamed from ``find_contours`` (scikit-image ``find_contours`` convention) and
-the missing ``cv2.approxPolyDP`` ``closed`` argument fixed (it previously raised
-``TypeError``). The old ``get_contours`` name is removed (no alias).
-```
 
 :param image: Preprocessed binary image.
 :type image: ndarray
@@ -48,9 +43,10 @@ the missing ``cv2.approxPolyDP`` ``closed`` argument fixed (it previously raised
 **Example**
 
 ```python
->>> from combra import contours, image, data
+>>> import cv2
+>>> from combra import contours, data
 >>> _, img = data.microstructure_images()[0]
->>> processed = image.do_otsu(img)
+>>> _, processed = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
 >>> raw = contours.get_row_contours(processed)             # ~thousands of vertices per region
 >>> simplified = contours.find_contours(processed, tol=3)  # ~tens of vertices per region
 >>> print(f'raw[0]: {len(raw[0])} pts   simplified[0]: {len(simplified[0])} pts')
@@ -69,39 +65,12 @@ Morphological skeletonisation + per-component split via `scipy.ndimage.label`. O
 **Example**
 
 ```python
->>> from combra import contours, image, data
+>>> import cv2
+>>> from combra import contours, data
 >>> _, img = data.microstructure_images()[0]
->>> binary = image.do_otsu(img)
+>>> _, binary = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
 >>> skels = contours.skeletons_coords(binary)
 >>> print(f'{len(skels)} skeleton components')
-```
-````
-
-````{py:function} combra.contours.mark_corners_and_classes(image, max_num=100000, sens=0.1, max_dist=1) -> tuple[ndarray, ndarray, int]
-
-```{warning}
-Experimental — no working guarantee. Detects corner candidates with OpenCV `goodFeaturesToTrack` and labels gradient-magnitude clusters with `scipy.ndimage.label`.
-```
-
-:param image: Single-channel image.
-:type image: ndarray
-:param max_num: Maximum number of corners to return. Default: `100000`.
-:type max_num: int, optional
-:param sens: Quality level passed to `goodFeaturesToTrack`. Default: `0.1`.
-:type sens: float, optional
-:param max_dist: Minimum allowed distance between corners. Default: `1`.
-:type max_dist: int, optional
-:returns: **corners** (*ndarray*) – `(N, 1, 2)` integer corner coordinates; and **classes** (*ndarray*) – Labelled gradient-cluster image; and **num** (*int*) – Number of labelled clusters.
-:rtype: tuple(ndarray, ndarray, int)
-
-**Example**
-
-```python
->>> from combra import contours, image, data
->>> _, img = data.microstructure_images()[0]
->>> binary = image.do_otsu(img)
->>> corners, classes, num = contours.mark_corners_and_classes(binary)
->>> print(f'{len(corners)} corners, {num} gradient clusters')
 ```
 ````
 
@@ -128,26 +97,6 @@ From `poliamid/fractals.ipynb`:
 >>> from combra.contours import contour_to_binary_mask
 >>> mask = contour_to_binary_mask(cnt, eps=1, thickness=1, pad=2)
 >>> print(mask.shape, mask.dtype)
-```
-````
-
-````{py:function} combra.contours.scale_contour(contour, factor) -> ndarray
-
-Multiply contour coordinates by `factor`. Use when rescaling contours for a resized image.
-
-:param contour: Polygon vertices in raw OpenCV layout (as returned by `cv2.findContours`).
-:type contour: ndarray[N, 1, 2]
-:param factor: Multiplicative scale.
-:type factor: float
-:returns: **scaled** (*ndarray[N, 1, 2]*) – Rescaled vertices.
-:rtype: ndarray
-
-**Example**
-
-```python
->>> from combra import contours
->>> # Contour was extracted at 256x256; rescale up to 1024x1024 coordinates.
->>> upscaled = contours.scale_contour(cnt, factor=4.0)
 ```
 ````
 
@@ -179,59 +128,19 @@ Draw simplified contours onto a `PIL.Image`. When `corners=True`, also draws fil
 **Example**
 
 ```python
+>>> import cv2
 >>> from PIL import Image
 >>> from skimage import color
->>> from combra import contours, data, image
+>>> from combra import contours, data
 >>> _, img = data.microstructure_images()[0]
->>> simplified = contours.find_contours(image.do_otsu(img), tol=3)
->>> pil = Image.fromarray(color.gray2rgb(image.do_otsu(img)))
+>>> _, processed = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+>>> simplified = contours.find_contours(processed, tol=3)
+>>> pil = Image.fromarray(color.gray2rgb(processed))
 >>> overlay = contours.draw_contours(pil, simplified, corners=True, r=2)
 ```
 ````
 
-````{py:function} combra.contours.draw_edges(image, cnts, color=(0, 139, 139), r=4, e_width=5, l_width=4) -> ndarray
-
-Numpy version of `draw_contours` — operates on an `ndarray` instead of `PIL.Image`. Use when the surrounding pipeline already works in numpy.
-
-:param image: Background image.
-:type image: ndarray
-:param cnts: Contours.
-:type cnts: list[ndarray]
-:param color: Edge colour. Default: `(0, 139, 139)`.
-:type color: tuple[int, int, int], optional
-:param r: Vertex marker radius. Default: `4`.
-:type r: int, optional
-:param e_width: Vertex outline width. Default: `5`.
-:type e_width: int, optional
-:param l_width: Line width. Default: `4`.
-:type l_width: int, optional
-:returns: **image** (*ndarray*) – Modified image.
-:rtype: ndarray
-
-**Example**
-
-```python
->>> from PIL import Image
->>> from skimage import color
->>> from combra import contours, data, image
->>> _, img = data.microstructure_images()[0]
->>> processed = image.do_otsu(img)
->>> simplified = contours.find_contours(processed, tol=3)
->>> rgb = color.gray2rgb(processed)
->>> overlay = contours.draw_edges(rgb, simplified, color=(255, 140, 0), l_width=2)
->>> pil = Image.fromarray(rgb)
->>> overlay_pil = contours.draw_contours(pil, simplified, corners=True, r=2)
-```
-````
-
-## Notes
-
-:::{note}
-`mark_corners_and_classes` is in `__all__` but is incomplete in the current source (depends on a removed helper). Treat it as deprecated.
-:::
-
 ## See also
 
-- {py:func}`combra.image.do_otsu` — the binariser upstream of all contour calls.
 - {py:func}`combra.angles.vertex_angles` — uses `find_contours` internally.
 - {py:func}`combra.mvee.fit_mvee` — fits an MVEE to each `find_contours` output.

@@ -54,7 +54,7 @@ fetched from `torch.hub` on first use.
 
 ````{py:function} combra.metrics.compute_fid(reference_images, generated_images, device=None, batch_size=50, dims=2048, reference_cache=None) -> float
 
-Classic InceptionV3 FID between two **in-memory image batches** (a numpy array or torch tensor), computed with [pytorch-fid](https://github.com/mseitzer/pytorch-fid) (a core dependency). Runs every image through InceptionV3 and returns the Fréchet distance between the two activation distributions. Like every Fréchet-distance metric it estimates a per-side covariance, so it needs **≥ 2 images per side** and raises `ValueError` otherwise. The weights are downloaded and cached by pytorch-fid on first use. `compute_all_metrics` computes this same metric under its `fid` key. Runs on PyTorch, selecting CUDA automatically when available.
+Classic InceptionV3 FID between two **in-memory image batches** (a numpy array or torch tensor), using the [pytorch-fid](https://github.com/mseitzer/pytorch-fid) InceptionV3 backbone (a core dependency). Runs every image through InceptionV3 and returns the Fréchet distance between the two activation distributions. Like every Fréchet-distance metric it estimates a per-side covariance, so it needs **≥ 2 images per side** and raises `ValueError` otherwise. The weights are downloaded and cached by pytorch-fid on first use. `compute_all_metrics` computes this same metric under its `fid` key. Runs on PyTorch, selecting CUDA automatically when available.
 
 :param reference_images: Batch of reference (real) images.
 :type reference_images: ndarray or torch.Tensor
@@ -118,7 +118,7 @@ CLIP-MMD (CMMD) between a reference and a generated image set. Features come fro
 
 ````{py:function} combra.metrics.compute_fd_dinov2(reference_images, generated_images, model_name='dinov2_vitb14', device=None, batch_size=64, image_size=224, reference_cache=None) -> float
 
-Fréchet distance between the [DINOv2](https://github.com/facebookresearch/dinov2) features of two image sets. The backbone is loaded from `torch.hub` (`facebookresearch/dinov2`); the Fréchet distance itself is computed with pytorch-fid's `calculate_frechet_distance`. Like FID, it estimates a per-side covariance, so it needs **≥ 2 images per side** and raises `ValueError` on a single image.
+Fréchet distance between the [DINOv2](https://github.com/facebookresearch/dinov2) features of two image sets. The backbone is loaded from `torch.hub` (`facebookresearch/dinov2`); the Fréchet distance itself is the same one {py:func}`combra.metrics.frechet_from_features` computes. Like FID, it estimates a per-side covariance, so it needs **≥ 2 images per side** and raises `ValueError` on a single image.
 
 :param reference_images: Batch of reference (real) images.
 :type reference_images: ndarray or torch.Tensor
@@ -412,9 +412,6 @@ batches; the angle-density metrics must come back finite (else it raises
 `RuntimeError`). With `image_metrics=True` the image-feature backends are
 exercised too, each allowed to be `nan` (missing optional dep / no network).
 
-```{versionadded} 0.4
-```
-
 :param image_metrics: Also exercise the FID / CMMD / FD-DINOv2 backends. Default: `False`.
 :type image_metrics: bool, optional
 :param device: Torch device for the image metrics. Default: `None` (auto).
@@ -439,9 +436,6 @@ Rescale an image array to `uint8 [0, 255]` under an **explicit** range contract 
 the strict, caller-facing counterpart of combra's internal per-image guessing, so
 two images in one scored batch can never be rescaled under different assumptions
 (the normalization hazard behind content-dependent FID/CMMD bias).
-
-```{versionadded} 0.4
-```
 
 :param a: Image array.
 :type a: array_like
@@ -526,11 +520,6 @@ Adapted from `co_angles/2_comparison.ipynb` — compare every diffit checkpoint 
 ````{py:function} combra.metrics.load_fid_by_kimg(stats_path) -> dict[str, float]
 
 Parse a training run's `stats.jsonl` and map each evaluated checkpoint's FID to a **6-digit zero-padded `floor(kimg)`** key (e.g. `403.2 → '000403'`) — the same token `compare_folders` derives from a `..._kimg_<key>_...` sweep-folder name, so the result drops straight into its `fid_by_kimg` argument. Only scalar eval records contribute; text/log records (and any line missing the keys) are shape-filtered out.
-
-```{versionchanged} 0.4
-Reads the logging-contract keys `Metrics/combra_fid10k` and `Progress/kimg`
-(text/log records are shape-filtered out).
-```
 
 :param stats_path: Path to a training run's `stats.jsonl`.
 :type stats_path: str or Path

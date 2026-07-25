@@ -21,16 +21,10 @@ pip install .          # or:  pip install -e .   for an editable install
 | `docs`        | `pip install ".[docs]"`          | Sphinx docs toolchain                         |
 | `dev`         | `pip install -e ".[dev]"`        | the `tests` extra + ruff + mypy               |
 
-```{versionchanged} 0.4
-The torch stack moved to the `[metrics]` extra, so a plain `pip install combra`
-covers the full analysis + plotting API (plotly and kaleido are core
-dependencies); install `[metrics]` only for the torch image-feature metrics.
-```
-
 The image-feature metrics (`[metrics]` extra) score in-memory image batches and run on
-CUDA when available, falling back to CPU. `compute_fid` delegates to
-[pytorch-fid](https://github.com/mseitzer/pytorch-fid), which downloads/caches its own
-InceptionV3 weights on first use; the DINOv2 backbone for `compute_fd_dinov2` is fetched
+CUDA when available, falling back to CPU. `compute_fid` uses the
+[pytorch-fid](https://github.com/mseitzer/pytorch-fid) InceptionV3 backbone, which
+downloads/caches its own weights on first use; the DINOv2 backbone for `compute_fd_dinov2` is fetched
 from `torch.hub` on first use — no manual model setup. See {doc}`combra.metrics <api/metrics>`.
 
 The angle-Wasserstein training metrics use [POT](https://pythonot.github.io/) (`pot`), also a core dependency.
@@ -59,12 +53,13 @@ For a quick post-install sanity check that doesn't need the dev tools, run the b
 
 ## Smoke test
 
-Five lines that exercise the full pipeline — load a bundled image, preprocess it, extract angles:
+A few lines that exercise the full pipeline — load a bundled image, preprocess it, extract angles:
 
 ```python
->>> from combra import data, image, angles
+>>> import cv2
+>>> from combra import data, angles
 >>> _, img = data.microstructure_images()[0]
->>> processed = image.do_otsu(img)
+>>> _, processed = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
 >>> arr, contours = angles.vertex_angles(processed, border_eps=5, tol=3, min_segment_len=10.0)
 >>> print(f'{len(arr)} angles, mean={arr.mean():.2f}°')
 ```

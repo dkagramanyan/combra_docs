@@ -114,13 +114,6 @@ Adapted from `poliamid/data_viz.ipynb` (per-group Gaussian fit on contour-length
 
 Bimodal Gaussian fit + sampled curve. Used inside {py:meth}`combra.data.PobeditDataset.generate_angles` to populate `prep_per_step.angles_gauss_*`.
 
-```{versionchanged} 0.4
-Returns a {py:class}`~combra.approx.BimodalGaussFit` named tuple
-``(curve, mus, sigmas, amps)``. Field order is unchanged, so
-``(x, y), mus, sigmas, amps = bimodal_gauss_approx(...)`` still unpacks; the
-fields are also reachable as ``.mus`` / ``.sigmas`` / ``.amps``.
-```
-
 :param x: Input histogram bin centres.
 :type x: array_like
 :param y: Input histogram densities.
@@ -257,13 +250,6 @@ From `poliamid/data_viz.ipynb`:
 ````{py:function} combra.approx.linear_approx(x, y) -> tuple[tuple[ndarray, ndarray], float, float, float, float]
 
 Least-squares line $y = kx + b$. Used in {py:meth}`combra.data.PobeditDataset.generate_beams` to populate `prep.a_*` and `prep.b_*` fit fields.
-
-```{versionchanged} 0.4
-Returns a {py:class}`~combra.approx.LinearFit` named tuple
-``(curve, slope, intercept, angle_deg, r2)``. Field order is unchanged, so
-``(x_pred, y_pred), k, b, angle, score = linear_approx(...)`` still unpacks; the
-fields are also reachable as ``.slope`` / ``.intercept`` / ``.angle_deg`` / ``.r2``.
-```
 
 :param x: Input series.
 :type x: array_like

@@ -312,14 +312,6 @@
   "end": 31
  },
  {
-  "leaf": "draw_edges",
-  "qual": "draw_edges",
-  "subpkg": "contours",
-  "file": "combra/contours/plot.py",
-  "start": 34,
-  "end": 69
- },
- {
   "leaf": "get_row_contours",
   "qual": "get_row_contours",
   "subpkg": "contours",
@@ -336,14 +328,6 @@
   "end": 38
  },
  {
-  "leaf": "mark_corners_and_classes",
-  "qual": "mark_corners_and_classes",
-  "subpkg": "contours",
-  "file": "combra/contours/preprocess.py",
-  "start": 42,
-  "end": 62
- },
- {
   "leaf": "skeletons_coords",
   "qual": "skeletons_coords",
   "subpkg": "contours",
@@ -358,14 +342,6 @@
   "file": "combra/contours/preprocess.py",
   "start": 90,
   "end": 107
- },
- {
-  "leaf": "scale_contour",
-  "qual": "scale_contour",
-  "subpkg": "contours",
-  "file": "combra/contours/preprocess.py",
-  "start": 110,
-  "end": 114
  },
  {
   "leaf": "_f64",
@@ -1184,22 +1160,6 @@
   "end": 30
  },
  {
-  "leaf": "combine",
-  "qual": "combine",
-  "subpkg": "image",
-  "file": "combra/image/preprocess.py",
-  "start": 33,
-  "end": 52
- },
- {
-  "leaf": "do_otsu",
-  "qual": "do_otsu",
-  "subpkg": "image",
-  "file": "combra/image/preprocess.py",
-  "start": 55,
-  "end": 66
- },
- {
   "leaf": "tiff2jpg",
   "qual": "tiff2jpg",
   "subpkg": "image",
@@ -1230,14 +1190,6 @@
   "file": "combra/image/preprocess.py",
   "start": 147,
   "end": 248
- },
- {
-  "leaf": "do_edt",
-  "qual": "do_edt",
-  "subpkg": "image",
-  "file": "combra/image/preprocess.py",
-  "start": 251,
-  "end": 289
  },
  {
   "leaf": "resize",

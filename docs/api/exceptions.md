@@ -1,8 +1,5 @@
 # combra.exceptions
 
-```{versionadded} 0.4
-```
-
 combra's typed error + warning hierarchy. Every library-specific error derives from
 {py:class}`~combra.exceptions.CombraError`, so a caller can catch all of combra's
 failures with one `except`. Each concrete error also subclasses the built-in it

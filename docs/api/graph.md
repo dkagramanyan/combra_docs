@@ -612,9 +612,10 @@ Render skeleton landmarks (centres / leaves / nodes / skeleton pixels) onto a bi
 **Example**
 
 ```python
->>> from combra import graph, image, data
+>>> import cv2
+>>> from combra import graph, data
 >>> _, img = data.microstructure_images()[0]
->>> binary = image.do_otsu(img)
+>>> _, binary = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
 >>> annotated = graph.draw_tree(binary, centres=True, nodes=True, bones=True)
 ```
 ````

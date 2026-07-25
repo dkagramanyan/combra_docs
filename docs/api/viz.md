@@ -1,8 +1,5 @@
 # combra.viz
 
-```{versionadded} 0.4
-```
-
 Shared plotting theme used by every `combra.*` plot module, so figures are visually
 consistent and the palette / axis styling / PNG export live in one place instead of
 being duplicated per module. plotly ships with the core install, so it is always

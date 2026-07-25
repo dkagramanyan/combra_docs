@@ -14,13 +14,6 @@ from combra import mvee
 
 Fit MVEE to every contour in a preprocessed image. This is the per-image primitive that {py:meth}`combra.data.PobeditDataset.generate_beams` calls in parallel.
 
-```{versionchanged} 0.4
-Renamed from ``get_mvee_params`` (scikit-image ``get_`` drop) and now returns a
-{py:class}`~combra.mvee.MveeResult` named tuple. Field order is unchanged, so
-``a, b, angles, centroids, cnts = fit_mvee(...)`` still unpacks. The old
-``get_mvee_params`` name is removed (no alias).
-```
-
 :param image: Preprocessed image.
 :type image: ndarray
 :param tol: Convergence tolerance. Lower → tighter ellipses, slower. Default: `0.2`.
@@ -31,9 +24,10 @@ Renamed from ``get_mvee_params`` (scikit-image ``get_`` drop) and now returns a
 **Example**
 
 ```python
->>> from combra import mvee, image, data
+>>> import cv2
+>>> from combra import mvee, data
 >>> _, img = data.microstructure_images()[0]
->>> processed = image.do_otsu(img)
+>>> _, processed = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
 >>> res = mvee.fit_mvee(processed, tol=0.2)
 >>> print(f'{len(res.a)} polygons   median a/b = {res.a.sum()/res.b.sum():.2f}')
 ```

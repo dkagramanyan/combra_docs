@@ -1,6 +1,6 @@
 # combra.image
 
-The `combra.image` module bundles every pixel-level helper used elsewhere in combra: binarisation, file format conversion, geometric helpers, fractal dimension, and a few low-level numba kernels.
+The `combra.image` module bundles every pixel-level helper used elsewhere in combra: file format conversion, geometric helpers, fractal dimension, and a few low-level numba kernels.
 
 ```python
 from combra import image
@@ -20,24 +20,6 @@ $$
 
 ## Preprocessing
 
-````{py:function} combra.image.do_otsu(img) -> ndarray
-
-Single Otsu threshold. Returns a binary `uint8` image.
-
-:param img: Input image, any shape Otsu can handle.
-:type img: ndarray
-:returns: **binary** (*ndarray[uint8]*) – Binary `{0, 255}` image.
-:rtype: ndarray
-
-**Example**
-
-```python
->>> from combra import image, data
->>> _, img = data.microstructure_images()[0]
->>> binary = image.do_otsu(img)
-```
-````
-
 ````{py:function} combra.image.align_figures(orig_img_padded, tol, labeled_cnts=False, labels=False) -> tuple[ndarray, list[ndarray]]
 
 Run contour extraction with Douglas–Peucker tolerance `tol` on a padded binary image. Returns `(visualisation, contours)`. Use `labeled_cnts=True` (with `labels`) when working with hand-annotated contours and want to skip binarisation.
@@ -56,10 +38,12 @@ Run contour extraction with Douglas–Peucker tolerance `tol` on a padded binary
 **Example**
 
 ```python
+>>> import cv2
 >>> import numpy as np
 >>> from combra import image, data
 >>> _, img = data.microstructure_images()[0]
->>> padded = np.pad(image.do_otsu(img), 30)
+>>> _, binary = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+>>> padded = np.pad(binary, 30)
 >>> vis, cnts = image.align_figures(padded, tol=3)
 >>> print(f'{len(cnts)} contours')
 ```
@@ -190,28 +174,6 @@ Augment a folder-of-classes tree and write a StyleGAN-style `dataset.json`. For 
 ```
 ````
 
-````{py:function} combra.image.do_edt(image) -> None
-
-```{warning}
-Legacy method — no working guarantee (emits a `DeprecationWarning`).
-```
-
-Watershed segmentation driven by a Euclidean distance transform: Otsu-style threshold → `distance_transform_edt` → `peak_local_max` seeds → `watershed`. Renders a 2×2 matplotlib figure (original / binary / distances / separated objects).
-
-:param image: RGB image to segment.
-:type image: ndarray
-:returns: Nothing. Draws a matplotlib figure of the segmentation stages.
-:rtype: None
-
-**Example**
-
-```python
->>> from combra import image, data
->>> _, img = data.microstructure_images()[0]
->>> image.do_edt(img)   # plots the four segmentation stages
-```
-````
-
 ````{py:function} combra.image.tiff2jpg(folder_path, start_name=0, stop_name=-4, new_folder_path='resized') -> None
 
 Convert every 16-bit TIFF in `folder_path` to 8-bit JPEG under `new_folder_path`.
@@ -232,30 +194,6 @@ Convert every 16-bit TIFF in `folder_path` to 8-bit JPEG under `new_folder_path`
 ```python
 >>> from combra import image
 >>> image.tiff2jpg('./raw_tiffs', new_folder_path='./jpegs')
-```
-````
-
-````{py:function} combra.image.combine(image, h, k=0.5) -> ndarray
-
-Tools for dual-camera SEM images split at horizontal position `h`. `combine` blends both halves with weight `k`.
-
-:param image: Composite SEM image.
-:type image: ndarray
-:param h: Horizontal split coordinate.
-:type h: int
-:param k: Blending weight. Default: `0.5`.
-:type k: float, optional
-:returns: *ndarray* – Combined image.
-:rtype: ndarray
-
-**Example**
-
-```python
->>> from combra import image, data
->>> _, img = data.microstructure_images()[0]
->>> h = img.shape[1] // 2
->>> blended = image.combine(img, h=h, k=0.5)
->>> print(blended.shape)
 ```
 ````
 
@@ -323,9 +261,10 @@ Box-counting fractal dimension of a binary image.
 **Example**
 
 ```python
+>>> import cv2
 >>> from combra import image, data
 >>> _, img = data.microstructure_images()[0]
->>> binary = image.do_otsu(img)
+>>> _, binary = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
 >>> sizes, _ = image.valid_box_sizes_from_shape(binary.shape, min_boxes=6)
 >>> fd = image.image_fractal_dimension(binary, sizes, max_shift=0)
 >>> print(f'fractal dimension = {fd:.3f}')
@@ -346,9 +285,10 @@ Fractal dimension of a single contour.
 **Example**
 
 ```python
+>>> import cv2
 >>> from combra import image, contours, data
 >>> _, img = data.microstructure_images()[0]
->>> processed = image.do_otsu(img)
+>>> _, processed = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
 >>> cnts = contours.find_contours(processed, tol=3)
 >>> fd = image.contour_fractal_dimension(cnts[0], max_size_thr=64)
 >>> print(f'contour fd = {fd:.3f}')
@@ -534,10 +474,10 @@ Numba point-in-polygon test.
 ## Notes
 
 :::{note}
-`do_edt` and `split_rotate` are in `__all__` but rely on stale helpers or hardcoded paths. Treat them as legacy.
+`split_rotate` is in `__all__` but relies on hardcoded paths. Treat it as legacy.
 :::
 
 ## See also
 
-- {doc}`combra.contours <contours>` — polygon extraction from `do_otsu` output.
+- {doc}`combra.contours <contours>` — polygon extraction from a binarised image.
 - {doc}`combra.graph <graph>` — heavy user of the geometry kernels here.
