@@ -78,7 +78,7 @@ Classic InceptionV3 FID between two **in-memory image batches** (a numpy array o
 >>> print(f'FID = {fid:.4f}')
 ```
 
-A full multi-resolution loop is shown in the {doc}`FID example </examples/fid>`. `compute_fid` works from images; for sharded or distributed evaluation the feature-extraction and distance halves are exposed separately as {py:func}`combra.metrics.fid_features` / {py:func}`combra.metrics.frechet_from_features` (see [Sharded feature extraction](#sharded-feature-extraction) below). combra does not expose the raw mean/covariance (`mu`/`sigma`) form directly.
+`compute_fid` works from images; for sharded or distributed evaluation the feature-extraction and distance halves are exposed separately as {py:func}`combra.metrics.fid_features` / {py:func}`combra.metrics.frechet_from_features` (see [Sharded feature extraction](#sharded-feature-extraction) below). combra does not expose the raw mean/covariance (`mu`/`sigma`) form directly.
 ````
 
 ````{py:function} combra.metrics.compute_cmmd(reference_images, generated_images, model_name='ViT-L-14-336-quickgelu', pretrained='openai', device=None, batch_size=64, sigma=10.0, scale=1000.0, reference_cache=None) -> float
@@ -1154,4 +1154,3 @@ Small-multiples of **every metric for a single `(resolution, class)`**: one subp
 - {py:func}`combra.angles.angles_plot_grid` — visualise the same comparisons as overlaid grids.
 - {py:func}`combra.approx.fit_plateau` — the plateau fitter used inside `convergence_stats`.
 - {doc}`combra.stats <stats>` — Kendall + Fisher primitives.
-- {doc}`FID example </examples/fid>` — multi-resolution loop using `compute_fid`.
