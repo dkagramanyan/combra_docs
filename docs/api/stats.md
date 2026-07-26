@@ -1,6 +1,6 @@
 # combra.stats
 
-The `combra.stats` module exposes the parametric distribution functions used as targets by {doc}`combra.fitting <fitting>`, plus the histogram preprocessor every distribution fit calls first, plus the inference helpers (Kendall, Fisher) used by the convergence-analysis pipeline.
+The `combra.stats` module exposes the parametric distribution functions used as targets by {doc}`combra.fitting <fitting>`, plus the histogram preprocessor every distribution fit calls first.
 
 ```python
 from combra import stats
@@ -162,54 +162,8 @@ callable never divides by zero mid-fit.
 ```
 ````
 
-## Inference
-
-Hypothesis-testing primitives used by {py:func}`combra.metrics.convergence_stats` / {py:func}`combra.metrics.print_convergence_report`. Both are pure and tiny — exposed so notebooks can call them directly on ad-hoc curves.
-
-````{py:function} combra.stats.kendall_decreasing_p(ns, vals) -> float
-
-One-sided Kendall τ p-value for the null "`|vals|` does not decrease as `ns` grows" against the alternative "decreases" (`scipy.stats.kendalltau(..., alternative='less')`). Rank-based, handles ties cleanly.
-
-:param ns: Sample-size axis (typically integer Ns).
-:type ns: array_like
-:param vals: Metric values at each `N`. Sign is ignored — the test runs on `|vals|`.
-:type vals: array_like
-:returns: **p** (*float*) – One-sided p-value. NaN when the input has fewer than 3 points or is perfectly flat.
-:rtype: float
-
-**Example**
-
-```pycon
->>> import numpy as np
->>> from combra import stats
->>> ns   = np.array([100, 250, 500, 1000, 2500, 5000])
->>> vals = np.array([0.40, 0.28, 0.21, 0.15, 0.11, 0.09])   # monotonically shrinking
->>> p = stats.kendall_decreasing_p(ns, vals)
->>> print(f'p={p:.4f}  (small p ⇒ |vals| really does decrease with N)')
-```
-````
-
-````{py:function} combra.stats.fisher_combine(ps) -> tuple[float, int]
-
-Combine independent one-sided p-values via Fisher's method ($\chi^2 = -2 \sum \log p$ with `2k` degrees of freedom). Entries that are NaN, ≤ 0, or > 1 are silently filtered out (only `0 < p ≤ 1` is meaningful for `log p`).
-
-:param ps: Individual p-values.
-:type ps: array_like
-:returns: **combined_p** (*float*) – Fisher's combined p-value. NaN if no valid input remained after filtering; and **k** (*int*) – Count of p-values that survived filtering and contributed to `combined_p`.
-:rtype: tuple(float, int)
-
-**Example**
-
-```pycon
->>> from combra import stats
->>> per_class_ps = [0.012, 0.041, 0.087, float('nan')]   # nan is silently dropped
->>> combined_p, k = stats.fisher_combine(per_class_ps)
->>> print(f'combined p={combined_p:.4f}   (k={k} of {len(per_class_ps)} curves contributed)')
-```
-````
-
 ## See also
 
 - {doc}`combra.fitting <fitting>` — fits these distributions to data.
 - {doc}`combra.angles <angles>` — uses `density_histogram` + `bimodal_gaussian` for angle histograms.
-- {py:func}`combra.metrics.convergence_stats` — drives `kendall_decreasing_p` + `fisher_combine` across whole convergence tables.
+- {py:func}`combra.metrics.convergence_stats` — tests each convergence curve for a decreasing trend (Kendall τ) and combines the per-class p-values (Fisher).

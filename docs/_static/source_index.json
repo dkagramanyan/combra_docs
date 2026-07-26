@@ -176,36 +176,20 @@
   "end": 57
  },
  {
-  "leaf": "find_raw_contours",
-  "qual": "find_raw_contours",
+  "leaf": "find_contours",
+  "qual": "find_contours",
   "subpkg": "contours",
   "file": "combra/contours/preprocess.py",
-  "start": 7,
-  "end": 22
- },
- {
-  "leaf": "find_simplified_contours",
-  "qual": "find_simplified_contours",
-  "subpkg": "contours",
-  "file": "combra/contours/preprocess.py",
-  "start": 25,
-  "end": 56
- },
- {
-  "leaf": "skeleton_coordinates",
-  "qual": "skeleton_coordinates",
-  "subpkg": "contours",
-  "file": "combra/contours/preprocess.py",
-  "start": 60,
-  "end": 89
+  "start": 5,
+  "end": 31
  },
  {
   "leaf": "contour_to_binary_mask",
   "qual": "contour_to_binary_mask",
   "subpkg": "contours",
   "file": "combra/contours/preprocess.py",
-  "start": 92,
-  "end": 129
+  "start": 34,
+  "end": 71
  },
  {
   "leaf": "_f64",
@@ -684,31 +668,31 @@
   "qual": "_read_groups",
   "subpkg": "data",
   "file": "combra/data/poliamid_plot.py",
-  "start": 38,
-  "end": 44
+  "start": 35,
+  "end": 41
  },
  {
   "leaf": "_finish",
   "qual": "_finish",
   "subpkg": "data",
   "file": "combra/data/poliamid_plot.py",
-  "start": 47,
-  "end": 62
+  "start": 44,
+  "end": 59
  },
  {
   "leaf": "plot_polyamide_fractal",
   "qual": "plot_polyamide_fractal",
   "subpkg": "data",
   "file": "combra/data/poliamid_plot.py",
-  "start": 65,
-  "end": 151
+  "start": 62,
+  "end": 148
  },
  {
   "leaf": "plot_polyamide_contour",
   "qual": "plot_polyamide_contour",
   "subpkg": "data",
   "file": "combra/data/poliamid_plot.py",
-  "start": 154,
+  "start": 151,
   "end": 257
  },
  {
@@ -820,7 +804,7 @@
   "qual": "LineFit",
   "subpkg": "fitting",
   "file": "combra/fitting/fit.py",
-  "start": 19,
+  "start": 12,
   "end": 44
  },
  {
@@ -832,196 +816,108 @@
   "end": 44
  },
  {
-  "leaf": "GaussianFit",
-  "qual": "GaussianFit",
+  "leaf": "DistributionFit",
+  "qual": "DistributionFit",
   "subpkg": "fitting",
   "file": "combra/fitting/fit.py",
   "start": 47,
-  "end": 69
+  "end": 66
  },
  {
   "leaf": "evaluate",
-  "qual": "GaussianFit.evaluate",
+  "qual": "DistributionFit.evaluate",
   "subpkg": "fitting",
   "file": "combra/fitting/fit.py",
-  "start": 67,
-  "end": 69
+  "start": 64,
+  "end": 66
  },
  {
   "leaf": "BimodalGaussianFit",
   "qual": "BimodalGaussianFit",
   "subpkg": "fitting",
   "file": "combra/fitting/fit.py",
-  "start": 72,
-  "end": 92
+  "start": 69,
+  "end": 89
  },
  {
   "leaf": "evaluate",
   "qual": "BimodalGaussianFit.evaluate",
   "subpkg": "fitting",
   "file": "combra/fitting/fit.py",
-  "start": 88,
-  "end": 92
- },
- {
-  "leaf": "BinomialFit",
-  "qual": "BinomialFit",
-  "subpkg": "fitting",
-  "file": "combra/fitting/fit.py",
-  "start": 95,
-  "end": 117
- },
- {
-  "leaf": "evaluate",
-  "qual": "BinomialFit.evaluate",
-  "subpkg": "fitting",
-  "file": "combra/fitting/fit.py",
-  "start": 115,
-  "end": 117
- },
- {
-  "leaf": "PoissonFit",
-  "qual": "PoissonFit",
-  "subpkg": "fitting",
-  "file": "combra/fitting/fit.py",
-  "start": 120,
-  "end": 139
- },
- {
-  "leaf": "evaluate",
-  "qual": "PoissonFit.evaluate",
-  "subpkg": "fitting",
-  "file": "combra/fitting/fit.py",
-  "start": 137,
-  "end": 139
- },
- {
-  "leaf": "ExponentialFit",
-  "qual": "ExponentialFit",
-  "subpkg": "fitting",
-  "file": "combra/fitting/fit.py",
-  "start": 142,
-  "end": 161
- },
- {
-  "leaf": "evaluate",
-  "qual": "ExponentialFit.evaluate",
-  "subpkg": "fitting",
-  "file": "combra/fitting/fit.py",
-  "start": 159,
-  "end": 161
+  "start": 85,
+  "end": 89
  },
  {
   "leaf": "PlateauFit",
   "qual": "PlateauFit",
   "subpkg": "fitting",
   "file": "combra/fitting/fit.py",
-  "start": 164,
-  "end": 185
+  "start": 92,
+  "end": 113
  },
  {
   "leaf": "evaluate",
   "qual": "PlateauFit.evaluate",
   "subpkg": "fitting",
   "file": "combra/fitting/fit.py",
-  "start": 182,
-  "end": 185
+  "start": 110,
+  "end": 113
  },
  {
   "leaf": "_filter_finite",
   "qual": "_filter_finite",
   "subpkg": "fitting",
   "file": "combra/fitting/fit.py",
-  "start": 188,
-  "end": 202
+  "start": 116,
+  "end": 130
  },
  {
   "leaf": "_fit_grid",
   "qual": "_fit_grid",
   "subpkg": "fitting",
   "file": "combra/fitting/fit.py",
-  "start": 205,
-  "end": 208
+  "start": 133,
+  "end": 136
  },
  {
-  "leaf": "_fit_gaussian_params",
-  "qual": "_fit_gaussian_params",
+  "leaf": "fit_distribution",
+  "qual": "fit_distribution",
   "subpkg": "fitting",
   "file": "combra/fitting/fit.py",
-  "start": 214,
-  "end": 237
- },
- {
-  "leaf": "_fit_bimodal_gaussian_params",
-  "qual": "_fit_bimodal_gaussian_params",
-  "subpkg": "fitting",
-  "file": "combra/fitting/fit.py",
-  "start": 240,
-  "end": 293
- },
- {
-  "leaf": "fit_gaussian",
-  "qual": "fit_gaussian",
-  "subpkg": "fitting",
-  "file": "combra/fitting/fit.py",
-  "start": 296,
-  "end": 331
+  "start": 142,
+  "end": 191
  },
  {
   "leaf": "fit_bimodal_gaussian",
   "qual": "fit_bimodal_gaussian",
   "subpkg": "fitting",
   "file": "combra/fitting/fit.py",
-  "start": 334,
-  "end": 371
+  "start": 194,
+  "end": 249
  },
  {
-  "leaf": "fit_binomial",
-  "qual": "fit_binomial",
+  "leaf": "_fit_line_segment",
+  "qual": "_fit_line_segment",
   "subpkg": "fitting",
   "file": "combra/fitting/fit.py",
-  "start": 377,
-  "end": 428
- },
- {
-  "leaf": "fit_poisson",
-  "qual": "fit_poisson",
-  "subpkg": "fitting",
-  "file": "combra/fitting/fit.py",
-  "start": 434,
-  "end": 476
- },
- {
-  "leaf": "fit_exponential",
-  "qual": "fit_exponential",
-  "subpkg": "fitting",
-  "file": "combra/fitting/fit.py",
-  "start": 482,
-  "end": 530
+  "start": 256,
+  "end": 325
  },
  {
   "leaf": "fit_line",
   "qual": "fit_line",
   "subpkg": "fitting",
   "file": "combra/fitting/fit.py",
-  "start": 536,
-  "end": 566
+  "start": 328,
+  "end": 359
  },
  {
   "leaf": "fit_plateau",
   "qual": "fit_plateau",
   "subpkg": "fitting",
   "file": "combra/fitting/fit.py",
-  "start": 572,
-  "end": 620
- },
- {
-  "leaf": "fit_line_segment",
-  "qual": "fit_line_segment",
-  "subpkg": "fitting",
-  "file": "combra/fitting/fit.py",
-  "start": 624,
-  "end": 680
+  "start": 365,
+  "end": 413
  },
  {
   "leaf": "find_edges",
@@ -1580,104 +1476,120 @@
   "qual": "_safe_pct",
   "subpkg": "metrics",
   "file": "combra/metrics/convergence.py",
-  "start": 13,
-  "end": 17
+  "start": 14,
+  "end": 18
  },
  {
   "leaf": "_power_law_alpha",
   "qual": "_power_law_alpha",
   "subpkg": "metrics",
   "file": "combra/metrics/convergence.py",
-  "start": 20,
-  "end": 35
+  "start": 21,
+  "end": 36
+ },
+ {
+  "leaf": "_kendall_decreasing_p",
+  "qual": "_kendall_decreasing_p",
+  "subpkg": "metrics",
+  "file": "combra/metrics/convergence.py",
+  "start": 39,
+  "end": 48
+ },
+ {
+  "leaf": "_fisher_combine",
+  "qual": "_fisher_combine",
+  "subpkg": "metrics",
+  "file": "combra/metrics/convergence.py",
+  "start": 51,
+  "end": 59
  },
  {
   "leaf": "summarize_metric_distribution",
   "qual": "summarize_metric_distribution",
   "subpkg": "metrics",
   "file": "combra/metrics/convergence.py",
-  "start": 38,
-  "end": 75
+  "start": 62,
+  "end": 99
  },
  {
   "leaf": "convergence_stats",
   "qual": "convergence_stats",
   "subpkg": "metrics",
   "file": "combra/metrics/convergence.py",
-  "start": 78,
-  "end": 179
+  "start": 102,
+  "end": 203
  },
  {
   "leaf": "_format_n",
   "qual": "_format_n",
   "subpkg": "metrics",
   "file": "combra/metrics/convergence.py",
-  "start": 182,
-  "end": 187
+  "start": 206,
+  "end": 211
  },
  {
   "leaf": "_gain_col_name",
   "qual": "_gain_col_name",
   "subpkg": "metrics",
   "file": "combra/metrics/convergence.py",
-  "start": 190,
-  "end": 191
+  "start": 214,
+  "end": 215
  },
  {
   "leaf": "_alpha_col_name",
   "qual": "_alpha_col_name",
   "subpkg": "metrics",
   "file": "combra/metrics/convergence.py",
-  "start": 194,
-  "end": 195
+  "start": 218,
+  "end": 219
  },
  {
   "leaf": "_per_kind",
   "qual": "_per_kind",
   "subpkg": "metrics",
   "file": "combra/metrics/convergence.py",
-  "start": 198,
-  "end": 203
+  "start": 222,
+  "end": 227
  },
  {
   "leaf": "_per_class_frame",
   "qual": "_per_class_frame",
   "subpkg": "metrics",
   "file": "combra/metrics/convergence.py",
-  "start": 206,
-  "end": 209
+  "start": 230,
+  "end": 233
  },
  {
   "leaf": "_print_section",
   "qual": "_print_section",
   "subpkg": "metrics",
   "file": "combra/metrics/convergence.py",
-  "start": 212,
-  "end": 213
+  "start": 236,
+  "end": 237
  },
  {
   "leaf": "_print_res_header",
   "qual": "_print_res_header",
   "subpkg": "metrics",
   "file": "combra/metrics/convergence.py",
-  "start": 216,
-  "end": 217
+  "start": 240,
+  "end": 241
  },
  {
   "leaf": "_print_indented",
   "qual": "_print_indented",
   "subpkg": "metrics",
   "file": "combra/metrics/convergence.py",
-  "start": 220,
-  "end": 225
+  "start": 244,
+  "end": 249
  },
  {
   "leaf": "print_convergence_report",
   "qual": "print_convergence_report",
   "subpkg": "metrics",
   "file": "combra/metrics/convergence.py",
-  "start": 228,
-  "end": 367
+  "start": 252,
+  "end": 391
  },
  {
   "leaf": "_psd_sqrt",
@@ -2110,22 +2022,6 @@
   "file": "combra/stats/distributions.py",
   "start": 82,
   "end": 85
- },
- {
-  "leaf": "kendall_decreasing_p",
-  "qual": "kendall_decreasing_p",
-  "subpkg": "stats",
-  "file": "combra/stats/inference.py",
-  "start": 8,
-  "end": 32
- },
- {
-  "leaf": "fisher_combine",
-  "qual": "fisher_combine",
-  "subpkg": "stats",
-  "file": "combra/stats/inference.py",
-  "start": 35,
-  "end": 60
  },
  {
   "leaf": "density_histogram",

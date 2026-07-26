@@ -51,7 +51,8 @@ N-sweep
   A metric that keeps shrinking as `N` grows was measuring sampling noise; one
   that flattens onto a non-zero floor has found a real bias. The floor is fitted
   by {py:func}`combra.fitting.fit_plateau` as $|m|(N) = a + b\,N^{-1/2}$, and
-  the trend is tested by {py:func}`combra.stats.kendall_decreasing_p`.
+  the trend is tested with a one-sided Kendall τ inside
+  {py:func}`combra.metrics.convergence_stats`.
 
 kind
   A label distinguishing the generators being compared in one analysis (e.g.
