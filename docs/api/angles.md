@@ -40,42 +40,6 @@ above 180° are preserved).
 ```
 ````
 
-````{py:function} combra.angles.format_density_legend(images_amount, name, itype, step, mus, sigmas, amps, norm) -> str
-
-Format a multi-line legend string from bimodal-Gaussian fit parameters. Useful when
-overlaying text on a custom plot.
-
-:param images_amount: Number of images contributing to the fit (``meta.n_images``).
-:type images_amount: int
-:param name: Class name (from ``class_types``).
-:type name: str
-:param itype: Display type (from ``class_types``).
-:type itype: str
-:param step: Histogram bin width.
-:type step: float
-:param mus: Length-2 bimodal-Gauss means.
-:type mus: list[float]
-:param sigmas: Length-2 bimodal-Gauss standard deviations.
-:type sigmas: list[float]
-:param amps: Length-2 bimodal-Gauss amplitudes.
-:type amps: list[float]
-:param norm: Total angles count (``raw.angles_count``).
-:type norm: int
-:returns: **label** – a multi-line label ready to drop into a matplotlib title.
-:rtype: str
-
-**Example**
-
-```pycon
->>> from combra import angles
->>> label = angles.format_density_legend(
-...     images_amount=360, name='Ultra_Co11', itype='small grain', step=2.0,
-...     mus=[90.5, 270.3], sigmas=[18.4, 22.1], amps=[0.012, 0.015], norm=4200,
-... )
->>> print(label)
-```
-````
-
 ## Output layout
 
 ````{py:function} combra.angles.output_directory(out_root, src_path, msl) -> pathlib.Path

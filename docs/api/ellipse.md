@@ -50,48 +50,6 @@ SciPy-style named tuple returned by {py:func}`~combra.ellipse.fit_mvee` (cf.
 :type contour: list[ndarray]
 ````
 
-````{py:function} combra.ellipse.format_beam_legend(images_amount, name, itype, norm, k, angle, b, score, dist_step, dist_mean) -> str
-
-Format a multi-line legend string for a beam-distribution plot. Used inside {py:meth}`combra.data.MicrostructureDataset.generate_beams` to populate `prep.beams_legend_a` / `prep.beams_legend_b`.
-
-:param images_amount: Number of images contributing to the fit.
-:type images_amount: int
-:param name: Class name.
-:type name: str
-:param itype: Display label.
-:type itype: str
-:param norm: Total beam count.
-:type norm: int
-:param k: Linear-fit slope of the log-density.
-:type k: float
-:param angle: `arctan(k)` in degrees.
-:type angle: float
-:param b: Linear-fit intercept of the log-density.
-:type b: float
-:param score: Fit R².
-:type score: float
-:param dist_step: Histogram bin width.
-:type dist_step: float
-:param dist_mean: Mean beam length.
-:type dist_mean: float
-:returns: **label** – Multi-line legend string.
-:rtype: str
-
-**Example**
-
-Format a per-class legend for a beam-length log-density plot:
-
-```pycon
->>> from combra import ellipse
->>> label = ellipse.format_beam_legend(
-...     images_amount=360, name='Ultra_Co11', itype='medium grain',
-...     norm=4200, k=-1.34, b=2.10, angle=-53.2,
-...     score=0.987, dist_step=4.0, dist_mean=18.5,
-... )
->>> print(label)
-```
-````
-
 ## Plotting
 
 ````{py:function} combra.ellipse.plot_beam_lengths(rows, step, width, height, indices=None, scatter_size=60, font_size=20, save_path=None, show=True) -> None

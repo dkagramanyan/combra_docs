@@ -174,54 +174,6 @@ Augment a folder-of-classes tree and write a StyleGAN-style `dataset.json`. For 
 ```
 ````
 
-````{py:function} combra.image.convert_tiff_to_jpeg(folder_path, start_name=0, stop_name=-4, new_folder_path='resized') -> None
-
-Convert every 16-bit TIFF in `folder_path` to 8-bit JPEG under `new_folder_path`.
-
-:param folder_path: Folder of TIFFs.
-:type folder_path: str or Path
-:param start_name: Slice start applied to the source filename when deriving the JPEG name. Default: `0`.
-:type start_name: int, optional
-:param stop_name: Slice stop applied to the source filename when deriving the JPEG name. Default: `-4`.
-:type stop_name: int, optional
-:param new_folder_path: Destination folder. Default: `'resized'`.
-:type new_folder_path: str, optional
-:returns: Nothing. Writes JPEGs under `new_folder_path`.
-:rtype: None
-
-**Example**
-
-```pycon
->>> from combra import image
->>> image.convert_tiff_to_jpeg('./raw_tiffs', new_folder_path='./jpegs')
-```
-````
-
-````{py:function} combra.image.split_half(image, h, side) -> ndarray
-
-Tools for dual-camera SEM images split at horizontal position `h`. `split_half` returns the left or right half (`side='left'` or `'right'`).
-
-:param image: Composite SEM image.
-:type image: ndarray
-:param h: Horizontal split coordinate.
-:type h: int
-:param side: `'left'` or `'right'`.
-:type side: str
-:returns: *ndarray* – One half of the image.
-:rtype: ndarray
-
-**Example**
-
-```pycon
->>> from combra import image, data
->>> _, img = data.microstructure_images()[0]
->>> h = img.shape[1] // 2
->>> left  = image.split_half(img, h=h, side='left')
->>> right = image.split_half(img, h=h, side='right')
->>> print(left.shape, right.shape)
-```
-````
-
 ## Fractal dimension
 
 ````{py:function} combra.image.box_sizes(shape, min_boxes=6) -> tuple[ndarray, int]
