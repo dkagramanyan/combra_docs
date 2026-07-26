@@ -216,32 +216,6 @@ Least-squares line $y = kx + b$. Used in {py:meth}`combra.data.MicrostructureDat
 ```
 ````
 
-````{py:function} combra.fitting.fit_line_segment(x, y, i0, i1) -> tuple[float, float, float]
-
-Fast numba-compiled line fit on the slice `[i0:i1]`. Use this in tight loops where `fit_line`'s scipy overhead matters.
-
-:param x: Input series.
-:type x: ndarray
-:param y: Input series.
-:type y: ndarray
-:param i0: Slice start bound.
-:type i0: int
-:param i1: Slice end bound.
-:type i1: int
-:returns: **a** (*float*) – Slope; and **b** (*float*) – Intercept; and **r_squared** (*float*) – Goodness of fit.
-:rtype: tuple(float, float, float)
-
-**Example**
-
-```pycon
->>> import numpy as np
->>> from combra import fitting
->>> x = np.linspace(0, 10, 100)
->>> y = 2.0 * x + 1.0 + np.random.normal(scale=0.5, size=100)
->>> k, b, r2 = fitting.fit_line_segment(x, y, i0=10, i1=90)
->>> print(f'slope={k:.3f}  intercept={b:.3f}  R²={r2:.3f}')
-```
-````
 
 ## Plateau / asymptote fits
 
