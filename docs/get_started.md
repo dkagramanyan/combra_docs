@@ -43,22 +43,22 @@ ruff format combra tests         # format
 
 CI (GitHub Actions) runs the ruff lint + format checks and `pytest` on Python 3.10, 3.11, and 3.12.
 
-For a quick post-install sanity check that doesn't need the dev tools, run the bundled self-validation helper — it estimates the fractal dimension of reference shapes with known answers (see {doc}`combra.tests <api/tests>`):
+For a quick post-install sanity check that doesn't need the dev tools, run the bundled self-validation helper — it estimates the fractal dimension of reference shapes with known answers (see {doc}`combra.validation <api/validation>`):
 
-```python
+```pycon
 >>> import numpy as np
->>> from combra import tests
->>> tests.test_fractal_dimensions(np.array([2, 3, 4, 6, 8, 12, 16, 24, 32]))
+>>> from combra import validation
+>>> validation.check_fractal_dimension(np.array([2, 3, 4, 6, 8, 12, 16, 24, 32]))
 ```
 
 ## Smoke test
 
 A few lines that exercise the full pipeline — load a bundled image, preprocess it, extract angles:
 
-```python
+```pycon
 >>> import cv2
 >>> from combra import data, angles
->>> _, img = data.microstructure_images()[0]
+>>> img = data.load_microstructure().images[0]
 >>> _, processed = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
 >>> arr, contours = angles.vertex_angles(processed, border_eps=5, tol=3, min_segment_len=10.0)
 >>> print(f'{len(arr)} angles, mean={arr.mean():.2f}°')
@@ -68,15 +68,15 @@ A few lines that exercise the full pipeline — load a bundled image, preprocess
 
 End-to-end: run angle extraction on every class in the bundled dataset, write one parquet with full provenance.
 
-```python
+```pycon
 >>> from combra import data
->>> ds = data.PobeditDataset(
-...     path=data.microstructure_class_path(),
-...     max_images_num_per_class=50,
+>>> ds = data.MicrostructureDataset(
+...     path=data.microstructure_data_dir(),
+...     max_per_class=50,
 ... )
 >>> ds.generate_angles(
 ...     save_path='./smoke_test',
-...     types_dict={'Ultra_Co11': 'medium', 'Ultra_Co25': 'fine'},
+...     class_types={'Ultra_Co11': 'medium', 'Ultra_Co25': 'fine'},
 ...     step=[1, 5, 10],
 ...     workers=8, min_segment_len=5.0, keep_contours=False,
 ...     run_meta={'family': 'real', 'resolution': 1024, 'notes': 'smoke'},
@@ -87,15 +87,14 @@ The output file's `run_meta` column records who/when/what — including the git 
 
 ## Module map
 
-| module | what it does |
-| --- | --- |
-| {doc}`combra.data <api/data>` | Datasets, bundled fetchers, parquet writers (`generate_angles`, `generate_beams`). |
-| {doc}`combra.image <api/image>` | Pixel-level preprocessing, fractal dimension, numba geometry kernels. |
-| {doc}`combra.contours <api/contours>` | Polygon extraction + drawing. |
-| {doc}`combra.angles <api/angles>` | Per-image angle extraction and grid plots. |
-| {doc}`combra.mvee <api/mvee>` | Minimum-volume enclosing ellipses, beam distributions. |
-| {doc}`combra.stats <api/stats>` | Parametric distributions + histogram preprocessor. |
-| {doc}`combra.approx <api/approx>` | Fits Gaussian/binomial/poisson/exponential/linear models. |
-| {doc}`combra.metrics <api/metrics>` | FID, batch generative-quality metrics (CMMD, FD-DINOv2, angle-Wasserstein), per-class Wasserstein comparison, sampler-vs-steps comparison, and convergence-vs-N analysis (Kendall trend, plateau fit, gain-distribution plot). |
-| {doc}`combra.graph <api/graph>` | Crack-image → graph → shortest-energy-path search. |
-| {doc}`combra.utils <api/utils>` | `Bunch` attribute-accessible dict container. |
+See the {doc}`landing page <index>` for the full module grid, and
+{doc}`glossary` for the domain vocabulary (`step`, beam, MVEE, N-sweep).
+
+## What changed in 0.6
+
+0.6 is an API-convention release: functions were renamed to `verb_noun` form,
+two modules moved (`combra.approx` → {doc}`combra.fitting <api/fitting>`,
+`combra.mvee` → {doc}`combra.ellipse <api/ellipse>`), and every plotter now
+returns its figure and takes `save_path=` / `show=`. **There are no
+compatibility aliases** — see the release notes in the repository `CHANGELOG.md`
+for the full rename table.

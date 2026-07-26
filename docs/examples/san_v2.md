@@ -169,7 +169,7 @@ san-eval --metrics fid50k_full --data ./datasets/wc_co_256.zip \
 To score arbitrary real/generated image batches with the combra metrics directly,
 call {py:func}`combra.metrics.compute_all_metrics`:
 
-```python
+```pycon
 >>> from combra.metrics import compute_all_metrics
 >>> results = compute_all_metrics(reference_images, generated_images, image_metrics=True)
 >>> results

@@ -20,7 +20,7 @@ $$
 
 ## Preprocessing
 
-````{py:function} combra.image.align_figures(orig_img_padded, tol, labeled_cnts=False, labels=False) -> tuple[ndarray, list[ndarray]]
+````{py:function} combra.image.render_filled_contours(orig_img_padded, tol, labeled_cnts=False, labels=False) -> tuple[ndarray, list[ndarray]]
 
 Run contour extraction with Douglas–Peucker tolerance `tol` on a padded binary image. Returns `(visualisation, contours)`. Use `labeled_cnts=True` (with `labels`) when working with hand-annotated contours and want to skip binarisation.
 
@@ -37,14 +37,14 @@ Run contour extraction with Douglas–Peucker tolerance `tol` on a padded binary
 
 **Example**
 
-```python
+```pycon
 >>> import cv2
 >>> import numpy as np
 >>> from combra import image, data
 >>> _, img = data.microstructure_images()[0]
 >>> _, binary = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
 >>> padded = np.pad(binary, 30)
->>> vis, cnts = image.align_figures(padded, tol=3)
+>>> vis, cnts = image.render_filled_contours(padded, tol=3)
 >>> print(f'{len(cnts)} contours')
 ```
 ````
@@ -64,7 +64,7 @@ Rasterize a polygon defined by `corners` into `grid` using a numba point-in-poly
 
 **Example**
 
-```python
+```pycon
 >>> import numpy as np
 >>> from combra import image
 >>> grid = np.zeros((100, 100), dtype=np.uint8)
@@ -74,9 +74,9 @@ Rasterize a polygon defined by `corners` into `grid` using a numba point-in-poly
 ```
 ````
 
-````{py:function} combra.image.resize(input_root, output_root, target_size) -> None
+````{py:function} combra.image.resize_folder(input_root, output_root, target_size) -> None
 
-Recursively walk an image tree, resize each image to `target_size`, and convert to RGB if needed. Mirrors the source tree structure under `output_root`.
+Recursively walk an image tree, resize_folder each image to `target_size`, and convert to RGB if needed. Mirrors the source tree structure under `output_root`.
 
 :param input_root: Source root.
 :type input_root: str or Path
@@ -89,14 +89,14 @@ Recursively walk an image tree, resize each image to `target_size`, and convert 
 
 **Example**
 
-```python
+```pycon
 >>> from combra import image
 >>> # Downsample a folder-of-classes from 1024x1024 to 256x256, preserving subdir layout.
 >>> image.resize('./data/orig_1024', './data/orig_256', target_size=(256, 256))
 ```
 ````
 
-````{py:function} combra.image.split_rotate(input_folder, output_folder, split=3, rotate=False) -> None
+````{py:function} combra.image.tile_images(input_folder, output_folder, split=3, rotate=False) -> None
 
 ```{warning}
 Legacy method — no working guarantee (emits a `DeprecationWarning`).
@@ -117,9 +117,9 @@ Walk a folder-of-classes tree and tile every image into quarters (`split=3`) or 
 
 **Example**
 
-```python
+```pycon
 >>> from combra import image
->>> image.split_rotate('./data/orig', './data/orig_tiles', split=3)
+>>> image.tile_images('./data/orig', './data/orig_tiles', split=3)
 ```
 ````
 
@@ -136,7 +136,7 @@ Generate the deduplicated augmentations of a single image. The image is scaled t
 
 **Example**
 
-```python
+```pycon
 >>> from PIL import Image
 >>> from combra import image
 >>> src = Image.open('./data/orig/Ultra_Co11/img001.jpeg')
@@ -164,7 +164,7 @@ Augment a folder-of-classes tree and write a StyleGAN-style `dataset.json`. For 
 
 **Example**
 
-```python
+```pycon
 >>> from combra import image
 >>> class_map = {'Ultra_Co25': 0, 'Ultra_Co11': 1, 'Ultra_Co6_2': 2}
 >>> json_path = image.build_quadrant_dataset(
@@ -174,7 +174,7 @@ Augment a folder-of-classes tree and write a StyleGAN-style `dataset.json`. For 
 ```
 ````
 
-````{py:function} combra.image.tiff2jpg(folder_path, start_name=0, stop_name=-4, new_folder_path='resized') -> None
+````{py:function} combra.image.convert_tiff_to_jpeg(folder_path, start_name=0, stop_name=-4, new_folder_path='resized') -> None
 
 Convert every 16-bit TIFF in `folder_path` to 8-bit JPEG under `new_folder_path`.
 
@@ -191,15 +191,15 @@ Convert every 16-bit TIFF in `folder_path` to 8-bit JPEG under `new_folder_path`
 
 **Example**
 
-```python
+```pycon
 >>> from combra import image
->>> image.tiff2jpg('./raw_tiffs', new_folder_path='./jpegs')
+>>> image.convert_tiff_to_jpeg('./raw_tiffs', new_folder_path='./jpegs')
 ```
 ````
 
-````{py:function} combra.image.imdivide(image, h, side) -> ndarray
+````{py:function} combra.image.split_half(image, h, side) -> ndarray
 
-Tools for dual-camera SEM images split at horizontal position `h`. `imdivide` returns the left or right half (`side='left'` or `'right'`).
+Tools for dual-camera SEM images split at horizontal position `h`. `split_half` returns the left or right half (`side='left'` or `'right'`).
 
 :param image: Composite SEM image.
 :type image: ndarray
@@ -212,19 +212,19 @@ Tools for dual-camera SEM images split at horizontal position `h`. `imdivide` re
 
 **Example**
 
-```python
+```pycon
 >>> from combra import image, data
 >>> _, img = data.microstructure_images()[0]
 >>> h = img.shape[1] // 2
->>> left  = image.imdivide(img, h=h, side='left')
->>> right = image.imdivide(img, h=h, side='right')
+>>> left  = image.split_half(img, h=h, side='left')
+>>> right = image.split_half(img, h=h, side='right')
 >>> print(left.shape, right.shape)
 ```
 ````
 
 ## Fractal dimension
 
-````{py:function} combra.image.valid_box_sizes_from_shape(shape, min_boxes=6) -> tuple[ndarray, int]
+````{py:function} combra.image.box_sizes(shape, min_boxes=6) -> tuple[ndarray, int]
 
 Return adaptive dyadic box sizes for the given image shape. Pass the result as the `sizes` argument to `image_fractal_dimension`.
 
@@ -237,9 +237,9 @@ Return adaptive dyadic box sizes for the given image shape. Pass the result as t
 
 **Example**
 
-```python
+```pycon
 >>> from combra import image
->>> sizes, scale = image.valid_box_sizes_from_shape((1024, 1024), min_boxes=6)
+>>> sizes, scale = image.box_sizes((1024, 1024), min_boxes=6)
 >>> print(sizes)      # [2, 4, 8, 16, 32, 64, 128, ...]
 >>> print(scale)      # 1 (no upscaling needed at this size)
 ```
@@ -251,7 +251,7 @@ Box-counting fractal dimension of a binary image.
 
 :param binary: Binary image (any non-zero pixel counts as "filled").
 :type binary: ndarray[uint8]
-:param sizes: Box sizes to sweep — from `valid_box_sizes_from_shape`.
+:param sizes: Box sizes to sweep — from `box_sizes`.
 :type sizes: ndarray[int]
 :param max_shift: If `>0`, average box counts over `max_shift` grid offsets to reduce alignment bias. Default: `0`.
 :type max_shift: int, optional
@@ -260,12 +260,12 @@ Box-counting fractal dimension of a binary image.
 
 **Example**
 
-```python
+```pycon
 >>> import cv2
 >>> from combra import image, data
 >>> _, img = data.microstructure_images()[0]
 >>> _, binary = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
->>> sizes, _ = image.valid_box_sizes_from_shape(binary.shape, min_boxes=6)
+>>> sizes, _ = image.box_sizes(binary.shape, min_boxes=6)
 >>> fd = image.image_fractal_dimension(binary, sizes, max_shift=0)
 >>> print(f'fractal dimension = {fd:.3f}')
 ```
@@ -284,12 +284,12 @@ Fractal dimension of a single contour.
 
 **Example**
 
-```python
+```pycon
 >>> import cv2
 >>> from combra import image, contours, data
 >>> _, img = data.microstructure_images()[0]
 >>> _, processed = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
->>> cnts = contours.find_contours(processed, tol=3)
+>>> cnts = contours.find_simplified_contours(processed, tol=3)
 >>> fd = image.contour_fractal_dimension(cnts[0], max_size_thr=64)
 >>> print(f'contour fd = {fd:.3f}')
 ```
@@ -316,14 +316,14 @@ Bresenham line rasterisation.
 
 **Example**
 
-```python
+```pycon
 >>> from combra import image
 >>> xs, ys = image.bresenham_line(0, 0, 10, 5)
 >>> print(list(zip(xs, ys)))   # all pixel coordinates on the line
 ```
 ````
 
-````{py:function} combra.image.get_bresenham_eps_pixels(img_contours_np, start_node_x, start_node_y, end_node_x, end_node_y, border_pixel=255) -> int
+````{py:function} combra.image.count_border_pixels_on_line(img_contours_np, start_node_x, start_node_y, end_node_x, end_node_y, border_pixel=255) -> int
 
 Count contour pixels (value `== border_pixel`) that fall on the Bresenham line between two points. Used in the crack-graph builder to score the "thickness" of an edge.
 
@@ -344,10 +344,10 @@ Count contour pixels (value `== border_pixel`) that fall on the Bresenham line b
 
 **Example**
 
-```python
+```pycon
 >>> from combra import image
 >>> # img_contours: binary contour mask with contour pixels == 255
->>> n = image.get_bresenham_eps_pixels(
+>>> n = image.count_border_pixels_on_line(
 ...     img_contours, start_node_x=10, start_node_y=20, end_node_x=80, end_node_y=60,
 ...     border_pixel=255,
 ... )
@@ -355,9 +355,9 @@ Count contour pixels (value `== border_pixel`) that fall on the Bresenham line b
 ```
 ````
 
-````{py:function} combra.image.check_border_pixels_vectorized(img_contours_np, start_x, start_y, end_x, end_y, perp_v_x, perp_v_y, line_eps, border_pixel, border_eps) -> int
+````{py:function} combra.image.count_border_pixels_in_band(img_contours_np, start_x, start_y, end_x, end_y, perp_v_x, perp_v_y, line_eps, border_pixel, border_eps) -> int
 
-Count contour pixels intersected by a band of width `2*line_eps` perpendicular to a line. Pair with `get_perp_v`.
+Count contour pixels intersected by a band of width `2*line_eps` perpendicular to a line. Pair with `perpendicular_vector`.
 
 :param img_contours_np: Image of drawn contours.
 :type img_contours_np: ndarray
@@ -369,9 +369,9 @@ Count contour pixels intersected by a band of width `2*line_eps` perpendicular t
 :type end_x: int
 :param end_y: End y-coordinate.
 :type end_y: int
-:param perp_v_x: Perpendicular vector x-component (from `get_perp_v`).
+:param perp_v_x: Perpendicular vector x-component (from `perpendicular_vector`).
 :type perp_v_x: float
-:param perp_v_y: Perpendicular vector y-component (from `get_perp_v`).
+:param perp_v_y: Perpendicular vector y-component (from `perpendicular_vector`).
 :type perp_v_y: float
 :param line_eps: Half-width of the perpendicular band.
 :type line_eps: int
@@ -384,10 +384,10 @@ Count contour pixels intersected by a band of width `2*line_eps` perpendicular t
 
 **Example**
 
-```python
+```pycon
 >>> from combra import image
->>> perp_x, perp_y = image.get_perp_v(10, 20, 80, 60, line_eps=10)
->>> n = image.check_border_pixels_vectorized(
+>>> perp_x, perp_y = image.perpendicular_vector(10, 20, 80, 60, line_eps=10)
+>>> n = image.count_border_pixels_in_band(
 ...     img_contours, 10, 20, 80, 60, perp_x, perp_y,
 ...     line_eps=10, border_pixel=255, border_eps=2,
 ... )
@@ -395,9 +395,9 @@ Count contour pixels intersected by a band of width `2*line_eps` perpendicular t
 ```
 ````
 
-````{py:function} combra.image.get_perp_v(start_x, start_y, end_x, end_y, line_eps=10) -> tuple[float, float]
+````{py:function} combra.image.perpendicular_vector(start_x, start_y, end_x, end_y, line_eps=10) -> tuple[float, float]
 
-Unit perpendicular vector to the line `(start → end)`, scaled by `line_eps`. Use with `check_border_pixels_vectorized` to define the perpendicular band.
+Unit perpendicular vector to the line `(start → end)`, scaled by `line_eps`. Use with `count_border_pixels_in_band` to define the perpendicular band.
 
 :param start_x: Start x-coordinate.
 :type start_x: int
@@ -414,15 +414,15 @@ Unit perpendicular vector to the line `(start → end)`, scaled by `line_eps`. U
 
 **Example**
 
-```python
+```pycon
 >>> from combra import image
 >>> # Perpendicular to a horizontal line; line_eps=10 ⇒ vector points up by 10.
->>> px, py = image.get_perp_v(0, 0, 100, 0, line_eps=10)
+>>> px, py = image.perpendicular_vector(0, 0, 100, 0, line_eps=10)
 >>> print(px, py)   # ≈ (0, 10) or (0, -10)
 ```
 ````
 
-````{py:function} combra.image.find_intersection_2d(p1, p2, p3, p4) -> bool
+````{py:function} combra.image.segments_intersect(p1, p2, p3, p4) -> bool
 
 Test if two line segments intersect.
 
@@ -439,11 +439,11 @@ Test if two line segments intersect.
 
 **Example**
 
-```python
+```pycon
 >>> from combra import image
 >>> # Crossing 'X' shape — segments (0,0)→(10,10) and (0,10)→(10,0) cross at (5,5).
->>> print(image.find_intersection_2d((0, 0), (10, 10), (0, 10), (10, 0)))   # True
->>> print(image.find_intersection_2d((0, 0), (1, 1), (5, 5), (6, 6)))       # False
+>>> print(image.segments_intersect((0, 0), (10, 10), (0, 10), (10, 0)))   # True
+>>> print(image.segments_intersect((0, 0), (1, 1), (5, 5), (6, 6)))       # False
 ```
 ````
 
@@ -462,7 +462,7 @@ Numba point-in-polygon test.
 
 **Example**
 
-```python
+```pycon
 >>> import numpy as np
 >>> from combra import image
 >>> square = np.array([[0, 0], [10, 0], [10, 10], [0, 10]])
@@ -474,8 +474,66 @@ Numba point-in-polygon test.
 ## Notes
 
 :::{note}
-`split_rotate` is in `__all__` but relies on hardcoded paths. Treat it as legacy.
+`tile_images` is in `__all__` but relies on hardcoded paths. Treat it as legacy.
 :::
+
+## Array conversion
+
+````{py:function} combra.image.to_uint8(a, data_range=None) -> ndarray
+
+Rescale an image array to `uint8 [0, 255]` under an **explicit** range contract —
+the strict, caller-facing counterpart of combra's internal per-image guessing, so
+two images in one scored batch can never be rescaled under different assumptions
+(the normalization hazard behind content-dependent FID/CMMD bias).
+
+:param a: Image array.
+:type a: array_like
+:param data_range: `None` — `a` must already be `uint8`, else `ValueError`; `(lo, hi)` — linearly map `[lo, hi]` onto `[0, 255]`. Default: `None`.
+:type data_range: None or tuple[float, float] or str, optional
+:returns: **out** (*ndarray[uint8]*) – The rescaled image.
+:rtype: ndarray
+
+**Example**
+
+```pycon
+>>> import numpy as np
+>>> from combra.metrics import to_uint8
+>>> to_uint8(np.array([-1.0, 0.0, 1.0]), data_range=(-1.0, 1.0))
+array([  0, 127, 255], dtype=uint8)
+```
+````
+
+## Ellipse geometry
+
+````{py:function} combra.image.ellipse(a, b, angle, xc=0, yc=0, num=50) -> tuple[ndarray, ndarray]
+
+Sample `num` points on the ellipse with semi-axes `(a, b)`, rotation `angle` (radians, decreasing → clockwise), and centre `(xc, yc)`. Handy for overlaying MVEE results.
+
+:param a: Semi-major axis.
+:type a: float
+:param b: Semi-minor axis.
+:type b: float
+:param angle: Rotation in radians.
+:type angle: float
+:param xc: Centre x-coordinate. Default: `0`.
+:type xc: float, optional
+:param yc: Centre y-coordinate. Default: `0`.
+:type yc: float, optional
+:param num: Number of sample points. Default: `50`.
+:type num: int, optional
+:returns: **x** (*ndarray*) – Length-`num` 1-D array of the `x` coordinates along the ellipse; and **y** (*ndarray*) – Length-`num` 1-D array of the `y` coordinates along the ellipse.
+:rtype: tuple(ndarray, ndarray)
+
+**Example**
+
+```pycon
+>>> import matplotlib.pyplot as plt
+>>> from combra import stats
+>>> x, y = stats.ellipse(a=20, b=8, angle=0.4, xc=0, yc=0, num=200)
+>>> plt.plot(x, y)
+>>> plt.gca().set_aspect('equal'); plt.show()
+```
+````
 
 ## See also
 

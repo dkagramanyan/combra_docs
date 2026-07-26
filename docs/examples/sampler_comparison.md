@@ -51,7 +51,7 @@ python compare_samplers.py \
 If you already have generator callbacks (from any model), skip the EDM2 script
 and call combra directly:
 
-```python
+```pycon
 >>> from combra.metrics import compare_samplers, plot_sampler_comparison
 >>>
 >>> # fn(k) -> a batch of generated images produced with k sampling steps

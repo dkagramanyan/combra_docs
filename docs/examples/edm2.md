@@ -192,7 +192,7 @@ confirm the step count on your own data ({doc}`sampler_comparison`).
 
 `edm2-gen-images` generates images **per class** into the HDF5 layout the wc_cv
 angle pipeline (`co_angles/generate_class_samples.py`,
-{py:meth}`combra.data.PobeditDataset.generate_angles`) consumes directly. `--gpus`
+{py:meth}`combra.data.MicrostructureDataset.generate_angles`) consumes directly. `--gpus`
 self-spawns per-GPU workers (no torchrun); `--classes` accepts indices, ranges, or
 class names:
 

@@ -12,8 +12,8 @@ import os
 project = "combra"
 copyright = "2026, D.G.Kagramanyan"
 author = "D.G.Kagramanyan"
-release = "0.5.0"
-version = "0.5"
+release = "0.6.0"
+version = "0.6"
 
 # -- General configuration ---------------------------------------------------
 
@@ -21,8 +21,21 @@ extensions = [
     "myst_parser",
     "sphinx_design",
     "sphinx_copybutton",
+    "sphinx.ext.doctest",
     "sphinx.ext.linkcode",
 ]
+
+# -- Copy button -------------------------------------------------------------
+#
+# Examples are written as `pycon` sessions (`>>> ` / `... ` prompts). Pygments
+# only emits the `.gp` prompt token that sphinx-copybutton strips by default
+# when the block is lexed as `pycon`; any block still tagged `python` would copy
+# its prompts verbatim and paste as a syntax error. Stripping by regex covers
+# both, plus shell prompts in the install snippets.
+copybutton_prompt_text = r">>> |\.\.\. |\$ "
+copybutton_prompt_is_regexp = True
+copybutton_only_copy_prompt_lines = True
+copybutton_remove_prompts = True
 
 # Markdown (MyST) is the source format for every page.
 source_suffix = {".md": "markdown"}
@@ -67,7 +80,9 @@ html_context = {
     "github_repo": "combra_docs",
     "github_version": "main",
     "doc_path": "docs",
-    "default_mode": "light",
+    # Follow the reader's OS preference instead of forcing light. The theme
+    # toggle in `navbar_end` still overrides it per-visitor.
+    "default_mode": "auto",
 }
 
 html_theme_options = {
@@ -100,6 +115,7 @@ html_theme_options = {
         "version_match": release,
     },
     "show_version_warning_banner": True,
+    "search_bar_text": "Search the combra docs…",
     # Footer: combra wordmark on the left, copyright on the right.
     "footer_start": ["footer-brand"],
     "footer_end": ["copyright"],

@@ -1,41 +1,41 @@
-# combra.mvee
+# combra.ellipse
 
-The `combra.mvee` module fits the **Minimum Volume Enclosing Ellipse** to each polygon in an image and provides plotting / comparison helpers. The algorithm comes from [L.N. Khachiyan](https://en.wikipedia.org/wiki/Ellipsoid_method) (implementation borrowed from [radio-beam](https://radio-beam.readthedocs.io/en/latest/api/radio_beam.commonbeam.getMinVolEllipse.html)).
+The `combra.ellipse` module fits the **Minimum Volume Enclosing Ellipse** to each polygon in an image and provides plotting / comparison helpers. The algorithm comes from [L.N. Khachiyan](https://en.wikipedia.org/wiki/Ellipsoid_method) (implementation borrowed from [radio-beam](https://radio-beam.readthedocs.io/en/latest/api/radio_beam.commonbeam.getMinVolEllipse.html)).
 
 ![Enclosed Ellipse](https://pobedit.s3.us-east-2.amazonaws.com/docs_images/enclosed-ellipse.png)
 
 ```python
-from combra import mvee
+from combra import ellipse
 ```
 
 ## Build
 
-````{py:function} combra.mvee.fit_mvee(image, tol=0.2) -> MveeResult
+````{py:function} combra.ellipse.fit_mvee(image, tol=0.2) -> MveeResult
 
-Fit MVEE to every contour in a preprocessed image. This is the per-image primitive that {py:meth}`combra.data.PobeditDataset.generate_beams` calls in parallel.
+Fit MVEE to every contour in a preprocessed image. This is the per-image primitive that {py:meth}`combra.data.MicrostructureDataset.generate_beams` calls in parallel.
 
 :param image: Preprocessed image.
 :type image: ndarray
 :param tol: Convergence tolerance. Lower → tighter ellipses, slower. Default: `0.2`.
 :type tol: float, optional
-:returns: **result** – an {py:class}`~combra.mvee.MveeResult` ``(a, b, angle_rad, centroid, contour)``: per-contour semi-major axes, semi-minor axes, rotation angles (radians), centre coordinates, and the source contours in fit order.
+:returns: **result** – an {py:class}`~combra.ellipse.MveeResult` ``(a, b, angle_rad, centroid, contour)``: per-contour semi-major axes, semi-minor axes, rotation angles (radians), centre coordinates, and the source contours in fit order.
 :rtype: MveeResult
 
 **Example**
 
-```python
+```pycon
 >>> import cv2
->>> from combra import mvee, data
+>>> from combra import ellipse, data
 >>> _, img = data.microstructure_images()[0]
 >>> _, processed = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
->>> res = mvee.fit_mvee(processed, tol=0.2)
+>>> res = ellipse.fit_mvee(processed, tol=0.2)
 >>> print(f'{len(res.a)} polygons   median a/b = {res.a.sum()/res.b.sum():.2f}')
 ```
 ````
 
-````{py:class} combra.mvee.MveeResult
+````{py:class} combra.ellipse.MveeResult(a, b, angle_rad, centroid, contour)
 
-SciPy-style named tuple returned by {py:func}`~combra.mvee.fit_mvee` (cf.
+SciPy-style named tuple returned by {py:func}`~combra.ellipse.fit_mvee` (cf.
 ``scipy.stats.linregress``). Unpacking-compatible with the historical 5-tuple.
 
 :param a: Per-contour semi-major axis lengths (pixels).
@@ -50,9 +50,9 @@ SciPy-style named tuple returned by {py:func}`~combra.mvee.fit_mvee` (cf.
 :type contour: list[ndarray]
 ````
 
-````{py:function} combra.mvee.beams_legend(images_amount, name, itype, norm, k, angle, b, score, dist_step, dist_mean) -> str
+````{py:function} combra.ellipse.format_beam_legend(images_amount, name, itype, norm, k, angle, b, score, dist_step, dist_mean) -> str
 
-Format a multi-line legend string for a beam-distribution plot. Used inside {py:meth}`combra.data.PobeditDataset.generate_beams` to populate `prep.beams_legend_a` / `prep.beams_legend_b`.
+Format a multi-line legend string for a beam-distribution plot. Used inside {py:meth}`combra.data.MicrostructureDataset.generate_beams` to populate `prep.beams_legend_a` / `prep.beams_legend_b`.
 
 :param images_amount: Number of images contributing to the fit.
 :type images_amount: int
@@ -81,9 +81,9 @@ Format a multi-line legend string for a beam-distribution plot. Used inside {py:
 
 Format a per-class legend for a beam-length log-density plot:
 
-```python
->>> from combra import mvee
->>> label = mvee.beams_legend(
+```pycon
+>>> from combra import ellipse
+>>> label = ellipse.format_beam_legend(
 ...     images_amount=360, name='Ultra_Co11', itype='medium grain',
 ...     norm=4200, k=-1.34, b=2.10, angle=-53.2,
 ...     score=0.987, dist_step=4.0, dist_mean=18.5,
@@ -94,7 +94,7 @@ Format a per-class legend for a beam-length log-density plot:
 
 ## Plotting
 
-````{py:function} combra.mvee.plot_beam_base(rows, save_name, step, N, M, indices=None, save=False, scatter_size=60, font_size=20) -> None
+````{py:function} combra.ellipse.plot_beam_lengths(rows, step, width, height, indices=None, scatter_size=60, font_size=20, save_path=None, show=True) -> None
 
 Plot the `a_beams` and `b_beams` distributions for each class in an $N \times M$ grid.
 
@@ -121,21 +121,21 @@ Plot the `a_beams` and `b_beams` distributions for each class in an $N \times M$
 
 **Example**
 
-```python
+```pycon
 >>> import pyarrow.parquet as pq
 >>> from combra import data, mvee
->>> ds = data.PobeditDataset(path=data.microstructure_class_path())
+>>> ds = data.MicrostructureDataset(path=data.microstructure_data_dir())
 >>> ds.generate_beams(
 ...     save_path='./beams',
-...     types_dict={'Ultra_Co11': 'medium grain'},
+...     class_types={'Ultra_Co11': 'medium grain'},
 ...     step=4, pixel=50/1000,
 ... )
 >>> rows = pq.read_table('./beams/beams_n100.parquet').to_pylist()
->>> mvee.plot_beam_base(rows, save_name='beams.png', step=4, N=2, M=1, save=False)
+>>> ellipse.plot_beam_lengths(rows, save_name='beams.png', step=4, N=2, M=1, save=False)
 ```
 ````
 
-````{py:function} combra.mvee.plot_angles(data, saved_image_name, step, N, M, indices=None, save=False) -> None
+````{py:function} combra.ellipse.plot_beam_orientations(data, step, width, height, indices=None, save_path=None, show=True) -> None
 
 Plot the ellipse rotation-angle distributions across classes.
 
@@ -158,16 +158,16 @@ Plot the ellipse rotation-angle distributions across classes.
 
 **Example**
 
-```python
+```pycon
 >>> import pyarrow.parquet as pq
->>> from combra import mvee
+>>> from combra import ellipse
 >>> rows = pq.read_table('./beams/beams_n100.parquet').to_pylist()
->>> mvee.plot_angles(rows, saved_image_name='angles.png',
+>>> ellipse.plot_angles(rows, saved_image_name='angles.png',
 ...                  step=4, N=2, M=2, save=False)
 ```
 ````
 
-````{py:function} combra.mvee.plot_beam_compare(data_1, data_2, save_name, beam_types, N, M, indices_1, indices_2, save=False, scatter_size=60, font_size=20) -> list[str]
+````{py:function} combra.ellipse.plot_beam_compare(data_1, data_2, beam_types, width, height, indices_1, indices_2, title='', scatter_size=60, font_size=20, save_path=None, show=True) -> list[str]
 
 Side-by-side comparison of two parquet datasets at the same step.
 
@@ -198,12 +198,12 @@ Side-by-side comparison of two parquet datasets at the same step.
 
 **Example**
 
-```python
+```pycon
 >>> import pyarrow.parquet as pq
->>> from combra import mvee
+>>> from combra import ellipse
 >>> rows_real = pq.read_table('./beams/real_n360.parquet').to_pylist()
 >>> rows_gen  = pq.read_table('./beams/gen_n10000.parquet').to_pylist()
->>> metrics = mvee.plot_beam_compare(
+>>> metrics = ellipse.plot_beam_compare(
 ...     rows_real, rows_gen, save_name='compare.png',
 ...     beam_types=['a_beams', 'b_beams'], N=2, M=2,
 ...     indices_1=[0, 1], indices_2=[0, 1],
@@ -211,7 +211,7 @@ Side-by-side comparison of two parquet datasets at the same step.
 ```
 ````
 
-````{py:function} combra.mvee.beams_heatmap(data, step, saved_names, indices=None, bin_max=30, N=7, M=7, font_size=20, save=False, scatter_size=60) -> None
+````{py:function} combra.ellipse.plot_beam_heatmap(data, step, indices=None, bin_max=30, width=7, height=7, font_size=20, scatter_size=60, save_path=None, show=True) -> None
 
 2-D heatmap of `(a_beam, b_beam)` pairs per class.
 
@@ -240,16 +240,16 @@ Side-by-side comparison of two parquet datasets at the same step.
 
 **Example**
 
-```python
+```pycon
 >>> import pyarrow.parquet as pq
->>> from combra import mvee
+>>> from combra import ellipse
 >>> rows = pq.read_table('./beams/beams_n100.parquet').to_pylist()
->>> mvee.beams_heatmap(rows, step=4, saved_names=['small', 'medium', 'large'],
+>>> ellipse.plot_beam_heatmap(rows, step=4, saved_names=['small', 'medium', 'large'],
 ...                    indices=[0, 1, 2], bin_max=30, N=7, M=7)
 ```
 ````
 
-````{py:function} combra.mvee.enclosing_ellipse_show(image, pos=0, tolerance=0.2, N=15) -> None
+````{py:function} combra.ellipse.plot_enclosing_ellipse(image, pos=0, tolerance=0.2, size=15, save_path=None, show=True) -> None
 
 Plot a single polygon (index `pos`) and the ellipse fitted around it. Useful for sanity-checking `tolerance`.
 
@@ -266,13 +266,25 @@ Plot a single polygon (index `pos`) and the ellipse fitted around it. Useful for
 
 **Example**
 
-```python
->>> from combra import mvee, data
+```pycon
+>>> from combra import ellipse, data
 >>> _, img = data.microstructure_images()[0]
->>> mvee.enclosing_ellipse_show(img, pos=0, tolerance=0.2, N=200)
+>>> ellipse.plot_enclosing_ellipse(img, pos=0, tolerance=0.2, N=200)
 ```
+````
+
+## Result types
+
+````{py:class} combra.ellipse.BeamComparison(figures, metrics)
+
+Result of {py:func}`~combra.ellipse.plot_beam_compare`.
+
+:param figures: One figure per entry of `beam_types`, in the order given.
+:type figures: list[matplotlib.figure.Figure]
+:param metrics: Per-pair relative-error strings for the linear `k` and `b` coefficients.
+:type metrics: list[str]
 ````
 
 ## See also
 
-- {py:meth}`combra.data.PobeditDataset.generate_beams` — drives `fit_mvee` across whole class folders and writes parquet.
+- {py:meth}`combra.data.MicrostructureDataset.generate_beams` — drives `fit_mvee` across whole class folders and writes parquet.

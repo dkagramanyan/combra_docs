@@ -9,9 +9,22 @@ importable.
 from combra import viz
 ```
 
-````{py:data} combra.viz.PALETTE
+````{py:data} combra.viz.SERIES_PALETTE
 
 The categorical series colour cycle (`['orange', 'red', 'blue', 'green', 'indigo']`).
+````
+
+````{py:data} combra.viz.METRIC_PALETTE
+
+Hex categorical palette (matplotlib `tab10` order) used by the
+{doc}`combra.metrics <metrics>` plots. Distinct from
+{py:data}`~combra.viz.SERIES_PALETTE` — these are two different palettes, not
+two notations of one: `SERIES_PALETTE` carries the historical angle-plot colour
+order by CSS name, `METRIC_PALETTE` the metric-plot order by hex.
+
+```python
+['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b']
+```
 ````
 
 ````{py:data} combra.viz.MARKERS
@@ -36,13 +49,13 @@ alongside it.
 
 **Example**
 
-```python
+```pycon
 >>> from combra.viz import axis_style
 >>> xaxis = dict(title=dict(text='angle'), tickvals=[0, 180, 360], **axis_style())
 ```
 ````
 
-````{py:function} combra.viz.export_png(fig, path, scale=2) -> None
+````{py:function} combra.viz.export_png(fig, path, scale=2, png_meta=None) -> None
 
 Write a plotly ``fig`` to ``path`` as PNG (via kaleido).
 

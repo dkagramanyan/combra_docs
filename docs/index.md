@@ -4,44 +4,49 @@ Computer-vision tools for analysis of **WC-Co composite-alloy microstructure SEM
 contour/angle extraction, MVEE beam fitting, fractal dimension, crack graphs, and
 distribution metrics.
 
-```python
-import combra
+```pycon
+>>> import combra
+>>> combra.__version__
+'0.6.0'
 ```
 
 ```{toctree}
 :maxdepth: 1
 :caption: Getting started
+:hidden:
 
 get_started
+glossary
 ```
 
 ```{toctree}
 :maxdepth: 1
 :caption: Python API
+:hidden:
 
 api/data
 api/image
 api/contours
 api/angles
-api/mvee
+api/ellipse
 api/stats
-api/approx
+api/fitting
 api/metrics
 api/graph
 api/io
 api/viz
 api/exceptions
 api/utils
-api/tests
+api/validation
 ```
 
 ```{toctree}
 :maxdepth: 1
 :caption: Examples
+:hidden:
 
 examples/angles
 examples/models_api
-examples/models_api_proposal
 examples/san_v2
 examples/styleswin
 examples/diffit
@@ -49,21 +54,150 @@ examples/edm2
 examples/sampler_comparison
 ```
 
-## Module map
+```{toctree}
+:maxdepth: 1
+:caption: Design notes
+:hidden:
 
-| module | what it does |
-| --- | --- |
-| {doc}`combra.data <api/data>` | Datasets, bundled fetchers, parquet writers (`generate_angles`, `generate_beams`). |
-| {doc}`combra.image <api/image>` | Pixel-level preprocessing, fractal dimension, numba geometry kernels. |
-| {doc}`combra.contours <api/contours>` | Polygon extraction + drawing. |
-| {doc}`combra.angles <api/angles>` | Per-image angle extraction and grid plots. |
-| {doc}`combra.mvee <api/mvee>` | Minimum-volume enclosing ellipses, beam distributions. |
-| {doc}`combra.stats <api/stats>` | Parametric distributions + histogram preprocessor. |
-| {doc}`combra.approx <api/approx>` | Fits Gaussian/binomial/poisson/exponential/linear models. |
-| {doc}`combra.metrics <api/metrics>` | FID, batch generative-quality metrics (CMMD, FD-DINOv2, angle-Wasserstein), per-class Wasserstein comparison, sampler-vs-steps comparison, and convergence-vs-N analysis. |
-| {doc}`combra.graph <api/graph>` | Crack-image → graph → shortest-energy-path search. |
-| {doc}`combra.io <api/io>` | One loader (`load_rows`/`load_angles`) + parquet schemas + HDF5 conversion. |
-| {doc}`combra.viz <api/viz>` | Shared plotting theme: palette, axis style, PNG export. |
-| {doc}`combra.exceptions <api/exceptions>` | Typed error/warning hierarchy (`CombraError`, `SchemaError`, …). |
-| {doc}`combra.utils <api/utils>` | `Bunch` attribute-accessible dict container. |
-| {doc}`combra.tests <api/tests>` | Self-validation helpers (fractal-dimension sanity check). |
+examples/models_api_proposal
+```
+
+## The pipeline
+
+SEM image → contours → per-vertex angles → a fitted distribution → a metric that
+scores a generated microstructure against a real one.
+
+::::{grid} 1 2 2 3
+:gutter: 3
+
+:::{grid-item-card} combra.data
+:link: api/data
+:link-type: doc
+:class-card: combra-module-card
+
+Datasets, bundled sample images, and the parquet writers
+(`generate_angles`, `generate_beams`).
+:::
+
+:::{grid-item-card} combra.image
+:link: api/image
+:link-type: doc
+:class-card: combra-module-card
+
+Pixel preprocessing, box-counting fractal dimension, and the numba
+geometry kernels.
+:::
+
+:::{grid-item-card} combra.contours
+:link: api/contours
+:link-type: doc
+:class-card: combra-module-card
+
+Raw and Douglas–Peucker-simplified polygon extraction, plus drawing.
+:::
+
+:::{grid-item-card} combra.angles
+:link: api/angles
+:link-type: doc
+:class-card: combra-module-card
+
+Per-image vertex-angle extraction, density plots and overlay grids.
+:::
+
+:::{grid-item-card} combra.ellipse
+:link: api/ellipse
+:link-type: doc
+:class-card: combra-module-card
+
+Minimum-volume enclosing ellipses (MVEE) and beam-length distributions.
+:::
+
+:::{grid-item-card} combra.stats
+:link: api/stats
+:link-type: doc
+:class-card: combra-module-card
+
+Parametric distributions, the density histogram, and inference helpers.
+:::
+
+:::{grid-item-card} combra.fitting
+:link: api/fitting
+:link-type: doc
+:class-card: combra-module-card
+
+Gaussian, bimodal-Gaussian, binomial, Poisson, exponential, linear and
+plateau fits — one `fit_*` family, one result protocol.
+:::
+
+:::{grid-item-card} combra.metrics
+:link: api/metrics
+:link-type: doc
+:class-card: combra-module-card
+
+Angle-Wasserstein and bimodal-Gaussian comparison, image-feature metrics
+(FID / CMMD / FD-DINOv2), sampler sweeps, and convergence-vs-N analysis.
+:::
+
+:::{grid-item-card} combra.graph
+:link: api/graph
+:link-type: doc
+:class-card: combra-module-card
+
+Crack image → directed graph → shortest-energy-path search.
+:::
+
+:::{grid-item-card} combra.io
+:link: api/io
+:link-type: doc
+:class-card: combra-module-card
+
+One parquet loader, the angle/beam schemas, HDF5 conversion, and
+TensorBoard scalar reading.
+:::
+
+:::{grid-item-card} combra.viz
+:link: api/viz
+:link-type: doc
+:class-card: combra-module-card
+
+The shared plotting theme: palettes, axis style, PNG export.
+:::
+
+:::{grid-item-card} combra.utils · validation · exceptions
+:link: api/utils
+:link-type: doc
+:class-card: combra-module-card
+
+`Bunch` container, the fractal self-check, and the typed error hierarchy.
+:::
+
+::::
+
+## API conventions
+
+combra follows the conventions of the wider scientific-Python stack, so most of
+the API should already be familiar.
+
+Functions
+: `verb_noun`, never `get_*` — `find_edges`, `fit_gaussian`, `load_crack`,
+  `build_crack_graph`, `plot_density`.
+
+Results
+: Anything returning more than two values returns a SciPy-style named tuple —
+  {py:class}`~combra.fitting.GaussianFit`, {py:class}`~combra.ellipse.MveeResult`,
+  {py:class}`~combra.graph.EnergyWeights`. They unpack positionally, so
+  `curve, mu, sigma, amp = fit_gaussian(x, y)` works alongside `fit.mu`.
+
+Plotting
+: Every `plot_*` returns its figure and takes the same tail arguments —
+  `save_path=None` (write a PNG) and `show=True` (render it). There is no
+  `save=True` boolean and no separate filename argument.
+
+Reference vs. generated
+: Every comparison names its two sides `reference` and `generated`. Sample
+  counts are `n`; figure geometry is `width`/`height` or `n_rows`/`n_cols`.
+
+:::{seealso}
+{doc}`glossary` defines the domain terms — angle density, beam, MVEE, `step`,
+`kind`, N-sweep.
+:::

@@ -1,5 +1,11 @@
 # Generative models — proposed standard API ("v2 convention")
 
+:::{note}
+**Design note, not user documentation.** This page records a proposed
+models-API design and the reasoning behind it. For the API as it actually
+ships, see the {doc}`Python API reference <../index>`.
+:::
+
 ```{note}
 **Status: implemented.** All four repos — san-v2 (v0.2.0), StyleSwin-v2,
 DiffiT-v2 and EDM2-v2 — now expose the Part 1 API; the converged current state is
@@ -13,7 +19,7 @@ The goal: any command, flag, checkpoint name, or generated artifact learned on
 one repo transfers to the other three unchanged, and every model's generated
 output feeds the wc_cv angle pipeline
 (`co_angles/generate_class_samples.py`,
-{py:meth}`combra.data.PobeditDataset.generate_angles`) with zero conversion.
+{py:meth}`combra.data.MicrostructureDataset.generate_angles`) with zero conversion.
 
 The four repos: [san-v2](https://github.com/dkagramanyan/san-v2) (GAN —
 StyleGAN3 + Projected GAN + SAN),
@@ -301,7 +307,7 @@ What a dataset yields is part of the API, identical in all four repos:
 - **In-training combra eval** (all four): every snapshot tick, fakes generated
   **sharded across all ranks**; reference = whole training set — **raw,
   unflipped uint8 dataset pixels, never VAE round-trips** — with features
-  precomputed once before the loop; `combra_smoke_test` at startup (one
+  precomputed once before the loop; `self_test` at startup (one
   shared implementation in `combra.metrics` — today only DiffiT-v2 and
   EDM2-v2 carry private copies, the GANs have none).
 - **Uniform knobs**: `--num-fid-samples` (default 10000, `0` disables eval)
@@ -644,7 +650,7 @@ using the removed or renamed flags fail.
 | `dataset_tool.py` derives labels alphabetically and writes `class_names` — today it copies labels verbatim from the source `dataset.json` (only `dataset_tool_for_imagenet.py` sorts) | no for new zips |
 | run-dir desc uses `--cfg` (today it splices in the dataset basename: `styleswin-<dataset>-gpusN-batchB`) | no (naming) |
 | **`gen_images.py`: add `--save-mode hdf5` (RankH5Writer layout)** | no (additive) |
-| add `styleswin-eval` standalone evaluator + startup `combra_smoke_test` | no |
+| add `styleswin-eval` standalone evaluator + startup `self_test` | no |
 | `--num-fid-samples` / `--combra-ref-count` knobs (replacing fixed 10 000) | no (defaults unchanged) |
 | snapshot grids: add `reals.png` + `fakes_init.png` and the class-sorted adaptive grid (today: 16-sample square, no reals); grid latents become fixed unconditionally (today they are fixed only when combra eval is active) | no |
 | add `tests/` + `ci.yml` + ruff + pytest config (today: none of the four exist) | no |
@@ -671,7 +677,7 @@ using the removed or renamed flags fail.
 | implement `--snapshot-keep-last` pruning — today **no pruning exists** in san-v2: snapshots accumulate unbounded (DiffiT-v2's archived run 00018, 48 unpruned snapshots, shows what that looks like in practice) | no (additive) |
 | run-dir desc drops the dataset name (today `<cfg>-<dataset>-gpusN-batchB`) to match the §2 pattern | no (naming) |
 | gen-images: merged file becomes `<desc>.h5` in `--outdir` — today it is `<network-stem>_trunc_<t>[-desc].h5` inside a self-created numbered run dir | **yes** — output paths change |
-| add the startup `combra_smoke_test` (today only a try/except around the reference precompute) | no (additive) |
+| add the startup `self_test` (today only a try/except around the reference precompute) | no (additive) |
 | one normalize/denormalize pair with a round-trip assert (§5) — today two denorm formulas coexist: `rint(x·127.5+128)` in the eval path vs `(x+1)·255/2 = x·127.5+127.5` in `gen_utils`, a constant 0.5 apart. Worse, inside the eval itself the **reals** enter as raw uint8 while the **fakes** get the `+128` formula, so every combra FID/CMMD/angle value san-v2 has ever reported carries a systematic real-vs-fake intensity offset — and on-disk generated images are not byte-identical to what combra scored during training | **yes** — metric values shift |
 | the native `--metrics` registry (`fid50k_full`, …) and its per-metric jsonl files fall outside the contract — combra is the metric path, and the per-metric jsonls violate the §7 five-artifact rule | no (legacy) |
 | dead-code cleanup: unused `training/networks_stylegan3.py` (only the `_resetting` variant is imported), the misnamed `Dataset.has_onehot_labels` (returns `True` for **integer** labels), the dead `set_classes` API (with its one-hot dtype bug), `debug.txt` written unguarded by every rank, and the near-duplicate `dataset_tool_for_imagenet.py` | no |
@@ -707,8 +713,8 @@ is welded to its training-time indices:
 
 ```{note}
 The combra-library changes these contracts require of the downstream consumer
-(the `CLASS_MAP` registry, `combra_smoke_test`, the `load_fid_by_kimg` contract
-keys, the `PobeditDataset` h5-attribute / `written` / `missing_count`
+(the `CLASS_MAP` registry, `self_test`, the `load_fid_by_kimg` contract
+keys, the `MicrostructureDataset` h5-attribute / `written` / `missing_count`
 validation, the single gray-conversion path, the prep-cache version tag, the
 comparison class-coverage check and the strict-uint8 input mode) have been
 **implemented** in combra and are documented in the {doc}`API reference

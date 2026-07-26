@@ -1,8 +1,130 @@
-/* combra docs tweaks on top of the PyData Sphinx theme */
+/* ==========================================================================
+   combra docs theme — on top of the PyData Sphinx Theme
+   ==========================================================================
+
+   The PyData theme is entirely token-driven: every colour it paints comes from
+   a `--pst-color-*` custom property resolved against `html[data-theme=...]`.
+   Overriding the tokens (rather than individual selectors) means the theme's
+   own components — admonitions, cards, the version switcher, the search modal,
+   code blocks, the API signature boxes — all follow automatically, in both
+   light and dark mode.
+
+   Palette: teal primary / amber secondary. Chosen so that
+     * every text/background pair clears WCAG AA (4.5:1 body, 3:1 large text);
+     * the primary/secondary pair stays distinguishable under deuteranopia and
+       protanopia (they differ in lightness, not only in hue);
+     * the same two hues carry over to the figure palette in `combra.viz`.
+   -------------------------------------------------------------------------- */
+
+/* --- Light mode ----------------------------------------------------------- */
+html[data-theme="light"] {
+  /* Brand */
+  --pst-color-primary: #0f6e6e;
+  --pst-color-primary-bg: #ddf0ef;
+  --pst-color-secondary: #a35410;
+  --pst-color-secondary-bg: #fbeadb;
+  --pst-color-accent: #6d3fd4;
+  --pst-color-accent-bg: #ece5fb;
+
+  /* Surfaces */
+  --pst-color-background: #ffffff;
+  --pst-color-on-background: #f4f7f8;
+  --pst-color-surface: #eaeff2;
+  --pst-color-on-surface: #1b1e21;
+  --pst-color-border: #d3dade;
+  --pst-color-shadow: rgba(16, 24, 32, 0.1);
+
+  /* Text */
+  --pst-color-text-base: #1b1e21;
+  --pst-color-text-muted: #55606c;
+  --pst-color-heading-color: #10171d;
+
+  /* Links */
+  --pst-color-link: #0f6e6e;
+  --pst-color-link-hover: #a35410;
+  --pst-color-inline-code: #a35410;
+  --pst-color-inline-code-links: #0f6e6e;
+  --pst-color-target: #fff3bf;
+
+  /* Semantic (admonitions) */
+  --pst-color-info: #0f6e6e;
+  --pst-color-info-bg: #ddf0ef;
+  --pst-color-success: #1a7f37;
+  --pst-color-success-bg: #dcf5e3;
+  --pst-color-warning: #a35410;
+  --pst-color-warning-bg: #fbeadb;
+  --pst-color-danger: #b3261e;
+  --pst-color-danger-bg: #fbe3e1;
+  --pst-color-attention: #8a6d00;
+  --pst-color-attention-bg: #fdf3cf;
+}
+
+/* --- Dark mode ------------------------------------------------------------ */
+html[data-theme="dark"] {
+  /* Brand — lifted in lightness so it carries on a dark surface */
+  --pst-color-primary: #4fd1c1;
+  --pst-color-primary-bg: #103432;
+  --pst-color-secondary: #f0a45c;
+  --pst-color-secondary-bg: #3a2612;
+  --pst-color-accent: #b39dfa;
+  --pst-color-accent-bg: #251d3d;
+
+  /* Surfaces */
+  --pst-color-background: #12161c;
+  --pst-color-on-background: #1a1f27;
+  --pst-color-surface: #222934;
+  --pst-color-on-surface: #e7eaef;
+  --pst-color-border: #333c49;
+  --pst-color-shadow: rgba(0, 0, 0, 0.55);
+
+  /* Text */
+  --pst-color-text-base: #e7eaef;
+  --pst-color-text-muted: #9ba6b4;
+  --pst-color-heading-color: #f3f6f9;
+
+  /* Links */
+  --pst-color-link: #4fd1c1;
+  --pst-color-link-hover: #f0a45c;
+  --pst-color-inline-code: #f0a45c;
+  --pst-color-inline-code-links: #4fd1c1;
+  --pst-color-target: #4a3f00;
+
+  /* Semantic (admonitions) */
+  --pst-color-info: #4fd1c1;
+  --pst-color-info-bg: #103432;
+  --pst-color-success: #56d364;
+  --pst-color-success-bg: #10281a;
+  --pst-color-warning: #f0a45c;
+  --pst-color-warning-bg: #3a2612;
+  --pst-color-danger: #f28b82;
+  --pst-color-danger-bg: #3a1c1a;
+  --pst-color-attention: #e3c04a;
+  --pst-color-attention-bg: #352c0c;
+}
+
+/* --- Typography ----------------------------------------------------------- */
+html {
+  --pst-font-size-base: 16px;
+  --pst-font-family-monospace: "JetBrains Mono", "SFMono-Regular", "Menlo",
+    "Consolas", "DejaVu Sans Mono", monospace;
+}
+
+/* ==========================================================================
+   API reference readability
+   ========================================================================== */
 
 /* Keep long return-type annotations from overflowing the signature box. */
 dt[id] {
   white-space: normal;
+}
+
+/* Give every API entry a card-like signature header so the eye can find the
+   next object when scrolling a long reference page. */
+dl.py > dt[id] {
+  background: var(--pst-color-on-background);
+  border-left: 3px solid var(--pst-color-primary);
+  border-radius: 0.25rem;
+  padding: 0.5rem 0.75rem;
 }
 
 /* A little more breathing room between API entries. */
@@ -10,14 +132,26 @@ dl.py {
   margin-bottom: 1.75rem;
 }
 
-/* Wrench wordmark in the footer. */
-.combra-footer-brand {
-  margin: 0;
-  font-weight: 600;
+/* Parameter names in the field lists read as identifiers, not prose. */
+dl.field-list > dt {
+  color: var(--pst-color-text-base);
 }
 
-/* Structured navigation tree in the left sidebar (rendered from the global
-   toctree). Style the plain <ul>/<li> like a proper sidebar nav. */
+/* ==========================================================================
+   Figures
+   ========================================================================== */
+
+/* combra exports PNGs with a transparent background (see combra.viz.export_png).
+   On a dark page a transparent plot would render light-on-dark axis text, so
+   give figures a neutral mat that works in both modes. */
+.bd-content img:not(.only-dark):not(.only-light) {
+  background: transparent;
+}
+
+/* ==========================================================================
+   Left sidebar navigation tree
+   ========================================================================== */
+
 .bd-sidebar-primary .bd-toc-item ul {
   list-style: none;
   padding-left: 0;
@@ -46,4 +180,28 @@ dl.py {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--pst-color-text-base);
+}
+
+/* ==========================================================================
+   Landing-page cards (sphinx-design)
+   ========================================================================== */
+
+.combra-module-card .sd-card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--pst-color-primary);
+}
+.combra-module-card {
+  border: 1px solid var(--pst-color-border);
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.combra-module-card:hover {
+  border-color: var(--pst-color-primary);
+  transform: translateY(-2px);
+}
+
+/* Footer wordmark. */
+.combra-footer-brand {
+  margin: 0;
+  font-weight: 600;
 }

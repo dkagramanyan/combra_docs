@@ -1,14 +1,14 @@
-# combra.tests
+# combra.validation
 
 Self-validation helpers shipped with combra. They build shapes with a known
 answer and check combra's estimators against it — handy as a post-install
 sanity check.
 
 ```python
-from combra import tests
+from combra import validation
 ```
 
-````{py:function} combra.tests.test_fractal_dimensions(sizes) -> None
+````{py:function} combra.validation.check_fractal_dimension(sizes) -> None
 
 Validate the box-counting fractal-dimension estimator on seven reference shapes with known dimensions and compare {py:func}`combra.image.image_fractal_dimension` against each:
 
@@ -29,9 +29,9 @@ For each shape it prints the expected vs. estimated dimension and the relative e
 
 **Example**
 
-```python
+```pycon
 >>> import numpy as np
->>> from combra import tests
->>> tests.test_fractal_dimensions(sizes=np.array([2, 3, 4, 6, 8, 12, 16, 24, 32]))
+>>> from combra import validation
+>>> validation.check_fractal_dimension(sizes=np.array([2, 3, 4, 6, 8, 12, 16, 24, 32]))
 ```
 ````

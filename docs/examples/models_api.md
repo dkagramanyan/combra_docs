@@ -129,7 +129,7 @@ compare-samplers tool ({doc}`sampler_comparison`).
 `format="generated_images_shard"` / `schema_version=1` signature and `class_names`,
 merged to `<desc>.h5` — directly consumable by the downstream angle pipeline
 (`co_angles/generate_class_samples.py`,
-{py:meth}`combra.data.PobeditDataset.generate_angles`) with no conversion step, and
+{py:meth}`combra.data.MicrostructureDataset.generate_angles`) with no conversion step, and
 the merge hard-fails on incomplete shards.
 ```
 

@@ -1,6 +1,6 @@
 # combra.contours
 
-The `combra.contours` module extracts polygon contours from preprocessed binary images and renders them back onto images for visualisation. Used internally by {py:func}`combra.angles.vertex_angles`, {py:func}`combra.mvee.fit_mvee`, and the crack-graph builder.
+The `combra.contours` module extracts polygon contours from preprocessed binary images and renders them back onto images for visualisation. Used internally by {py:func}`combra.angles.vertex_angles`, {py:func}`combra.ellipse.fit_mvee`, and the crack-graph builder.
 
 ```python
 from combra import contours
@@ -8,7 +8,7 @@ from combra import contours
 
 ## Extraction
 
-````{py:function} combra.contours.get_row_contours(image) -> list[ndarray]
+````{py:function} combra.contours.find_raw_contours(image) -> list[ndarray]
 
 Extract raw contours via Canny edges + Suzuki contour finding. No simplification.
 
@@ -19,19 +19,19 @@ Extract raw contours via Canny edges + Suzuki contour finding. No simplification
 
 **Example**
 
-```python
+```pycon
 >>> import cv2
 >>> from combra import contours, data
 >>> _, img = data.microstructure_images()[0]
 >>> _, processed = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
->>> raw = contours.get_row_contours(processed)
+>>> raw = contours.find_raw_contours(processed)
 >>> print(f'{len(raw)} contours; first has {len(raw[0])} vertices')
 ```
 ````
 
-````{py:function} combra.contours.find_contours(image, tol=3) -> list[ndarray]
+````{py:function} combra.contours.find_simplified_contours(image, tol=3) -> list[ndarray]
 
-Same as `get_row_contours` but applies Douglas–Peucker simplification with tolerance `tol` to every contour. This is what most downstream code calls.
+Same as `find_raw_contours` but applies Douglas–Peucker simplification with tolerance `tol` to every contour. This is what most downstream code calls.
 
 :param image: Preprocessed binary image.
 :type image: ndarray
@@ -42,18 +42,18 @@ Same as `get_row_contours` but applies Douglas–Peucker simplification with tol
 
 **Example**
 
-```python
+```pycon
 >>> import cv2
 >>> from combra import contours, data
 >>> _, img = data.microstructure_images()[0]
 >>> _, processed = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
->>> raw = contours.get_row_contours(processed)             # ~thousands of vertices per region
->>> simplified = contours.find_contours(processed, tol=3)  # ~tens of vertices per region
+>>> raw = contours.find_raw_contours(processed)             # ~thousands of vertices per region
+>>> simplified = contours.find_simplified_contours(processed, tol=3)  # ~tens of vertices per region
 >>> print(f'raw[0]: {len(raw[0])} pts   simplified[0]: {len(simplified[0])} pts')
 ```
 ````
 
-````{py:function} combra.contours.skeletons_coords(image) -> list[ndarray]
+````{py:function} combra.contours.skeleton_coordinates(image) -> list[ndarray]
 
 Morphological skeletonisation + per-component split via `scipy.ndimage.label`. One coordinate array per skeleton component.
 
@@ -64,12 +64,12 @@ Morphological skeletonisation + per-component split via `scipy.ndimage.label`. O
 
 **Example**
 
-```python
+```pycon
 >>> import cv2
 >>> from combra import contours, data
 >>> _, img = data.microstructure_images()[0]
 >>> _, binary = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
->>> skels = contours.skeletons_coords(binary)
+>>> skels = contours.skeleton_coordinates(binary)
 >>> print(f'{len(skels)} skeleton components')
 ```
 ````
@@ -93,7 +93,7 @@ Render a single contour into a small binary mask.
 
 From `poliamid/fractals.ipynb`:
 
-```python
+```pycon
 >>> from combra.contours import contour_to_binary_mask
 >>> mask = contour_to_binary_mask(cnt, eps=1, thickness=1, pad=2)
 >>> print(mask.shape, mask.dtype)
@@ -108,7 +108,7 @@ Draw simplified contours onto a `PIL.Image`. When `corners=True`, also draws fil
 
 :param image: Background to draw on.
 :type image: PIL.Image
-:param cnts: Contours from `find_contours`.
+:param cnts: Contours from `find_simplified_contours`.
 :type cnts: list[ndarray]
 :param color_corner: Vertex marker colour `(R, G, B)`. Default: `(0, 139, 139)`.
 :type color_corner: tuple[int, int, int], optional
@@ -127,14 +127,14 @@ Draw simplified contours onto a `PIL.Image`. When `corners=True`, also draws fil
 
 **Example**
 
-```python
+```pycon
 >>> import cv2
 >>> from PIL import Image
 >>> from skimage import color
 >>> from combra import contours, data
 >>> _, img = data.microstructure_images()[0]
 >>> _, processed = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
->>> simplified = contours.find_contours(processed, tol=3)
+>>> simplified = contours.find_simplified_contours(processed, tol=3)
 >>> pil = Image.fromarray(color.gray2rgb(processed))
 >>> overlay = contours.draw_contours(pil, simplified, corners=True, r=2)
 ```
@@ -142,5 +142,5 @@ Draw simplified contours onto a `PIL.Image`. When `corners=True`, also draws fil
 
 ## See also
 
-- {py:func}`combra.angles.vertex_angles` — uses `find_contours` internally.
-- {py:func}`combra.mvee.fit_mvee` — fits an MVEE to each `find_contours` output.
+- {py:func}`combra.angles.vertex_angles` — uses `find_simplified_contours` internally.
+- {py:func}`combra.ellipse.fit_mvee` — fits an MVEE to each `find_simplified_contours` output.

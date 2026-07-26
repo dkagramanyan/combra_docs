@@ -1,82 +1,27 @@
-# combra.approx
+# combra.fitting
 
-The `combra.approx` module fits parametric distributions and lines to 1-D data. Two flavours:
+The `combra.fitting` module fits parametric distributions and lines to 1-D data.
 
-- **`*_fit`** — return only the optimised parameters. Useful when you just want the numbers.
-- **`*_approx`** — return both the parameters *and* a sampled curve ready for plotting.
+There is **one `fit_*` function per model** and **one result type per fit**. Every
+result is a SciPy-style named tuple carrying the fitted parameters *and* a
+`curve` sampled ready for plotting, plus an `evaluate(x)` method that
+re-evaluates the model on any grid without refitting:
 
-```python
-from combra import approx
+```pycon
+>>> from combra import fitting, stats
+>>> x, y = stats.density_histogram(angles, step=5)
+>>> fit = fitting.fit_bimodal_gaussian(x, y)
+>>> fit.mus, fit.sigmas, fit.amps          # named access
+>>> x_curve, y_curve = fit.curve           # ready to plot
+>>> fit.evaluate([0, 90, 180, 270])        # re-evaluate anywhere
 ```
+
+Results also unpack positionally, so
+`(x_g, y_g), mus, sigmas, amps = fitting.fit_bimodal_gaussian(x, y)` works too.
 
 ## Gaussian fits
 
-````{py:function} combra.approx.gaussian_fit(x, y, mu=1, sigma=1, amp=1) -> tuple[float, float, float]
-
-Fit a single Gaussian to `(x, y)` via `scipy.optimize.curve_fit`.
-
-:param x: Histogram bin centres (typically from `combra.stats.stats_preprocess`).
-:type x: array_like
-:param y: Histogram densities (typically from `combra.stats.stats_preprocess`).
-:type y: array_like
-:param mu: Initial guess for the mean. Default: `1`.
-:type mu: float, optional
-:param sigma: Initial guess for the standard deviation. Default: `1`.
-:type sigma: float, optional
-:param amp: Initial guess for the amplitude. Default: `1`.
-:type amp: float, optional
-:returns: **mu** (*float*) – Fitted mean; and **sigma** (*float*) – Fitted standard deviation; and **amp** (*float*) – Fitted amplitude.
-:rtype: tuple(float, float, float)
-
-**Example**
-
-```python
->>> import numpy as np
->>> from combra import stats, approx
->>> samples = np.random.normal(loc=90, scale=15, size=2000)
->>> x, y = stats.stats_preprocess(samples, step=2)
->>> mu, sigma, amp = approx.gaussian_fit(x, y, mu=90, sigma=10, amp=1)
->>> print(f'mu={mu:.2f}  sigma={sigma:.2f}  amp={amp:.4f}')
-```
-````
-
-````{py:function} combra.approx.gaussian_fit_bimodal(x, y, mu1=100, mu2=240, sigma1=30, sigma2=30, amp1=1, amp2=1) -> tuple[list[float], list[float], list[float]]
-
-Bimodal Gaussian fit. Bounded: `sigma > 0`, `amp ≥ 0` (prevents the silent sign-flip that older builds produced).
-
-:param x: Histogram bin centres.
-:type x: array_like
-:param y: Histogram densities.
-:type y: array_like
-:param mu1: Initial guess for the first mean. Default: `100`.
-:type mu1: float, optional
-:param mu2: Initial guess for the second mean. Default: `240`.
-:type mu2: float, optional
-:param sigma1: Initial guess for the first sigma. Default: `30`.
-:type sigma1: float, optional
-:param sigma2: Initial guess for the second sigma. Default: `30`.
-:type sigma2: float, optional
-:param amp1: Initial guess for the first amplitude. Default: `1`.
-:type amp1: float, optional
-:param amp2: Initial guess for the second amplitude. Default: `1`.
-:type amp2: float, optional
-:returns: **mus** (*list[float, float]*) – Fitted `[mu1, mu2]`; and **sigmas** (*list[float, float]*) – Fitted `[sigma1, sigma2]`; and **amps** (*list[float, float]*) – Fitted `[amp1, amp2]`.
-:rtype: tuple(list[float], list[float], list[float])
-
-**Example**
-
-```python
->>> import numpy as np
->>> from combra import stats, approx
->>> arr = np.concatenate([np.random.normal(90, 15, 1000),
-...                       np.random.normal(270, 20, 1500)])
->>> x, y = stats.stats_preprocess(arr, step=2)
->>> mus, sigmas, amps = approx.gaussian_fit_bimodal(x, y)
->>> print(f'mus={mus}  sigmas={sigmas}  amps={amps}')
-```
-````
-
-````{py:function} combra.approx.gauss_approx(x, y, mu=1, sigma=1, amp=1, x_lim=None, N=100) -> tuple[tuple[ndarray, ndarray], float, float, float]
+````{py:function} combra.fitting.fit_gaussian(x, y, mu=1, sigma=1, amp=1, x_lim=None, N=100) -> GaussianFit
 
 Single Gaussian fit + sampled curve.
 
@@ -101,18 +46,18 @@ Single Gaussian fit + sampled curve.
 
 Adapted from `poliamid/data_viz.ipynb` (per-group Gaussian fit on contour-length histograms):
 
-```python
+```pycon
 >>> from combra import stats, approx
->>> x_orig, y_orig = stats.stats_preprocess(len_list, step=1)
->>> (x_fit, y_fit), mu, sigma, amp = approx.gauss_approx(
+>>> x_orig, y_orig = stats.density_histogram(len_list, step=1)
+>>> (x_fit, y_fit), mu, sigma, amp = fitting.fit_gaussian(
 ...     x_orig, y_orig, mu=3, sigma=3, amp=1, x_lim=[0, 25], N=100,
 ... )
 ```
 ````
 
-````{py:function} combra.approx.bimodal_gauss_approx(x, y, mu1=100, mu2=240, sigma1=30, sigma2=30, amp1=1, amp2=1) -> tuple[tuple[ndarray, ndarray], list[float], list[float], list[float]]
+````{py:function} combra.fitting.fit_bimodal_gaussian(x, y, mu1=100, mu2=240, sigma1=30, sigma2=30, amp1=1, amp2=1) -> BimodalGaussianFit
 
-Bimodal Gaussian fit + sampled curve. Used inside {py:meth}`combra.data.PobeditDataset.generate_angles` to populate `prep_per_step.angles_gauss_*`.
+Bimodal Gaussian fit + sampled curve. Used inside {py:meth}`combra.data.MicrostructureDataset.generate_angles` to populate `prep_per_step.angles_gauss_*`.
 
 :param x: Input histogram bin centres.
 :type x: array_like
@@ -130,26 +75,26 @@ Bimodal Gaussian fit + sampled curve. Used inside {py:meth}`combra.data.PobeditD
 :type amp1: float, optional
 :param amp2: Initial guess for the second amplitude. Default: `1`.
 :type amp2: float, optional
-:returns: **result** – a {py:class}`~combra.approx.BimodalGaussFit` ``(curve, mus, sigmas, amps)``: the `(x_gauss, y_gauss)` sampled curve, and the fitted per-mode means, sigmas and amplitudes.
-:rtype: BimodalGaussFit
+:returns: **result** – a {py:class}`~combra.fitting.BimodalGaussianFit` ``(curve, mus, sigmas, amps)``: the `(x_gauss, y_gauss)` sampled curve, and the fitted per-mode means, sigmas and amplitudes.
+:rtype: BimodalGaussianFit
 
 **Example**
 
-```python
+```pycon
 >>> import numpy as np
 >>> from combra import angles, approx, stats
 >>> # Suppose `arr` is the angles array from combra.angles.vertex_angles
 >>> arr = np.concatenate([np.random.normal(90, 20, 1000),
 ...                       np.random.normal(270, 25, 1500)])
->>> x, y = stats.stats_preprocess(arr, step=2)
->>> (x_g, y_g), mus, sigmas, amps = approx.bimodal_gauss_approx(x, y)
+>>> x, y = stats.density_histogram(arr, step=2)
+>>> (x_g, y_g), mus, sigmas, amps = fitting.fit_bimodal_gaussian(x, y)
 >>> print(f'mu = {mus},  sigma = {sigmas},  amp = {amps}')
 ```
 ````
 
 ## Other distributions
 
-````{py:function} combra.approx.binomial_approx(x, y, n=10, p=0.5, amp=1, x_lim=None, N=100) -> tuple[tuple[ndarray, ndarray], float, float, float]
+````{py:function} combra.fitting.fit_binomial(x, y, n=10, p=0.5, amp=1, x_lim=None, N=100) -> BinomialFit
 
 Binomial fit + sampled curve.
 
@@ -174,16 +119,16 @@ Binomial fit + sampled curve.
 
 From `poliamid/data_viz.ipynb`:
 
-```python
+```pycon
 >>> from combra import stats, approx
->>> x, y = stats.stats_preprocess(len_list, step=1)
->>> (x_fit, y_fit), n_fit, p_fit, amp = approx.binomial_approx(
+>>> x, y = stats.density_histogram(len_list, step=1)
+>>> (x_fit, y_fit), n_fit, p_fit, amp = fitting.fit_binomial(
 ...     x, y, n=25, p=0.2, x_lim=[0, 25], N=100,
 ... )
 ```
 ````
 
-````{py:function} combra.approx.poisson_approx(x, y, lam=1, amp=1, x_lim=None, N=100) -> tuple[tuple[ndarray, ndarray], float, float]
+````{py:function} combra.fitting.fit_poisson(x, y, lam=1, amp=1, x_lim=None, N=100) -> PoissonFit
 
 Poisson fit + sampled curve.
 
@@ -206,14 +151,14 @@ Poisson fit + sampled curve.
 
 From `poliamid/data_viz.ipynb`:
 
-```python
+```pycon
 >>> from combra import stats, approx
->>> x, y = stats.stats_preprocess(len_list, step=1)
->>> (x_fit, y_fit), lam, amp = approx.poisson_approx(x, y, x_lim=[-5, 25], N=100)
+>>> x, y = stats.density_histogram(len_list, step=1)
+>>> (x_fit, y_fit), lam, amp = fitting.fit_poisson(x, y, x_lim=[-5, 25], N=100)
 ```
 ````
 
-````{py:function} combra.approx.exponential_approx(x, y, a=1, amp=1, x_lim=None, N=100) -> tuple[tuple[ndarray, ndarray], float, float]
+````{py:function} combra.fitting.fit_exponential(x, y, a=1, amp=1, x_lim=None, N=100) -> ExponentialFit
 
 Exponential decay $amp \cdot e^{-x/a}$ fit + sampled curve.
 
@@ -236,10 +181,10 @@ Exponential decay $amp \cdot e^{-x/a}$ fit + sampled curve.
 
 From `poliamid/data_viz.ipynb`:
 
-```python
+```pycon
 >>> from combra import stats, approx
->>> x, y = stats.stats_preprocess(len_list, step=1)
->>> (x_fit, y_fit), a, amp = approx.exponential_approx(
+>>> x, y = stats.density_histogram(len_list, step=1)
+>>> (x_fit, y_fit), a, amp = fitting.fit_exponential(
 ...     x, y, a=5, amp=1, x_lim=[0, 25], N=100,
 ... )
 ```
@@ -247,33 +192,33 @@ From `poliamid/data_viz.ipynb`:
 
 ## Linear fits
 
-````{py:function} combra.approx.linear_approx(x, y) -> tuple[tuple[ndarray, ndarray], float, float, float, float]
+````{py:function} combra.fitting.fit_line(x, y) -> tuple[tuple[ndarray, ndarray], float, float, float, float]
 
-Least-squares line $y = kx + b$. Used in {py:meth}`combra.data.PobeditDataset.generate_beams` to populate `prep.a_*` and `prep.b_*` fit fields.
+Least-squares line $y = kx + b$. Used in {py:meth}`combra.data.MicrostructureDataset.generate_beams` to populate `prep.a_*` and `prep.b_*` fit fields.
 
 :param x: Input series.
 :type x: array_like
 :param y: Input series.
 :type y: array_like
-:returns: **result** – a {py:class}`~combra.approx.LinearFit` ``(curve, slope, intercept, angle_deg, r2)``: the `(x_pred, y_pred)` sampled line, the slope, the intercept, `arctan(slope)` in degrees, and the R².
-:rtype: LinearFit
+:returns: **result** – a {py:class}`~combra.fitting.LineFit` ``(curve, slope, intercept, angle_deg, r2)``: the `(x_pred, y_pred)` sampled line, the slope, the intercept, `arctan(slope)` in degrees, and the R².
+:rtype: LineFit
 
 **Example**
 
-```python
+```pycon
 >>> import numpy as np
->>> from combra import approx
+>>> from combra import fitting
 >>> x = np.linspace(0, 10, 50)
 >>> y = 2.5 * x + 1.0 + np.random.normal(scale=0.5, size=50)
->>> fit = approx.linear_approx(x, y)
+>>> fit = fitting.fit_line(x, y)
 >>> print(f'k={fit.slope:.3f}  b={fit.intercept:.3f}  angle={fit.angle_deg:.2f}°  R²={fit.r2:.3f}')
 >>> (x_pred, y_pred), k, b, angle_deg, score = fit  # positional unpacking still works
 ```
 ````
 
-````{py:function} combra.approx.polyfit_deg1(x, y, i0, i1) -> tuple[float, float, float]
+````{py:function} combra.fitting.fit_line_segment(x, y, i0, i1) -> tuple[float, float, float]
 
-Fast numba-compiled line fit on the slice `[i0:i1]`. Use this in tight loops where `linear_approx`'s scipy overhead matters.
+Fast numba-compiled line fit on the slice `[i0:i1]`. Use this in tight loops where `fit_line`'s scipy overhead matters.
 
 :param x: Input series.
 :type x: ndarray
@@ -288,19 +233,19 @@ Fast numba-compiled line fit on the slice `[i0:i1]`. Use this in tight loops whe
 
 **Example**
 
-```python
+```pycon
 >>> import numpy as np
->>> from combra import approx
+>>> from combra import fitting
 >>> x = np.linspace(0, 10, 100)
 >>> y = 2.0 * x + 1.0 + np.random.normal(scale=0.5, size=100)
->>> k, b, r2 = approx.polyfit_deg1(x, y, i0=10, i1=90)
+>>> k, b, r2 = fitting.fit_line_segment(x, y, i0=10, i1=90)
 >>> print(f'slope={k:.3f}  intercept={b:.3f}  R²={r2:.3f}')
 ```
 ````
 
 ## Plateau / asymptote fits
 
-````{py:function} combra.approx.fit_plateau(ns, vals) -> tuple[float, float, float]
+````{py:function} combra.fitting.fit_plateau(ns, vals) -> PlateauFit
 
 Fit $|m|(N) = a + b \cdot N^{-1/2}$ with `a, b ≥ 0`. The asymptote `a` is the irreducible `|m|` as `N → ∞` (e.g. a generator's bias floor); `b` captures the Monte-Carlo sampling-noise term (theoretical `N^(-1/2)` decay for Wasserstein / Gaussian-fit moment errors).
 
@@ -317,13 +262,13 @@ Used by {py:func}`combra.metrics.convergence_stats` to estimate per-curve platea
 
 Driven inside {py:func}`combra.metrics.convergence_stats` over a W-dist curve. Standalone:
 
-```python
+```pycon
 >>> import numpy as np
->>> from combra import approx
+>>> from combra import fitting
 >>> ns = np.array([100, 250, 500, 1000, 2500, 5000, 10000])
 >>> # True asymptote a=0.05; sampling-noise b=0.30; small additive jitter
 >>> vals = 0.05 + 0.30 / np.sqrt(ns) + np.random.normal(scale=0.005, size=len(ns))
->>> a, a_se, b = approx.fit_plateau(ns, vals)
+>>> a, a_se, b = fitting.fit_plateau(ns, vals)
 >>> print(f'plateau a={a:.4f} ± {a_se:.4f}    b={b:.4f}')
 ```
 ````
@@ -334,9 +279,9 @@ The fit functions return SciPy-style named tuples (cf. `scipy.stats.linregress`)
 so results carry attribute names while staying unpacking-compatible with the
 historical plain tuples.
 
-````{py:class} combra.approx.LinearFit
+````{py:class} combra.fitting.LineFit(curve, slope, intercept, angle_deg, r2)
 
-Result of {py:func}`~combra.approx.linear_approx`.
+Result of {py:func}`~combra.fitting.fit_line`.
 
 :param curve: `(x_pred, y_pred)` of the fitted line sampled across the data span.
 :type curve: tuple[ndarray, ndarray]
@@ -350,9 +295,9 @@ Result of {py:func}`~combra.approx.linear_approx`.
 :type r2: float
 ````
 
-````{py:class} combra.approx.BimodalGaussFit
+````{py:class} combra.fitting.BimodalGaussianFit(curve, mus, sigmas, amps)
 
-Result of {py:func}`~combra.approx.bimodal_gauss_approx`.
+Result of {py:func}`~combra.fitting.fit_bimodal_gaussian`.
 
 :param curve: `(x, y)` of the fitted bimodal-Gaussian density.
 :type curve: tuple[ndarray, ndarray]
@@ -364,9 +309,110 @@ Result of {py:func}`~combra.approx.bimodal_gauss_approx`.
 :type amps: list[float]
 ````
 
+````{py:class} combra.fitting.GaussianFit(curve, mu, sigma, amp)
+
+Result of {py:func}`~combra.fitting.fit_gaussian`.
+
+:param curve: `(x, y)` of the fitted density sampled on the evaluation grid.
+:type curve: tuple[ndarray, ndarray]
+:param mu: Fitted mean.
+:type mu: float
+:param sigma: Fitted standard deviation.
+:type sigma: float
+:param amp: Fitted amplitude — the integral of the curve.
+:type amp: float
+
+````{py:method} evaluate(x) -> ndarray
+Re-evaluate the fitted Gaussian on an arbitrary grid, without refitting.
+````
+````
+
+````{py:class} combra.fitting.BinomialFit(curve, n, p, amp)
+
+Result of {py:func}`~combra.fitting.fit_binomial`.
+
+:param curve: `(x, y)` of the fitted PMF sampled on the evaluation grid.
+:type curve: tuple[ndarray, ndarray]
+:param n: Fitted number of trials.
+:type n: float
+:param p: Fitted success probability.
+:type p: float
+:param amp: Fitted amplitude.
+:type amp: float
+
+````{py:method} evaluate(x) -> ndarray
+Re-evaluate the fitted PMF on an arbitrary grid.
+````
+````
+
+````{py:class} combra.fitting.PoissonFit(curve, lam, amp)
+
+Result of {py:func}`~combra.fitting.fit_poisson`.
+
+:param curve: `(x, y)` of the fitted PMF sampled on the evaluation grid.
+:type curve: tuple[ndarray, ndarray]
+:param lam: Fitted rate parameter $\lambda$.
+:type lam: float
+:param amp: Fitted amplitude.
+:type amp: float
+
+````{py:method} evaluate(x) -> ndarray
+Re-evaluate the fitted PMF on an arbitrary grid.
+````
+````
+
+````{py:class} combra.fitting.ExponentialFit(curve, a, amp)
+
+Result of {py:func}`~combra.fitting.fit_exponential`.
+
+:param curve: `(x, y)` of the fitted decay sampled on the evaluation grid.
+:type curve: tuple[ndarray, ndarray]
+:param a: Fitted decay scale.
+:type a: float
+:param amp: Fitted amplitude.
+:type amp: float
+
+````{py:method} evaluate(x) -> ndarray
+Re-evaluate the fitted decay on an arbitrary grid.
+````
+````
+
+````{py:class} combra.fitting.PlateauFit(asymptote, asymptote_stderr, decay)
+
+Result of {py:func}`~combra.fitting.fit_plateau`, which fits the
+Monte-Carlo convergence law
+
+$$|m|(N) = a + b \, N^{-1/2}$$
+
+:param asymptote: The irreducible $|m|$ as $N \to \infty$ — coefficient $a$, constrained non-negative. For a generator this is its bias floor.
+:type asymptote: float
+:param asymptote_stderr: Standard error of `asymptote`, from the covariance of the fit. NaN when the covariance is not finite.
+:type asymptote_stderr: float
+:param decay: Coefficient $b$ of the $N^{-1/2}$ term, unconstrained in sign. $b > 0$ is the canonical decay (the curve approaches the asymptote from above); $b < 0$ means small-$N$ fits landed lucky-close to the reference and the systematic bias only emerges as $N$ grows.
+:type decay: float
+
+All three fields are NaN when the input has fewer than 3 points, is perfectly
+flat, or the fit fails.
+
+````{py:method} evaluate(ns) -> ndarray
+Evaluate $a + b N^{-1/2}$ at the sample sizes `ns`.
+````
+
+**Example**
+
+```pycon
+>>> import numpy as np
+>>> from combra import fitting
+>>> ns = np.array([100, 250, 500, 1000, 2500, 5000])
+>>> vals = 0.08 + 1.2 * ns ** -0.5
+>>> fit = fitting.fit_plateau(ns, vals)
+>>> print(f'floor={fit.asymptote:.3f} +- {fit.asymptote_stderr:.3f}, b={fit.decay:.2f}')
+```
+````
+
 ## See also
 
 - {doc}`combra.stats <stats>` — the distribution functions these fits target.
-- {doc}`combra.angles <angles>` — uses `bimodal_gauss_approx` for angle histograms.
-- {doc}`combra.mvee <mvee>` — uses `linear_approx` for beam-length log-density fits.
+- {doc}`combra.angles <angles>` — uses `fit_bimodal_gaussian` for angle histograms.
+- {doc}`combra.ellipse <ellipse>` — uses `fit_line` for beam-length log-density fits.
 - {py:func}`combra.metrics.convergence_stats` — uses `fit_plateau` to estimate per-curve bias floors.
