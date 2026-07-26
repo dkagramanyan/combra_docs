@@ -50,7 +50,7 @@ From ``wc_cv/graph_unlabeled.ipynb``:
 
 ```pycon
 >>> from combra import graph, data
->>> _, image = data.microstructure_images()[0]
+>>> image = data.load_microstructure().images[0]
 >>> (entry_nodes, exit_nodes,
 ...  img_preprocessed, img_contours_o,
 ...  cnts, nodes_metadata) = graph.extract_graph_nodes(
@@ -614,7 +614,7 @@ Render skeleton landmarks (centres / leaves / nodes / skeleton pixels) onto a bi
 ```pycon
 >>> import cv2
 >>> from combra import graph, data
->>> _, img = data.microstructure_images()[0]
+>>> img = data.load_microstructure().images[0]
 >>> _, binary = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
 >>> annotated = graph.draw_skeleton(binary, centres=True, nodes=True, bones=True)
 ```

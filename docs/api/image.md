@@ -41,7 +41,7 @@ Run contour extraction with Douglas–Peucker tolerance `tol` on a padded binary
 >>> import cv2
 >>> import numpy as np
 >>> from combra import image, data
->>> _, img = data.microstructure_images()[0]
+>>> img = data.load_microstructure().images[0]
 >>> _, binary = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
 >>> padded = np.pad(binary, 30)
 >>> vis, cnts = image.render_filled_contours(padded, tol=3)
@@ -176,34 +176,13 @@ Augment a folder-of-classes tree and write a StyleGAN-style `dataset.json`. For 
 
 ## Fractal dimension
 
-````{py:function} combra.image.box_sizes(shape, min_boxes=6) -> tuple[ndarray, int]
-
-Return adaptive dyadic box sizes for the given image shape. Pass the result as the `sizes` argument to `image_fractal_dimension`.
-
-:param shape: Image `(H, W)`.
-:type shape: tuple[int, int]
-:param min_boxes: Minimum number of valid sizes the result is required to contain. Default: `6`.
-:type min_boxes: int, optional
-:returns: **sizes** (*ndarray[int]*) – Valid box sizes (powers-of-2 trimmed to shape). `None` when the image is too small (`min(H, W) < 4`); and **scale** (*int*) – Adaptive integer scale factor derived from the shape (the upsampling factor applied when too few dyadic levels fit; `1` when no upscaling is needed). `None` alongside `sizes` when the image is too small.
-:rtype: tuple(ndarray, int)
-
-**Example**
-
-```pycon
->>> from combra import image
->>> sizes, scale = image.box_sizes((1024, 1024), min_boxes=6)
->>> print(sizes)      # [2, 4, 8, 16, 32, 64, 128, ...]
->>> print(scale)      # 1 (no upscaling needed at this size)
-```
-````
-
 ````{py:function} combra.image.image_fractal_dimension(binary, sizes, max_shift=0) -> float
 
 Box-counting fractal dimension of a binary image.
 
 :param binary: Binary image (any non-zero pixel counts as "filled").
 :type binary: ndarray[uint8]
-:param sizes: Box sizes to sweep — from `box_sizes`.
+:param sizes: Box sizes to sweep, in pixels — dyadic sizes such as `2 ** np.arange(1, 8)`, kept below half the smaller image dimension.
 :type sizes: ndarray[int]
 :param max_shift: If `>0`, average box counts over `max_shift` grid offsets to reduce alignment bias. Default: `0`.
 :type max_shift: int, optional
@@ -214,10 +193,11 @@ Box-counting fractal dimension of a binary image.
 
 ```pycon
 >>> import cv2
+>>> import numpy as np
 >>> from combra import image, data
->>> _, img = data.microstructure_images()[0]
+>>> img = data.load_microstructure().images[0]
 >>> _, binary = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
->>> sizes, _ = image.box_sizes(binary.shape, min_boxes=6)
+>>> sizes = 2 ** np.arange(1, 8)      # [2, 4, ..., 128]
 >>> fd = image.image_fractal_dimension(binary, sizes, max_shift=0)
 >>> print(f'fractal dimension = {fd:.3f}')
 ```
@@ -239,7 +219,7 @@ Fractal dimension of a single contour.
 ```pycon
 >>> import cv2
 >>> from combra import image, contours, data
->>> _, img = data.microstructure_images()[0]
+>>> img = data.load_microstructure().images[0]
 >>> _, processed = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
 >>> cnts = contours.find_contours(processed, tol=3)
 >>> fd = image.contour_fractal_dimension(cnts[0], max_size_thr=64)
@@ -449,7 +429,7 @@ two images in one scored batch can never be rescaled under different assumptions
 
 ```pycon
 >>> import numpy as np
->>> from combra.metrics import to_uint8
+>>> from combra.image import to_uint8
 >>> to_uint8(np.array([-1.0, 0.0, 1.0]), data_range=(-1.0, 1.0))
 array([  0, 127, 255], dtype=uint8)
 ```
@@ -480,8 +460,8 @@ Sample `num` points on the ellipse with semi-axes `(a, b)`, rotation `angle` (ra
 
 ```pycon
 >>> import matplotlib.pyplot as plt
->>> from combra import stats
->>> x, y = stats.ellipse(a=20, b=8, angle=0.4, xc=0, yc=0, num=200)
+>>> from combra import image
+>>> x, y = image.ellipse(a=20, b=8, angle=0.4, xc=0, yc=0, num=200)
 >>> plt.plot(x, y)
 >>> plt.gca().set_aspect('equal'); plt.show()
 ```

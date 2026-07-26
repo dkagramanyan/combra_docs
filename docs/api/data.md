@@ -16,9 +16,9 @@ smoke tests and minimum-reproducible examples — point them at your own data fo
 ````{py:function} combra.data.load_microstructure() -> combra.utils.Bunch
 
 Load the bundled 5-class microstructure sample as a scikit-learn-style
-{py:class}`~combra.utils.Bunch` — the self-describing counterpart of
-{py:func}`~combra.data.microstructure_images`. Class names are **alphabetically
-sorted** and the integer `target` is index-aligned to them.
+{py:class}`~combra.utils.Bunch`, so the sample is self-describing rather than a
+bare `list[(name, array)]`. Class names are **alphabetically sorted** and the
+integer `target` is index-aligned to them.
 
 :returns: **data** – a {py:class}`~combra.utils.Bunch` with `images` (list of `uint8` arrays), `target` (int class-index array), `class_names` (sorted grain names), `filenames`, and `DESCR`.
 :rtype: combra.utils.Bunch

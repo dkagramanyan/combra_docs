@@ -91,7 +91,7 @@ The model is symmetric under swapping its two modes, so the returned modes are *
 
 ```pycon
 >>> import numpy as np
->>> from combra import angles, approx, stats
+>>> from combra import angles, fitting, stats
 >>> # Suppose `arr` is the angles array from combra.angles.vertex_angles
 >>> arr = np.concatenate([np.random.normal(90, 20, 1000),
 ...                       np.random.normal(270, 25, 1500)])

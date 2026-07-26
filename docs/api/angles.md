@@ -33,7 +33,7 @@ above 180° are preserved).
 ```pycon
 >>> import cv2
 >>> from combra import angles, data
->>> _, img = data.microstructure_images()[0]
+>>> img = data.load_microstructure().images[0]
 >>> _, processed = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
 >>> arr, contours = angles.vertex_angles(processed, border_eps=5, tol=3, min_segment_len=10.0)
 >>> print(f'{len(arr)} angles  mean={arr.mean():.1f}°')

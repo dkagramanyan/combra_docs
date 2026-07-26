@@ -26,7 +26,7 @@ Fit MVEE to every contour in a preprocessed image. This is the per-image primiti
 ```pycon
 >>> import cv2
 >>> from combra import ellipse, data
->>> _, img = data.microstructure_images()[0]
+>>> img = data.load_microstructure().images[0]
 >>> _, processed = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
 >>> res = ellipse.fit_mvee(processed, tol=0.2)
 >>> print(f'{len(res.a)} polygons   median a/b = {res.a.sum()/res.b.sum():.2f}')
@@ -226,8 +226,8 @@ Plot a single polygon (index `pos`) and the ellipse fitted around it. Useful for
 
 ```pycon
 >>> from combra import ellipse, data
->>> _, img = data.microstructure_images()[0]
->>> ellipse.plot_enclosing_ellipse(img, pos=0, tolerance=0.2, N=200)
+>>> img = data.load_microstructure().images[0]
+>>> ellipse.plot_enclosing_ellipse(img, pos=0, tolerance=0.2)
 ```
 ````
 

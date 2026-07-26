@@ -23,7 +23,7 @@ Quantize `array` to multiples of `step`, count occurrences via `np.bincount`, an
 
 ```pycon
 >>> import numpy as np
->>> from combra import stats, approx
+>>> from combra import fitting, stats
 >>> angles_array = np.array([12, 13, 87, 90, 92, 178, 180])
 >>> x, y = stats.density_histogram(angles_array, step=5)
 >>> (x_g, y_g), mus, sigmas, amps = fitting.fit_bimodal_gaussian(x, y)

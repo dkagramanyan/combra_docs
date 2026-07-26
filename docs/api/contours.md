@@ -90,7 +90,7 @@ Draw simplified contours onto a `PIL.Image`. When `corners=True`, also draws fil
 >>> from PIL import Image
 >>> from skimage import color
 >>> from combra import contours, data
->>> _, img = data.microstructure_images()[0]
+>>> img = data.load_microstructure().images[0]
 >>> _, processed = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
 >>> simplified = contours.find_contours(processed, tol=3)
 >>> pil = Image.fromarray(color.gray2rgb(processed))

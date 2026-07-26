@@ -1104,68 +1104,60 @@
   "end": 634
  },
  {
-  "leaf": "box_sizes",
-  "qual": "box_sizes",
-  "subpkg": "image",
-  "file": "combra/image/fractal.py",
-  "start": 18,
-  "end": 59
- },
- {
   "leaf": "_counts_numba",
   "qual": "_counts_numba",
   "subpkg": "image",
   "file": "combra/image/fractal.py",
-  "start": 63,
-  "end": 86
+  "start": 19,
+  "end": 42
  },
  {
   "leaf": "_pool_count",
   "qual": "_pool_count",
   "subpkg": "image",
   "file": "combra/image/fractal.py",
-  "start": 89,
-  "end": 100
+  "start": 45,
+  "end": 56
  },
  {
   "leaf": "_counts_torch",
   "qual": "_counts_torch",
   "subpkg": "image",
   "file": "combra/image/fractal.py",
-  "start": 103,
-  "end": 127
+  "start": 59,
+  "end": 83
  },
  {
   "leaf": "_select_slope",
   "qual": "_select_slope",
   "subpkg": "image",
   "file": "combra/image/fractal.py",
-  "start": 131,
-  "end": 170
+  "start": 87,
+  "end": 126
  },
  {
   "leaf": "image_fractal_dimension",
   "qual": "image_fractal_dimension",
   "subpkg": "image",
   "file": "combra/image/fractal.py",
-  "start": 173,
-  "end": 186
+  "start": 129,
+  "end": 142
  },
  {
   "leaf": "_boxcount",
   "qual": "_boxcount",
   "subpkg": "image",
   "file": "combra/image/fractal.py",
-  "start": 190,
-  "end": 215
+  "start": 146,
+  "end": 171
  },
  {
   "leaf": "contour_fractal_dimension",
   "qual": "contour_fractal_dimension",
   "subpkg": "image",
   "file": "combra/image/fractal.py",
-  "start": 218,
-  "end": 255
+  "start": 174,
+  "end": 211
  },
  {
   "leaf": "count_border_pixels_on_line",
