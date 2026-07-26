@@ -32,7 +32,7 @@ Quantize `array` to multiples of `step`, count occurrences via `np.bincount`, an
 
 ## Distributions
 
-These functions are lmfit-`Model`-compatible callables, fitted by {doc}`combra.fitting <fitting>` (only {py:func}`~combra.fitting.fit_plateau` uses `scipy.optimize.curve_fit`). They return ndarrays — feed them an x grid and parameters, get back y values.
+These are `x`-first model callables, fitted by {doc}`combra.fitting <fitting>` with `scipy.optimize.curve_fit`. They return ndarrays — feed them an x grid and parameters, get back y values.
 
 ````{py:function} combra.stats.gaussian(x, mu, sigma, amp=1) -> ndarray
 
@@ -94,7 +94,7 @@ Sum of two Gaussians. Use {py:func}`combra.fitting.fit_bimodal_gaussian` to fit 
 
 Binomial PMF scaled by `amp`. `x` is rounded and clipped to `[0, n]`, and `p`
 is clipped to `[0, 1]`, so the callable stays well-defined for every trial
-value an optimiser proposes. Signature kept lmfit-`Model`-compatible.
+value an optimiser proposes. Signature kept `curve_fit`-compatible.
 
 :param x: Evaluation points.
 :type x: array_like
@@ -119,7 +119,7 @@ value an optimiser proposes. Signature kept lmfit-`Model`-compatible.
 ````{py:function} combra.stats.poisson(x, lam, amp=1) -> ndarray
 
 Poisson PMF scaled by `amp`, $amp \cdot e^{-\lambda} \lambda^{k} / k!$ with
-$k$ the rounded, non-negative `x`. Signature kept lmfit-`Model`-compatible.
+$k$ the rounded, non-negative `x`. Signature kept `curve_fit`-compatible.
 
 :param x: Evaluation points.
 :type x: array_like

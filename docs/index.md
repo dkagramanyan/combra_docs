@@ -179,14 +179,14 @@ combra follows the conventions of the wider scientific-Python stack, so most of
 the API should already be familiar.
 
 Functions
-: `verb_noun`, never `get_*` — `find_edges`, `fit_gaussian`, `load_crack`,
+: `verb_noun`, never `get_*` — `find_edges`, `fit_distribution`, `load_crack`,
   `build_crack_graph`, `plot_density`.
 
 Results
 : Anything returning more than two values returns a SciPy-style named tuple —
-  {py:class}`~combra.fitting.GaussianFit`, {py:class}`~combra.ellipse.MveeResult`,
+  {py:class}`~combra.fitting.BimodalGaussianFit`, {py:class}`~combra.ellipse.MveeResult`,
   {py:class}`~combra.graph.EnergyWeights`. They unpack positionally, so
-  `curve, mu, sigma, amp = fit_gaussian(x, y)` works alongside `fit.mu`.
+  `curve, mus, sigmas, amps = fit_bimodal_gaussian(x, y)` works alongside `fit.mus`.
 
 Plotting
 : Every `plot_*` returns its figure and takes the same tail arguments —

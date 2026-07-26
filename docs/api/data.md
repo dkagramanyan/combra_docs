@@ -314,7 +314,7 @@ Grid of per-group contour fractal-dimension distributions. For each frame group 
 
 ````{py:function} combra.data.plot_polyamide_contour(parquet, metric='area', dists=('gauss',), step=1.0, ncols=4, x_lim=(0.0, 25.0), grid_n=100, save_path=None, show=True) -> plotly.graph_objects.Figure
 
-Grid of per-group contour-size distributions with overlaid distribution fits. For each frame group the chosen `metric` column is binned with {py:func}`~combra.stats.density_histogram` and one fitted curve per entry in `dists` is overlaid (using {py:func}`~combra.fitting.fit_binomial` / {py:func}`~combra.fitting.fit_poisson` / {py:func}`~combra.fitting.fit_gaussian` / {py:func}`~combra.fitting.fit_exponential`).
+Grid of per-group contour-size distributions with overlaid distribution fits. For each frame group the chosen `metric` column is binned with {py:func}`~combra.stats.density_histogram` and one fitted curve per entry in `dists` is overlaid (each via {py:func}`~combra.fitting.fit_distribution` with that distribution's model and guesses).
 
 :param parquet: Parquet produced by {py:meth}`~combra.data.PolyamideFractureDataset.generate`.
 :type parquet: str or Path

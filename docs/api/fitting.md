@@ -2,7 +2,8 @@
 
 The `combra.fitting` module fits parametric distributions and lines to 1-D data.
 
-There is **one `fit_*` function per model** and **one result type per fit**. Every
+One generic {py:func}`~combra.fitting.fit_distribution` covers the standard
+distributions; the two domain-specific models keep named fitters. Every
 result is a SciPy-style named tuple carrying the fitted parameters *and* a
 `curve` sampled ready for plotting, plus an `evaluate(x)` method that
 re-evaluates the model on any grid without refitting:
@@ -19,38 +20,44 @@ re-evaluates the model on any grid without refitting:
 Results also unpack positionally, so
 `(x_g, y_g), mus, sigmas, amps = fitting.fit_bimodal_gaussian(x, y)` works too.
 
-## Gaussian fits
+## Distribution fits
 
-````{py:function} combra.fitting.fit_gaussian(x, y, mu=1, sigma=1, amp=1, x_lim=None, N=100) -> GaussianFit
+````{py:function} combra.fitting.fit_distribution(model, x, y, p0, bounds=None, x_lim=None, N=100, drop_invalid=True) -> DistributionFit
 
-Single Gaussian fit + sampled curve.
+Least-squares fit of any `model(x, *params)` callable to `(x, y)`, plus the fitted curve sampled on a dense grid. One fitter for every distribution in {doc}`combra.stats <stats>` — the initial guesses and bounds that belong to a distribution stay with the caller rather than being baked into a per-distribution wrapper.
 
+:param model: Model callable `model(x, *params) -> ndarray`, e.g. {py:func}`combra.stats.gaussian`.
+:type model: callable
 :param x: Input histogram bin centres.
 :type x: array_like
 :param y: Input histogram densities.
 :type y: array_like
-:param mu: Initial guess for the mean. Default: `1`.
-:type mu: float, optional
-:param sigma: Initial guess for the standard deviation. Default: `1`.
-:type sigma: float, optional
-:param amp: Initial guess for the amplitude. Default: `1`.
-:type amp: float, optional
-:param x_lim: `(x_min, x_max)` for the sampled curve. Defaults to `(x.min(), x.max())`. Default: `None`.
+:param p0: Initial guesses, in the model's parameter order.
+:type p0: sequence of float
+:param bounds: `(lower, upper)` per parameter. Bounds put `curve_fit` on its trust-region solver; without them it runs Levenberg-Marquardt and parameters are free to take unphysical signs. Default: `None`.
+:type bounds: tuple[sequence, sequence] or None, optional
+:param x_lim: `(x_min, x_max)` for the fit and the sampled curve. Defaults to `(x.min(), x.max())`. Default: `None`.
 :type x_lim: tuple[float, float] or None, optional
 :param N: Number of sample points on the returned curve. Default: `100`.
 :type N: int, optional
-:returns: **curve** (*tuple[ndarray, ndarray]*) – `(x_gauss, y_gauss)` sampled curve; and **mu** (*float*) – Fitted mean; and **sigma** (*float*) – Fitted standard deviation; and **amp** (*float*) – Fitted amplitude.
-:rtype: tuple(tuple(ndarray, ndarray), float, float, float)
+:param drop_invalid: Drop non-finite and negative-`y` samples before fitting. Pass `False` to keep samples a decay drives below zero. Default: `True`.
+:type drop_invalid: bool, optional
+:returns: **result** – a {py:class}`~combra.fitting.DistributionFit` `(curve, params, model)`.
+:rtype: DistributionFit
 
 **Example**
 
-Adapted from `poliamid/data_viz.ipynb` (per-group Gaussian fit on contour-length histograms):
+Per-group Gaussian and exponential fits on contour-length histograms:
 
 ```pycon
->>> from combra import stats, approx
->>> x_orig, y_orig = stats.density_histogram(len_list, step=1)
->>> (x_fit, y_fit), mu, sigma, amp = fitting.fit_gaussian(
-...     x_orig, y_orig, mu=3, sigma=3, amp=1, x_lim=[0, 25], N=100,
+>>> from combra import fitting, stats
+>>> x, y = stats.density_histogram(len_list, step=1)
+>>> fit = fitting.fit_distribution(stats.gaussian, x, y, p0=[3, 3, 1], x_lim=(0, 25))
+>>> mu, sigma, amp = fit.params
+>>> x_fit, y_fit = fit.curve
+>>> decay = fitting.fit_distribution(
+...     stats.exponential, x, y, p0=[5, 1],
+...     bounds=([1e-10, 0.0], [1e6, float("inf")]), x_lim=(0, 25),
 ... )
 ```
 ````
@@ -58,6 +65,8 @@ Adapted from `poliamid/data_viz.ipynb` (per-group Gaussian fit on contour-length
 ````{py:function} combra.fitting.fit_bimodal_gaussian(x, y, mu1=100, mu2=240, sigma1=30, sigma2=30, amp1=1, amp2=1) -> BimodalGaussianFit
 
 Bimodal Gaussian fit + sampled curve. Used inside {py:meth}`combra.data.MicrostructureDataset.generate_angles` to populate `prep_per_step.angles_gauss_*`.
+
+The model is symmetric under swapping its two modes, so the returned modes are **sorted by `mu`** — slot 1 is always the lower-angle mode. Without that convention which mode lands in slot 1 is arbitrary, and {py:func}`combra.metrics.gauss_relative_errors` compares modes slot-wise.
 
 :param x: Input histogram bin centres.
 :type x: array_like
@@ -89,104 +98,6 @@ Bimodal Gaussian fit + sampled curve. Used inside {py:meth}`combra.data.Microstr
 >>> x, y = stats.density_histogram(arr, step=2)
 >>> (x_g, y_g), mus, sigmas, amps = fitting.fit_bimodal_gaussian(x, y)
 >>> print(f'mu = {mus},  sigma = {sigmas},  amp = {amps}')
-```
-````
-
-## Other distributions
-
-````{py:function} combra.fitting.fit_binomial(x, y, n=10, p=0.5, amp=1, x_lim=None, N=100) -> BinomialFit
-
-Binomial fit + sampled curve.
-
-:param x: Input histogram bin centres.
-:type x: array_like
-:param y: Input histogram densities.
-:type y: array_like
-:param n: Initial trial count. Default: `10`.
-:type n: int, optional
-:param p: Initial success probability. Default: `0.5`.
-:type p: float, optional
-:param amp: Initial amplitude. Default: `1`.
-:type amp: float, optional
-:param x_lim: Range for the sampled curve. Default: `None`.
-:type x_lim: tuple[float, float] or None, optional
-:param N: Number of sample points. Default: `100`.
-:type N: int, optional
-:returns: **curve** (*tuple[ndarray, ndarray]*) – `(x_pred, y_pred)`; and **n** (*float*) – Fitted trial count; and **p** (*float*) – Fitted success probability; and **amp** (*float*) – Fitted amplitude.
-:rtype: tuple(tuple(ndarray, ndarray), float, float, float)
-
-**Example**
-
-From `poliamid/data_viz.ipynb`:
-
-```pycon
->>> from combra import stats, approx
->>> x, y = stats.density_histogram(len_list, step=1)
->>> (x_fit, y_fit), n_fit, p_fit, amp = fitting.fit_binomial(
-...     x, y, n=25, p=0.2, x_lim=[0, 25], N=100,
-... )
-```
-````
-
-````{py:function} combra.fitting.fit_poisson(x, y, lam=1, amp=1, x_lim=None, N=100) -> PoissonFit
-
-Poisson fit + sampled curve.
-
-:param x: Input histogram bin centres.
-:type x: array_like
-:param y: Input histogram densities.
-:type y: array_like
-:param lam: Initial rate. Default: `1`.
-:type lam: float, optional
-:param amp: Initial amplitude. Default: `1`.
-:type amp: float, optional
-:param x_lim: Range for the sampled curve. Default: `None`.
-:type x_lim: tuple[float, float] or None, optional
-:param N: Number of sample points. Default: `100`.
-:type N: int, optional
-:returns: **curve** (*tuple[ndarray, ndarray]*) – `(x_pred, y_pred)`; and **lam** (*float*) – Fitted rate; and **amp** (*float*) – Fitted amplitude.
-:rtype: tuple(tuple(ndarray, ndarray), float, float)
-
-**Example**
-
-From `poliamid/data_viz.ipynb`:
-
-```pycon
->>> from combra import stats, approx
->>> x, y = stats.density_histogram(len_list, step=1)
->>> (x_fit, y_fit), lam, amp = fitting.fit_poisson(x, y, x_lim=[-5, 25], N=100)
-```
-````
-
-````{py:function} combra.fitting.fit_exponential(x, y, a=1, amp=1, x_lim=None, N=100) -> ExponentialFit
-
-Exponential decay $amp \cdot e^{-x/a}$ fit + sampled curve.
-
-:param x: Input histogram bin centres.
-:type x: array_like
-:param y: Input histogram densities.
-:type y: array_like
-:param a: Initial decay constant. Default: `1`.
-:type a: float, optional
-:param amp: Initial amplitude. Default: `1`.
-:type amp: float, optional
-:param x_lim: Range for the sampled curve. Default: `None`.
-:type x_lim: tuple[float, float] or None, optional
-:param N: Number of sample points. Default: `100`.
-:type N: int, optional
-:returns: **curve** (*tuple[ndarray, ndarray]*) – `(x_pred, y_pred)`; and **a** (*float*) – Fitted decay constant; and **amp** (*float*) – Fitted amplitude.
-:rtype: tuple(tuple(ndarray, ndarray), float, float)
-
-**Example**
-
-From `poliamid/data_viz.ipynb`:
-
-```pycon
->>> from combra import stats, approx
->>> x, y = stats.density_histogram(len_list, step=1)
->>> (x_fit, y_fit), a, amp = fitting.fit_exponential(
-...     x, y, a=5, amp=1, x_lim=[0, 25], N=100,
-... )
 ```
 ````
 
@@ -283,71 +194,19 @@ Result of {py:func}`~combra.fitting.fit_bimodal_gaussian`.
 :type amps: list[float]
 ````
 
-````{py:class} combra.fitting.GaussianFit(curve, mu, sigma, amp)
+````{py:class} combra.fitting.DistributionFit(curve, params, model)
 
-Result of {py:func}`~combra.fitting.fit_gaussian`.
+Result of {py:func}`~combra.fitting.fit_distribution`.
 
 :param curve: `(x, y)` of the fitted density sampled on the evaluation grid.
 :type curve: tuple[ndarray, ndarray]
-:param mu: Fitted mean.
-:type mu: float
-:param sigma: Fitted standard deviation.
-:type sigma: float
-:param amp: Fitted amplitude — the integral of the curve.
-:type amp: float
+:param params: Fitted parameters, in the model's own signature order (after `x`).
+:type params: tuple[float, ...]
+:param model: The model that was fitted, so `evaluate` can re-apply it.
+:type model: callable
 
 ````{py:method} evaluate(x) -> ndarray
-Re-evaluate the fitted Gaussian on an arbitrary grid, without refitting.
-````
-````
-
-````{py:class} combra.fitting.BinomialFit(curve, n, p, amp)
-
-Result of {py:func}`~combra.fitting.fit_binomial`.
-
-:param curve: `(x, y)` of the fitted PMF sampled on the evaluation grid.
-:type curve: tuple[ndarray, ndarray]
-:param n: Fitted number of trials.
-:type n: float
-:param p: Fitted success probability.
-:type p: float
-:param amp: Fitted amplitude.
-:type amp: float
-
-````{py:method} evaluate(x) -> ndarray
-Re-evaluate the fitted PMF on an arbitrary grid.
-````
-````
-
-````{py:class} combra.fitting.PoissonFit(curve, lam, amp)
-
-Result of {py:func}`~combra.fitting.fit_poisson`.
-
-:param curve: `(x, y)` of the fitted PMF sampled on the evaluation grid.
-:type curve: tuple[ndarray, ndarray]
-:param lam: Fitted rate parameter $\lambda$.
-:type lam: float
-:param amp: Fitted amplitude.
-:type amp: float
-
-````{py:method} evaluate(x) -> ndarray
-Re-evaluate the fitted PMF on an arbitrary grid.
-````
-````
-
-````{py:class} combra.fitting.ExponentialFit(curve, a, amp)
-
-Result of {py:func}`~combra.fitting.fit_exponential`.
-
-:param curve: `(x, y)` of the fitted decay sampled on the evaluation grid.
-:type curve: tuple[ndarray, ndarray]
-:param a: Fitted decay scale.
-:type a: float
-:param amp: Fitted amplitude.
-:type amp: float
-
-````{py:method} evaluate(x) -> ndarray
-Re-evaluate the fitted decay on an arbitrary grid.
+Re-evaluate the fitted model on an arbitrary grid, without refitting.
 ````
 ````
 
