@@ -194,7 +194,7 @@ From `poliamid/data_viz.ipynb`:
 
 ````{py:function} combra.fitting.fit_line(x, y) -> tuple[tuple[ndarray, ndarray], float, float, float, float]
 
-Least-squares line $y = kx + b$. Used in {py:meth}`combra.data.MicrostructureDataset.generate_beams` to populate `prep.a_*` and `prep.b_*` fit fields.
+Least-squares line $y = kx + b$, solved by a numba-compiled kernel. Used in {py:meth}`combra.data.MicrostructureDataset.generate_beams` to populate `prep.a_*` and `prep.b_*` fit fields.
 
 :param x: Input series.
 :type x: array_like

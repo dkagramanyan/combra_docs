@@ -314,7 +314,7 @@ From `co_angles/1_generation_and_plots.ipynb` — one call per N draws the grid 
 
 ## Display
 
-````{py:class} combra.angles.AngleDensityDisplay(density, gauss_curve, *, name='', itype='', step=None, legend=None)
+````{py:class} combra.angles.AngleDensityDisplay(density, gauss_curve, *, name='', itype='', step=None)
 
 Angle-density curve + bimodal-Gaussian fit for one grain class, following
 scikit-learn's `*Display` convention (cf. `RocCurveDisplay`): the *computed*
@@ -326,7 +326,7 @@ plotly figure (the `ax=` analogue) and **never** calls `fig.show()`.
 
 - **`density`** — `(x, y)` of the angle-histogram density.
 - **`gauss_curve`** — `(x, y)` of the fitted bimodal-Gaussian curve.
-- **`name`, `itype`, `step`, `legend`** — metadata copied from the parquet row.
+- **`name`, `itype`, `step`** — metadata copied from the parquet row.
 - **`figure_`** — the figure produced by the last `plot` call (set only after `plot`).
 
 **Constructors**
