@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import importlib
 import inspect
+import os
 import pathlib
 import re
 import sys
@@ -104,6 +105,21 @@ def _real_params(obj) -> list[str] | None:
 
 
 def main() -> int:
+    # The docs repo cannot always import combra (it is a separate, private
+    # repo — see the docs-CI note in API_DOCS_UPGRADE_PLAN.md). Skip loudly
+    # rather than fail the docs build, unless COMBRA_DRIFT_STRICT is set, which
+    # CI should turn on once it can install combra.
+    try:
+        importlib.import_module("combra")
+    except ImportError as exc:
+        strict = os.environ.get("COMBRA_DRIFT_STRICT", "").strip() not in {"", "0", "false"}
+        print(f"combra is not importable ({exc}).")
+        if strict:
+            print("COMBRA_DRIFT_STRICT is set -> treating this as a failure.")
+            return 1
+        print("SKIPPING the API-drift check. Set COMBRA_DRIFT_STRICT=1 to make this fatal.")
+        return 0
+
     problems: list[str] = []
     doc = _documented()
 

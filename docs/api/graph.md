@@ -372,7 +372,7 @@ Select the ``k`` shortest paths (by ``path_len_pixels``) for every entry — or 
 ```
 ````
 
-````{py:function} combra.graph.evaluate_path_energies(g, cnts, nodes_metadata, entry_nodes, exit_nodes, workers=23, base_weights=None, sweep_size=None, parallel=True, first_k_paths=1) -> list[list[list[DataFrame]]]
+````{py:function} combra.graph.evaluate_path_energies(g, cnts, nodes_metadata, entry_nodes, exit_nodes, workers=23, base_weights=None, sweep_rows=20, sweep_cols=20, parallel=True, first_k_paths=1) -> list[list[list[DataFrame]]]
 
 Compute energies along a fixed set of paths (no optimisation).
 
