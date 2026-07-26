@@ -168,6 +168,8 @@ historical plain tuples.
 
 Result of {py:func}`~combra.fitting.fit_line`.
 
+Deliberately its own type rather than a {py:class}`~combra.fitting.DistributionFit`: `angle_deg` and `r2` are derived diagnostics rather than parameters the solver searched for, so they do not belong in that class's `params` — and a line is not one of the {doc}`combra.stats <stats>` densities. `scipy.stats.linregress` draws the same distinction.
+
 :param curve: `(x_pred, y_pred)` of the fitted line sampled across the data span.
 :type curve: tuple[ndarray, ndarray]
 :param slope: Line slope `k`.
@@ -194,7 +196,7 @@ Result of {py:func}`~combra.fitting.fit_bimodal_gaussian`.
 :type amps: list[float]
 ````
 
-````{py:class} combra.fitting.DistributionFit(curve, params, model)
+`````{py:class} combra.fitting.DistributionFit(curve, params, model)
 
 Result of {py:func}`~combra.fitting.fit_distribution`.
 
@@ -208,9 +210,8 @@ Result of {py:func}`~combra.fitting.fit_distribution`.
 ````{py:method} evaluate(x) -> ndarray
 Re-evaluate the fitted model on an arbitrary grid, without refitting.
 ````
-````
-
-````{py:class} combra.fitting.PlateauFit(asymptote, asymptote_stderr, decay)
+`````
+`````{py:class} combra.fitting.PlateauFit(asymptote, asymptote_stderr, decay)
 
 Result of {py:func}`~combra.fitting.fit_plateau`, which fits the
 Monte-Carlo convergence law
@@ -241,7 +242,7 @@ Evaluate $a + b N^{-1/2}$ at the sample sizes `ns`.
 >>> fit = fitting.fit_plateau(ns, vals)
 >>> print(f'floor={fit.asymptote:.3f} +- {fit.asymptote_stderr:.3f}, b={fit.decay:.2f}')
 ```
-````
+`````
 
 ## See also
 
