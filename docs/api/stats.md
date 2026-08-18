@@ -162,6 +162,29 @@ callable never divides by zero mid-fit.
 ```
 ````
 
+````{py:function} combra.stats.require_density(x, side) -> None
+
+Raise a clear `ValueError` when an angle density is empty.
+
+An empty density means the angle pipeline extracted **no vertices at all** — a blank, contour-free or too-small image set. Both metric families call this before they touch the data, so that case reports its actual cause instead of dying much further down in POT's 1-D Wasserstein or in `curve_fit` with `attempt to get argmin of an empty sequence`.
+
+:param x: The density's `x` positions, as returned by {py:func}`combra.stats.density_histogram`.
+:type x: array_like
+:param side: Which side this is (`'reference'` / `'generated'`), used in the message.
+:type side: str
+:returns: Nothing; raises on an empty density.
+:rtype: None
+:raises ValueError: `x` is empty.
+
+**Example**
+
+```pycon
+>>> from combra.stats import density_histogram, require_density
+>>> x, y = density_histogram(pooled_angles, 5.0)
+>>> require_density(x, "generated")     # raises if the model produced no contours
+```
+````
+
 ## See also
 
 - {doc}`combra.fitting <fitting>` — fits these distributions to data.

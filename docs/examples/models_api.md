@@ -50,12 +50,29 @@ Every repo follows the same conventions:
   `true`): every snapshot tick, fakes are generated **sharded across all ranks**
   and scored against the training set (reference features precomputed once) using
   combra's split APIs — {py:func}`combra.metrics.fid_features` /
-  `frechet_from_features`, the `cmmd_*` / `fd_dinov2_*` analogues, and
-  {py:func}`combra.metrics.images_to_pooled_angles` — numerically equivalent to a single-GPU
-  {py:func}`combra.metrics.compute_all_metrics` call. Results are mirrored into
-  **both** TensorBoard (`Metrics/combra_fid10k`, `Metrics/combra_cmmd10k`,
-  `Metrics/combra_fd_dinov2_10k` + the angle metrics) and `stats.jsonl` in all
+  {py:func}`combra.metrics.frechet_from_features` (one helper for both Fréchet
+  metrics), {py:func}`combra.metrics.cmmd_features` /
+  {py:func}`combra.metrics.cmmd_from_features`,
+  {py:func}`combra.metrics.fd_dinov2_features`, and
+  {py:func}`combra.metrics.images_to_pooled_angles` +
+  {py:func}`combra.metrics.angle_density_metrics_from_pooled` — numerically
+  equivalent to a single-GPU {py:func}`combra.metrics.compute_all_metrics` call.
+  Results are mirrored into **both** TensorBoard (`Metrics/combra_fid`,
+  `Metrics/combra_cmmd`, `Metrics/combra_fd_dinov2`, `Metrics/combra_fid_best`,
+  `Metrics/combra_num_fid_samples` + the angle metrics) and `stats.jsonl` in all
   four repos, so post-hoc snapshot selection survives loss of the tfevents file.
+  Each repo carries its own copy of the shard-generate → extract → gather harness;
+  combra supplies the metric primitives, not the distribution plumbing.
+- **combra install is `combra[metrics]`, and Python is 3.12+.** All four `[combra]`
+  extras request `combra[metrics] @ git+https://…`, not bare `combra`: since combra
+  0.5.0 the torch / `pytorch-fid` / `open-clip-torch` stack lives behind that extra,
+  and without it `combra_fid` / `combra_cmmd` / `combra_fd_dinov2` come back `nan`.
+  combra floors Python at 3.12, so every model repo does too.
+- **Metric keys are bare.** `Metrics/combra_fid`, not `combra_fid10k`. The old `10k`
+  suffix was a literal that never changed with `--num-fid-samples`, so any chart built
+  from it was mislabelled; the sample count is now its own scalar,
+  `Metrics/combra_num_fid_samples`. {py:func}`combra.metrics.load_fid_by_kimg` reads
+  the bare key and still accepts the legacy one, so archived runs stay readable.
 - **One checkpoint kind**: the EMA-only `.pt` inference snapshot, written
   atomically every snapshot tick **and always at the last tick**, pruned to
   `--snapshot-keep-last` (default 3, `0` = keep all). No resume, no rolling
@@ -71,15 +88,17 @@ Every repo follows the same conventions:
 | presets | `--cfg` = architecture (`stylegan3-r`, …) | `--cfg styleswin-{256,512,1024}` | `--cfg diffit-{256,512,1024}` | `--cfg edm2-img{256,512,1024}-s` (+ more sizes) |
 | required flags | `--outdir --cfg --data --gpus --batch-gpu` | `--outdir --data --gpus` | `--outdir --cfg --data --gpus --batch-gpu` | `--outdir --data` (`--cfg`/`--gpus`/`--batch-gpu` default) |
 | precision | `--precision {fp32,fp16,bf16}` + `--tf32`/`--bench` (unified across all four; per-repo default) | | | |
+| gradient accumulation | `--grad-accum` (all four; total batch = `batch-gpu × gpus × grad-accum`) | | | |
+| conditioning | `--cond` | `--cond` | **always conditional** (CFG against a null class — no flag) | `--cond` (default `true`) |
 | resolution strategy | **progressive**: 16² stem, then superres stages (`--superres --up-factor 2 --path-stem`, a weights-only warm start) | independent run per resolution | finetune upward via `--init-weights` (RoPE-2D) | independent preset per resolution (shared VAE latent space); no resume |
 
 ## Evaluation
 
 | | san-v2 | StyleSwin-v2 | DiffiT-v2 | EDM2-v2 |
 |---|---|---|---|---|
-| in-training combra | ✔ (`--num-fid-samples`, default 10 000; `--combra-ref-count` caps the reference) | ✔ (`--num-fid-samples` / `--combra-ref-count`) | ✔ (`--num-fid-samples` / `--combra-ref-count`) | ✔ (`--num-fid-samples` / `--combra-ref-count`) |
+| in-training combra | ✔ (`--num-fid-samples`, default 10 000; `--combra-ref-count 0` = whole reference set) | ✔ (same) | ✔ (same) | ✔ (same) |
 | native metric suite | `--metrics` registry (legacy) | none (`--metrics` is a reserved stub) | Inception IS/FID/sFID/P/R via `--combra-metrics=false` | offline FID + FD-DINOv2 |
-| standalone evaluator | `san-eval` | `styleswin-eval` | `diffit-eval` | `edm2-eval calc/gen/ref` |
+| standalone evaluator | `san-eval` | `styleswin-eval` | `diffit-eval` (click) | `edm2-eval calc/gen/ref` |
 | sampler-vs-steps sweep | n/a (GAN) | n/a (GAN) | `diffit-compare-samplers` | `edm2-compare-samplers` (see {doc}`sampler_comparison`) |
 
 ## Checkpoints
@@ -157,7 +176,9 @@ Now that all four repos share the contract, the remaining differences are
 model-family details, not tooling drift:
 
 1. **combra install** is uniform: all four pull the private repo over `git+https`
-   via the `[combra]` extra, and none ship a `requirements.txt` (`pip install -e .`).
+   via the `[combra]` extra — which requests `combra[metrics]`, so the FID / CMMD /
+   FD-DINOv2 backends come with it — and none ship a `requirements.txt`
+   (`pip install -e .`). All four require Python 3.12+, matching combra.
 2. **CUDA toolchain**: san-v2 and StyleSwin-v2 build custom CUDA ops (san-v2 against
    conda's `nvcc` with `CUDA_HOME=$CONDA_PREFIX`; StyleSwin-v2 via the system CUDA
    module); DiffiT-v2 and EDM2-v2 are pure-torch and need no custom ops.
@@ -166,3 +187,16 @@ model-family details, not tooling drift:
    and the float training space (`[-1, 1]` for san-v2/DiffiT-v2, ImageNet mean/std for
    StyleSwin-v2, the VAE latent space for EDM2-v2). Every artifact still crosses the
    boundary as uint8, so cross-repo comparisons remain valid.
+4. **DiffiT-v2 has no `--cond`.** It is class-conditional by construction —
+   classifier-free guidance trains against a null class — so an unconditional switch
+   would be a flag that cannot do anything, not CLI alignment. The other three take
+   `--cond`.
+5. **Tick and snapshot cadence differ.** `--snap` counts ticks and a tick is a
+   different amount of training per repo: san-v2 and StyleSwin-v2 default to
+   4 kimg/tick × 50 ticks = 200 kimg between snapshots, EDM2-v2 to 128 × 64 = 8 192
+   kimg, DiffiT-v2 to its per-`--cfg` values. Set `--tick`/`--snap` explicitly when
+   comparing runs across repos.
+6. **The sharded eval harness is per-repo.** Each repo owns its shard-generate →
+   extract → all-gather → distance code. combra supplies the metric primitives
+   (feature extractors, distances, `angle_density_metrics_from_pooled`) and stays out
+   of the distribution plumbing, so it carries no `torch.distributed` dependency.

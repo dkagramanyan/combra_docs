@@ -25,7 +25,8 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          # combra requires >= 3.12; the drift check imports it.
+          python-version: "3.12"
           cache: pip
           cache-dependency-path: docs/requirements.txt
 
@@ -36,12 +37,28 @@ jobs:
         id: pages
         uses: actions/configure-pages@v6
 
-      # Guards the hand-authored py: directives against the real combra API.
-      # Skips with a clear message when combra is not installable here; flip
-      # COMBRA_DRIFT_STRICT to 1 once docs CI can pull the package.
+      # combra is a private repo. When a token with read access is configured as
+      # the COMBRA_TOKEN secret, install it and make the drift check FATAL; without
+      # one the check still runs but is allowed to skip, so a fork's PR still builds.
+      - name: Install combra (for the API-drift check)
+        id: combra
+        env:
+          COMBRA_TOKEN: ${{ secrets.COMBRA_TOKEN }}
+        run: |
+          if [ -n "$COMBRA_TOKEN" ]; then
+            pip install "combra @ git+https://x-access-token:${COMBRA_TOKEN}@github.com/dkagramanyan/combra.git"
+            echo "strict=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "COMBRA_TOKEN not set -- the API-drift check will skip."
+            echo "strict=0" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Guards the hand-authored py: directives against the real combra API. This is
+      # the check whose absence let combra 0.5.0 remove three functions the model
+      # repos import without anything noticing, so it gates whenever it can run.
       - name: Check API reference against combra
         env:
-          COMBRA_DRIFT_STRICT: "0"
+          COMBRA_DRIFT_STRICT: ${{ steps.combra.outputs.strict }}
         run: python docs/check_api_drift.py
 
       - name: Build the site (warnings are errors)
