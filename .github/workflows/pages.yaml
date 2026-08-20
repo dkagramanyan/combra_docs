@@ -46,7 +46,7 @@ jobs:
           COMBRA_TOKEN: ${{ secrets.COMBRA_TOKEN }}
         run: |
           if [ -n "$COMBRA_TOKEN" ]; then
-            pip install "combra @ git+https://x-access-token:${COMBRA_TOKEN}@github.com/dkagramanyan/combra.git"
+            pip install "combra[metrics] @ git+https://x-access-token:${COMBRA_TOKEN}@github.com/dkagramanyan/combra.git"
             echo "strict=1" >> "$GITHUB_OUTPUT"
           else
             echo "COMBRA_TOKEN not set -- the API-drift check will skip."

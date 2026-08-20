@@ -21,3 +21,22 @@ Problems found while building the `run-combra-docs` skill (2026-07-21).
   PR builds. **Set `COMBRA_TOKEN` in the repository secrets to arm it** — this is the
   check whose absence let combra 0.5.0 remove three functions the four model repos
   import with nothing noticing.
+
+- [ ] **`sphinx.ext.doctest` cannot see the examples — the extension is dead weight.**
+  Found 2026-08-20. `conf.py` loads `sphinx.ext.doctest` and 118 blocks are correctly
+  fenced as ```` ```pycon ````, but a MyST fenced block becomes a plain `literal_block`,
+  never a `doctest_block`, so the doctest builder collects **nothing**:
+
+  ```
+  $ python -m sphinx -b doctest docs _out
+  Doctest summary: 0 tests, 0 failures
+  ```
+
+  Adding `-b doctest` to CI would therefore pass vacuously — armed-looking and testing
+  nothing, the same failure mode as the drift check that always skipped. A collector
+  that *does* see them is `pytest --doctest-glob='*.md' docs`, and it currently reports
+  **20 of 20 example-bearing files failing** (including `index.md`, whose first block
+  claims `combra.__version__ == '0.6.0'` against the installed 0.7.1). Fixing those is
+  its own task — either repair each example, mark the illustrative ones
+  `# doctest: +SKIP`, or convert them to `{doctest}` directives. Do that first, then
+  gate CI on it. Do **not** add the sphinx `-b doctest` step on its own.

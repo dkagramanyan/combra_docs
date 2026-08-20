@@ -7,7 +7,7 @@ distribution metrics.
 ```pycon
 >>> import combra
 >>> combra.__version__
-'0.6.0'
+'0.7.1'
 ```
 
 ```{toctree}
