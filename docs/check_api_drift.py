@@ -23,7 +23,8 @@ import pathlib
 import re
 import sys
 
-DOCS_API = pathlib.Path(__file__).parent / "api"
+DOCS_ROOT = pathlib.Path(__file__).parent
+DOCS_API = DOCS_ROOT / "api"
 
 DIRECTIVE = re.compile(r"^`{3,}\{py:(function|class|method|attribute|data|exception)\}\s+(.+)$")
 
@@ -74,18 +75,35 @@ def _split_params(sig: str) -> list[str]:
     return out
 
 
-def _documented() -> dict[str, tuple[str, list[str], str]]:
-    """``fullname -> (kind, documented_params, 'file:line')`` for every directive."""
+PARAM_FIELD = re.compile(r"^:param\s+([^:]+):")
+
+
+def _documented() -> dict[str, tuple[str, list[str], str, list[str]]]:
+    """``fullname -> (kind, signature_params, 'file:line', param_fields)``.
+
+    ``param_fields`` is the ``:param x:`` list written beneath the directive. It is
+    checked separately from the signature because the two rot independently: the
+    0.6 rename release updated every signature line and left the prose beneath it
+    describing ``save_name`` / ``N`` / ``M`` / ``save``, none of which still exist.
+    """
     found = {}
     for md in sorted(DOCS_API.glob("*.md")):
-        for lineno, line in enumerate(md.read_text().splitlines(), 1):
+        lines = md.read_text().splitlines()
+        for lineno, line in enumerate(lines, 1):
             m = DIRECTIVE.match(line)
             if not m:
                 continue
             kind, sig = m.groups()
             sig = sig.split("->")[0].strip()
             name = sig.split("(")[0].strip()
-            found[name] = (kind, _split_params(sig), f"{md.name}:{lineno}")
+            fields: list[str] = []
+            for follow in lines[lineno:]:
+                if DIRECTIVE.match(follow):
+                    break
+                pm = PARAM_FIELD.match(follow)
+                if pm:
+                    fields += [x.strip() for x in pm.group(1).split(",")]
+            found[name] = (kind, _split_params(sig), f"{md.name}:{lineno}", fields)
     return found
 
 
@@ -104,13 +122,42 @@ def _real_params(obj) -> list[str] | None:
     return [p for p in params if p not in {"self", "cls"}]
 
 
+def _version_drift(real: str) -> list[str]:
+    """Every place the docs hard-code a combra version must match the real one.
+
+    ``index.md``'s opening example prints ``combra.__version__``, and ``conf.py``
+    sets ``release`` / ``version``. All three have gone stale at least once each
+    (the index block claimed 0.6.0 against an installed 0.7.1), because nothing
+    reads them back. This does.
+    """
+    problems = []
+    short = ".".join(real.split(".")[:2])
+
+    conf = (DOCS_ROOT / "conf.py").read_text()
+    for key, expected in (("release", real), ("version", short)):
+        m = re.search(rf'^{key} = "([^"]*)"', conf, re.M)
+        if m is None:
+            problems.append(f"[version] conf.py: no `{key} = \"...\"` line to check")
+        elif m.group(1) != expected:
+            problems.append(f"[version] conf.py: {key} = {m.group(1)!r}, combra is {expected!r}")
+
+    index = (DOCS_ROOT / "index.md").read_text()
+    m = re.search(r"^>>> combra\.__version__\n'([^']*)'", index, re.M)
+    if m is None:
+        problems.append("[version] index.md: no `>>> combra.__version__` example to check")
+    elif m.group(1) != real:
+        problems.append(f"[version] index.md: claims {m.group(1)!r}, combra is {real!r}")
+
+    return problems
+
+
 def main() -> int:
     # The docs repo cannot always import combra (it is a separate, private
     # repo — see the docs-CI note in API_DOCS_UPGRADE_PLAN.md). Skip loudly
     # rather than fail the docs build, unless COMBRA_DRIFT_STRICT is set, which
     # CI should turn on once it can install combra.
     try:
-        importlib.import_module("combra")
+        combra = importlib.import_module("combra")
     except ImportError as exc:
         strict = os.environ.get("COMBRA_DRIFT_STRICT", "").strip() not in {"", "0", "false"}
         print(f"combra is not importable ({exc}).")
@@ -124,7 +171,7 @@ def main() -> int:
     doc = _documented()
 
     # 1. every documented object exists, with a matching parameter list
-    for fullname, (kind, doc_params, where) in sorted(doc.items()):
+    for fullname, (kind, doc_params, where, param_fields) in sorted(doc.items()):
         if kind in {"attribute", "data"} or not fullname.startswith("combra."):
             continue
         module_path, _, leaf = fullname.rpartition(".")
@@ -148,6 +195,13 @@ def main() -> int:
                 f"             docs: {doc_params}\n"
                 f"             code: {real}"
             )
+        # The :param: list rots independently of the signature line above it.
+        ghosts = [p for p in param_fields if p not in real]
+        if ghosts:
+            problems.append(f"[param] {fullname} ({where}): documents non-existent {ghosts}")
+        undocumented = [p for p in real if p not in param_fields] if param_fields else []
+        if undocumented:
+            problems.append(f"[param] {fullname} ({where}): no :param: for {undocumented}")
 
     # 2. every public name is documented somewhere
     documented_leaves = {n.split(".")[-1] for n in doc}
@@ -160,6 +214,9 @@ def main() -> int:
         for name in getattr(mod, "__all__", []):
             if name not in documented_leaves:
                 problems.append(f"[undocumented] combra.{sub}.{name}")
+
+    # 3. the version the docs claim is the version they document
+    problems += _version_drift(combra.__version__)
 
     if problems:
         print(f"API drift: {len(problems)} problem(s)\n")
