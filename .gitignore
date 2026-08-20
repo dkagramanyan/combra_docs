@@ -1,0 +1,4 @@
+# `sphinx -b doctest docs _doctest` (the CI doctest step) writes here.
+_doctest/
+# docs/check_api_drift.py is imported by the doctest tooling.
+__pycache__/

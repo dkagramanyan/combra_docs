@@ -14,10 +14,45 @@ changelog lived only in a private code repository.
 The authoritative copy is `CHANGELOG.md` in the combra repository; the highlights
 below track what changes for a *user* of the library.
 
-### Unreleased
+### 0.9.1
+
+- `contour_fractal_dimension` could not accept the contours
+  {py:func}`combra.contours.find_contours` returns. `cv2.findContours` yields
+  `(N, 1, 2)`; combra flattens that to `(N, 2)`, which is also the shape the function
+  documents -- but the mask builder underneath it accepted only the first, so the
+  chain the API reference shows raised a `TypeError`. Found by running the docs.
+
+### 0.9.0
 
 **Added**
 
+- Extraction parquets now record **which combra wrote them**. `run_meta` gained a
+  `combra_version` field, alongside the `code_commit` that has always been there but
+  resolves to `unknown` for a non-git install — which is how the model repos install
+  combra, so cluster-produced rows previously carried no usable provenance.
+- Every public callable now documents its parameters. The last 19 without numpydoc
+  sections were closed, and the ratchet that tracked them is empty.
+
+```{note}
+A parquet written by 0.9.0 has a `run_meta` field that earlier files do not.
+{py:func}`combra.io.load_rows` is unaffected — it reads only `meta` and
+`prep_per_step` — but code reading the `run_meta` column directly with pyarrow will
+find no `combra_version` key on a file written before 0.9.0.
+```
+
+### 0.8.1
+
+- `from combra import __version__` did not type-check: `__init__.pyi` listed it in
+  `__all__` without declaring it.
+
+### 0.8.0
+
+**Added**
+
+- **Every run records which combra computed its metrics.**
+  {py:func}`combra.io.write_hparams` stamps `combra/version` into the TensorBoard
+  HPARAMS payload. Two runs weeks apart could otherwise be compared on numbers from
+  different metric code while their logged provenance looked identical.
 - {py:mod}`combra.metrics.distributed` — the sharded evaluation harness, moved into
   combra from the four model repos that each carried a copy. One implementation now,
   behind the `[metrics]` extra.

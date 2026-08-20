@@ -1,3 +1,7 @@
+---
+orphan: true
+---
+
 # Generative models — proposed standard API ("v2 convention")
 
 :::{note}

@@ -57,11 +57,11 @@ pytest -m visual -s              # writes interactive plotly HTML for you to loo
                                  # where they are written.
 ```
 
-CI (GitHub Actions) runs the ruff lint + format checks and `pytest` on Python 3.10, 3.11, and 3.12.
+CI (GitHub Actions) runs the ruff lint + format checks, mypy on the strict-typed core, and `pytest` on Python 3.12 and 3.13.
 
 For a quick post-install sanity check that doesn't need the dev tools, run the bundled self-validation helper — it estimates the fractal dimension of reference shapes with known answers (see {doc}`combra.validation <api/validation>`):
 
-```pycon
+```{doctest}
 >>> import numpy as np
 >>> from combra import validation
 >>> validation.check_fractal_dimension(np.array([2, 3, 4, 6, 8, 12, 16, 24, 32]))
@@ -106,11 +106,13 @@ The output file's `run_meta` column records who/when/what — including the git 
 See the {doc}`landing page <index>` for the full module grid, and
 {doc}`glossary` for the domain vocabulary (`step`, beam, MVEE, N-sweep).
 
-## What changed in 0.6
+## Coming from 0.5 or earlier
 
-0.6 is an API-convention release: functions were renamed to `verb_noun` form,
+0.6 was an API-convention release: functions were renamed to `verb_noun` form,
 two modules moved (`combra.approx` → {doc}`combra.fitting <api/fitting>`,
 `combra.mvee` → {doc}`combra.ellipse <api/ellipse>`), and every plotter now
 returns its figure and takes `save_path=` / `show=`. **There are no
-compatibility aliases** — see the release notes in the repository `CHANGELOG.md`
-for the full rename table.
+compatibility aliases** — see the repository `CHANGELOG.md` for the full rename
+table.
+
+For what has changed since, see {doc}`release_notes`.
