@@ -21,7 +21,7 @@ Quantize `array` to multiples of `step`, count occurrences via `np.bincount`, an
 
 **Example**
 
-```pycon
+```{doctest}
 >>> import numpy as np
 >>> from combra import fitting, stats
 >>> angles_array = np.array([12, 13, 87, 90, 92, 178, 180])
@@ -51,7 +51,7 @@ Single Gaussian, $amp \cdot \mathcal{N}(x \mid \mu, \sigma)$.
 
 **Example**
 
-```pycon
+```{doctest}
 >>> import numpy as np
 >>> from combra import stats
 >>> x = np.linspace(0, 360, 200)
@@ -82,7 +82,7 @@ Sum of two Gaussians. Use {py:func}`combra.fitting.fit_bimodal_gaussian` to fit 
 
 **Example**
 
-```pycon
+```{doctest}
 >>> import numpy as np
 >>> from combra import stats
 >>> x = np.linspace(0, 360, 200)
@@ -109,7 +109,7 @@ value an optimiser proposes. Signature kept `curve_fit`-compatible.
 
 **Example**
 
-```pycon
+```{doctest}
 >>> import numpy as np
 >>> from combra import stats
 >>> y = stats.binomial(np.arange(0, 26), n=25, p=0.2, amp=1.0)
@@ -132,7 +132,7 @@ $k$ the rounded, non-negative `x`. Signature kept `curve_fit`-compatible.
 
 **Example**
 
-```pycon
+```{doctest}
 >>> import numpy as np
 >>> from combra import stats
 >>> y = stats.poisson(np.arange(0, 30), lam=6.0, amp=1.0)
@@ -155,7 +155,7 @@ callable never divides by zero mid-fit.
 
 **Example**
 
-```pycon
+```{doctest}
 >>> import numpy as np
 >>> from combra import stats
 >>> y = stats.exponential(np.linspace(0, 50, 200), a=8.0, amp=1.0)

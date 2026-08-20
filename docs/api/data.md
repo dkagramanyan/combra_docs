@@ -25,7 +25,7 @@ integer `target` is index-aligned to them.
 
 **Example**
 
-```pycon
+```{doctest}
 >>> from combra import data
 >>> ds = data.load_microstructure()
 >>> ds.class_names
@@ -45,7 +45,7 @@ Pass it to {py:class}`~combra.data.MicrostructureDataset` for end-to-end tests.
 
 **Example**
 
-```pycon
+```{doctest}
 >>> from combra import data
 >>> class_root = data.microstructure_data_dir()
 >>> ds = data.MicrostructureDataset(path=class_root, max_per_class=50)
@@ -85,7 +85,7 @@ Parse the bundled crack annotation into pixel-space contours and their class lab
 
 **Example**
 
-```pycon
+```{doctest}
 >>> from combra import data, graph
 >>> (name, image) = data.load_crack()[0]
 >>> cnts, labels = data.load_crack_contours()
@@ -275,7 +275,7 @@ lengths and areas. Writes one row per group to `out_path`.
 
 **Example**
 
-```pycon
+```{doctest}
 >>> from combra import data
 >>> pa_ds = data.PolyamideFractureDataset('/path/to/poliamid', group_size=250)
 >>> pa_ds.generate('poliamid.parquet', n_jobs=20, N=500)
@@ -297,8 +297,8 @@ Grid of per-group contour fractal-dimension distributions. For each frame group 
 :type xlim: sequence[float], optional
 :param ylim: Shared y-axis range. Default: `(0.0, 0.05)`.
 :type ylim: sequence[float], optional
-:param save: If set, export the figure to this path as PNG (needs kaleido). Default: `None`.
-:type save: str or Path, optional
+:param save_path: If set, export the figure to this path as PNG (requires kaleido). Default: `None`.
+:type save_path: str or Path, optional
 :param show: Call `fig.show()`. Default: `True`.
 :type show: bool, optional
 :returns: The plotly figure.
@@ -330,8 +330,8 @@ Grid of per-group contour-size distributions with overlaid distribution fits. Fo
 :type x_lim: sequence[float], optional
 :param grid_n: Points sampled along each fitted curve. Default: `100`.
 :type grid_n: int, optional
-:param save: If set, export the figure to this path as PNG (needs kaleido). Default: `None`.
-:type save: str or Path, optional
+:param save_path: If set, export the figure to this path as PNG (requires kaleido). Default: `None`.
+:type save_path: str or Path, optional
 :param show: Call `fig.show()`. Default: `True`.
 :type show: bool, optional
 :returns: The plotly figure.

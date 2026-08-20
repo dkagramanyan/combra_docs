@@ -4,10 +4,10 @@ Computer-vision tools for analysis of **WC-Co composite-alloy microstructure SEM
 contour/angle extraction, MVEE beam fitting, fractal dimension, crack graphs, and
 distribution metrics.
 
-```pycon
+```{doctest}
 >>> import combra
 >>> combra.__version__
-'0.7.1'
+'0.9.1'
 ```
 
 ```{toctree}
@@ -53,14 +53,6 @@ examples/styleswin
 examples/diffit
 examples/edm2
 examples/sampler_comparison
-```
-
-```{toctree}
-:maxdepth: 1
-:caption: Design notes
-:hidden:
-
-examples/models_api_proposal
 ```
 
 ## The pipeline

@@ -92,7 +92,7 @@ Recursively walk an image tree, resize_folder each image to `target_size`, and c
 ```pycon
 >>> from combra import image
 >>> # Downsample a folder-of-classes from 1024x1024 to 256x256, preserving subdir layout.
->>> image.resize('./data/orig_1024', './data/orig_256', target_size=(256, 256))
+>>> image.resize_folder('./data/orig_1024', './data/orig_256', target_size=(256, 256))
 ```
 ````
 
@@ -216,14 +216,16 @@ Fractal dimension of a single contour.
 
 **Example**
 
-```pycon
+```{doctest}
 >>> import cv2
 >>> from combra import image, contours, data
 >>> img = data.load_microstructure().images[0]
 >>> _, processed = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
->>> cnts = contours.find_contours(processed, tol=3)
->>> fd = image.contour_fractal_dimension(cnts[0], max_size_thr=64)
+>>> cnts = contours.find_contours(processed)
+>>> biggest = max(cnts, key=len)          # contour 0 is often a single point
+>>> fd = image.contour_fractal_dimension(biggest, max_size_thr=32)
 >>> print(f'contour fd = {fd:.3f}')
+contour fd = 1.043
 ```
 ````
 
@@ -371,11 +373,15 @@ Test if two line segments intersect.
 
 **Example**
 
-```pycon
+```{doctest}
 >>> from combra import image
 >>> # Crossing 'X' shape — segments (0,0)→(10,10) and (0,10)→(10,0) cross at (5,5).
->>> print(image.segments_intersect((0, 0), (10, 10), (0, 10), (10, 0)))   # True
->>> print(image.segments_intersect((0, 0), (1, 1), (5, 5), (6, 6)))       # False
+>>> import numpy as np
+>>> p = lambda x, y: np.array([x, y])
+>>> print(image.segments_intersect(p(0, 0), p(10, 10), p(0, 10), p(10, 0)))
+True
+>>> print(image.segments_intersect(p(0, 0), p(1, 1), p(5, 5), p(6, 6)))
+False
 ```
 ````
 
@@ -427,7 +433,7 @@ two images in one scored batch can never be rescaled under different assumptions
 
 **Example**
 
-```pycon
+```{doctest}
 >>> import numpy as np
 >>> from combra.image import to_uint8
 >>> to_uint8(np.array([-1.0, 0.0, 1.0]), data_range=(-1.0, 1.0))

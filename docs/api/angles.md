@@ -61,7 +61,7 @@ plotting sides share one naming convention instead of re-deriving the `_msl` suf
 
 **Example**
 
-```pycon
+```{doctest}
 >>> from combra import angles
 >>> angles.output_directory('./data/angles', './data/h5/gen_san_256x256_N100_000.h5', 5.0)
 PosixPath('data/angles/gen_san_256x256_N100_000_msl5')
@@ -70,21 +70,19 @@ PosixPath('data/angles/gen_san_256x256_N100_000_msl5')
 
 ## Plotting
 
-````{py:function} combra.angles.plot_density(rows=None, title=None, n_rows=20, n_cols=20, indices=None, font_size=20, scatter_size=20, xlim=None, ylim=None, parquet_path=None, step=None, save_path=None, show=True) -> None
+````{py:function} combra.angles.plot_density(rows=None, title=None, n_rows=20, n_cols=20, indices=None, font_size=20, scatter_size=20, xlim=None, ylim=None, parquet_path=None, step=None, save_path=None, show=True) -> plotly.graph_objects.Figure
 
-Plot angle density curves and bimodal Gaussian fits in an $N \times M$ plotly grid.
+Plot angle density curves and bimodal Gaussian fits in an `n_rows` $\times$ `n_cols` plotly grid.
 Pass either ``rows`` (list of dicts) or ``parquet_path`` (string).
 
 :param rows: Pre-loaded rows from {py:func}`combra.metrics.load_rows` or ``pq.read_table().to_pydict()``. Required if ``parquet_path`` is not given. Default: ``None``.
 :type rows: list[dict] or None, optional
-:param save_name: Title and filename. Derived from ``parquet_path`` if absent. Default: ``None``.
-:type save_name: str or None, optional
-:param N: Grid rows. Default: ``20``.
-:type N: int, optional
-:param M: Grid columns. Default: ``20``.
-:type M: int, optional
-:param save: Save the figure to ``<save_name>.png`` / ``.html``. Default: ``False``.
-:type save: bool, optional
+:param title: Figure title. Defaults to the parquet stem when ``parquet_path`` is used, else ``'angles_plot'``.
+:type title: str, optional
+:param n_rows: Figure size in 80-pixel units (width ``n_rows * 80``, height ``n_cols * 80``). Default: `20`.
+:type n_rows: int, optional
+:param n_cols: Figure size in 80-pixel units (width ``n_rows * 80``, height ``n_cols * 80``). Default: `20`.
+:type n_cols: int, optional
 :param indices: Subset of rows to draw. Default: ``None``.
 :type indices: list[int] or None, optional
 :param font_size: Plot font size. Default: ``20``.
@@ -99,10 +97,12 @@ Pass either ``rows`` (list of dicts) or ``parquet_path`` (string).
 :type parquet_path: str or None, optional
 :param step: When the parquet has multiple steps under ``prep_per_step``, pick this one. Default: ``None``.
 :type step: float or None, optional
+:param save_path: PNG path to write. If ``None`` (default), nothing is written.
+:type save_path: str or pathlib.Path, optional
 :param show: If ``False``, skip ``fig.show()`` (useful in batch). Default: ``True``.
 :type show: bool, optional
-:returns: Nothing. Renders the plotly grid and, when ``save=True``, writes ``<save_name>.png`` / ``.html``.
-:rtype: None
+:returns: The assembled figure.
+:rtype: plotly.graph_objects.Figure
 
 **Example**
 
@@ -130,8 +130,8 @@ Plot a 2-D grid of angle distributions where each cell overlays multiple sources
 :type step: float
 :param title: Figure title. Default: ``None``.
 :type title: str or None, optional
-:param save: If given, save the rendered HTML/PNG to this path. Default: ``None``.
-:type save: str or None, optional
+:param save_path: If set, the figure is written there via plotly's image export (requires kaleido). Default: `None`.
+:type save_path: str | Path | None, optional
 :param show: ``True`` to call ``fig.show()``. Default: ``True``.
 :type show: bool, optional
 :param scatter_size: Marker size. Default: ``5``.
@@ -236,7 +236,7 @@ on disk. Folder names are resolved via {py:func}`combra.angles.output_directory`
 
 **Example**
 
-```pycon
+```{doctest}
 >>> from combra import angles
 >>> SOURCES = [
 ...     ('o_bc_left_..._256x256_rgb_N360', [360],           'real',   256),
@@ -280,14 +280,14 @@ manifest. Composes {py:func}`~combra.angles.resolve_overlay_rows` →
 :type ylim: tuple[float, float] or None, optional
 :param title: Figure title. Default: ``None``.
 :type title: str or None, optional
-:param save: If given, save the figure to this path. Default: ``None``.
-:type save: str or None, optional
+:param save_path: Write the figure here. Default: `None` (nothing is written).
+:type save_path: str or Path or None, optional
 :param show: ``True`` to call ``fig.show()``. Default: ``True``.
 :type show: bool, optional
 :param compare: When ``True``, print the per-mode Wasserstein table before plotting. Default: ``False``.
 :type compare: bool, optional
-:param compare_coef: Multiplier passed to {py:func}`combra.metrics.compare_pairs` (``1`` prints raw degrees). Default: ``1``.
-:type compare_coef: float, optional
+:param compare_scale: `scale` passed through to `compare_pairs` for the printed table. Default: `1`.
+:type compare_scale: int, optional
 :param real_family: Family label of the reference source. Default: ``'real'``.
 :type real_family: str, optional
 :param orig_label: Label/style key for the reference trace. Default: ``'orig'``.

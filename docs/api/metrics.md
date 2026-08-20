@@ -456,6 +456,8 @@ The three image-feature metrics run **sequentially**. They share one device and 
 :type image_metrics: bool, optional
 :param workers: When `> 1`, parallelise the angle-density extraction over a multiprocessing pool of this many workers. `None` (or `1`) runs it serially. Default: `None`.
 :type workers: int or None, optional
+:param data_range: Float range of `images`, e.g. `(-1, 1)`; declared rather than guessed. Default: `None`.
+:type data_range: tuple or None, optional
 :returns: **results** (*dict*) – Flat `{metric_name: value}` dict. Always contains `w1`, `w2`, `circular_w1`, `circular_w2`, `mu1`, `mu2`, `sigma1`, `sigma2`, `amp1`, `amp2`; with `image_metrics=True` it additionally contains `fid`, `cmmd`, `fd_dinov2`.
 :rtype: dict
 
@@ -582,6 +584,12 @@ it passed only because the seed is hardcoded to a lucky one.
 :type device: str or None, optional
 :param size: Side length of the synthetic probe images. Default: `64`.
 :type size: int, optional
+:param strict: Require the image-feature metrics to be finite too, instead of tolerating ``nan``. This is what a training loop wants at startup: a missing CLIP download otherwise shows up as a whole run of ``nan`` FID/CMMD/FD-DINOv2. Only meaningful together with ``image_metrics=True``. Default: `False`.
+:type strict: bool, optional
+:param images: Score this batch against itself instead of synthetic grains, so the check exercises the data the run will actually use. Default: `None`.
+:type images: array-like, optional
+:param n_polygons: Geometry of the synthetic grain images used when ``images`` is not given. The defaults yield ~300 vertex angles, which is enough to constrain the six-parameter bimodal fit. They were raised from ``size=64, n_polygons=10`` after that sample was measured to produce a degenerate fit on **6 of 12** seeds — it passed only because the seed is hardcoded to a lucky one, leaving every caller one library change away from a spurious abort. Default: `40`.
+:type n_polygons: int, optional
 :returns: **results** (*dict*) – The metrics dict, so the caller can log which backends are live.
 :rtype: dict
 
@@ -610,12 +618,24 @@ Walk every parquet under each folder in `folder_paths`, look each row up in `ref
 :type class_map: dict[str, str] or None, optional
 :param steps: Subset of steps to keep — others are skipped. Default: `None`.
 :type steps: Iterable[float] or None, optional
-:param coef: Multiplier applied to `w1` in the printed table only (records keep raw values). Default: `1000`.
-:type coef: float, optional
+:param scale: Scale factor applied to ``w1`` in the printed table only.
+:type scale: int, default=1000
 :param verbose: Print a per-row table. Default: `True`.
 :type verbose: bool, optional
 :param fid_by_kimg: Optional `{kimg_key: fid}` map — prints a `[kimg=… FID=…]` header above each checkpoint's rows. Default: `None`.
 :type fid_by_kimg: dict[str, float] or None, optional
+:param real_h5: Reference-image h5 (with ``class_Ultra_Co*`` groups); required when ``image_metrics`` is True. Default: `None`.
+:type real_h5: str or pathlib.Path, optional
+:param gen_h5_map: ``{str(folder): gen_h5_path}`` (gen h5s have ``class_0/1/2`` groups); required when ``image_metrics`` is True. Default: `None`.
+:type gen_h5_map: dict, optional
+:param image_metrics: When True, also compute the image-feature metrics (fid / cmmd / fd_dinov2) straight from image batches via :func:`compute_all_metrics` and merge them into each per-class record (and print them as extra columns). For each (gen_class -> real_class) in ``class_map`` the first ``gen_n`` gen images are scored against the reference's first ``real_n`` (None = all). The reference's reference-side features memoise once across every checkpoint via a per-real-class cache, so only the gen side is recomputed per folder. An image metric whose GPU / optional-dep backend is unavailable nan-fills — see :func:`compute_all_metrics`.
+:type image_metrics: bool, default=False
+:param device: Torch device for the image-feature metrics. Default: `None`.
+:type device: str, optional
+:param real_n: Number of reference images per real class to score against (None = all). Default: `None`.
+:type real_n: int, optional
+:param gen_n: Number of generated images per class to score (None = all). Default: `None`.
+:type gen_n: int, optional
 :returns: **records** (*list[dict]*) – `{'kimg', 'class', 'step', 'w1', 'w2', 'circular_w1', 'circular_w2', 'mus_m', 'sig_m', 'amp_m'}` per matched row (the `w*`/`circular_w*` keys are the angle-Wasserstein distances, as in {py:func}`combra.metrics.compute_wasserstein_metrics`).
 :rtype: list[dict]
 
@@ -696,8 +716,8 @@ Like `compare_folders` but accepts a list of explicit `(label, reference_pq, fak
 :type pairs: list[tuple]
 :param step: The single step to compare at.
 :type step: float
-:param coef: Multiplier applied to `w1` in the printed table only. Default: `1000`.
-:type coef: float, optional
+:param scale: Scale factor applied to `w1` in the printed table only. Default: `1000`.
+:type scale: int, optional
 :param verbose: Print a per-row table. Default: `True`.
 :type verbose: bool, optional
 :param label_header: Column header used in the printed table for the first column. Default: `'label'`.
@@ -777,6 +797,8 @@ The two h5s use the layout `<class>/images` of shape `(N, H, W, 3)` (real h5 gro
 :type step: float or None, optional
 :param angle_kw: Extra keyword args forwarded to `images_to_angle_density`. Default: `None`.
 :type angle_kw: dict or None, optional
+:param image_metrics: Also compute the image-feature metrics (fid / cmmd / fd_dinov2).
+:type image_metrics: bool, default=True
 :returns: **records** (*list[dict]*) – Sorted by `(class, n_images)`. Each entry: `{'n_images', 'class', 'w1', 'w2', 'circular_w1', 'circular_w2', 'mu1', 'mu2', 'sigma1', 'sigma2', 'amp1', 'amp2', 'fid', 'cmmd', 'fd_dinov2'}`.
 :rtype: list[dict]
 
@@ -1097,6 +1119,16 @@ Small-multiples of every metric vs. sampling steps: one subplot per metric, X = 
 :type title: str or None, optional
 :param save_path: If given, also render the figure to this PNG path. Default: `None`.
 :type save_path: str or None, optional
+:param png_meta: PNG tEXt metadata injected when saving. Default: `None`.
+:type png_meta: dict, optional
+:param show: Display the figure. Default: `True`.
+:type show: bool, optional
+:param fonts: Font-size overrides for ``title/axis/tick/legend``. Default: `None`.
+:type fonts: dict, optional
+:param height_per_row: Figure height per row, in pixels.
+:type height_per_row: int, default=420
+:param width_per_col: Figure width per column, in pixels.
+:type width_per_col: int, default=520
 :returns: **fig** (*plotly.graph_objects.Figure*) – The metric-vs-k figure.
 :rtype: plotly.graph_objects.Figure
 
@@ -1248,6 +1280,8 @@ Plotly grid of metric-vs-N curves. Rows are resolutions (or arbitrary `row_keys`
 :type save_path: str or None, optional
 :param png_meta: `{key: value}` written as PNG tEXt chunks. Default: `None`.
 :type png_meta: dict or None, optional
+:param show: Display the figure. Default: `True`.
+:type show: bool, optional
 :param fonts: Override the `title/axis/tick/legend` font sizes. Default: `None`.
 :type fonts: dict or None, optional
 :param height_per_row: Per-cell height in pixels. Default: `560`.
@@ -1268,8 +1302,8 @@ Plotly grid of metric-vs-N curves. Rows are resolutions (or arbitrary `row_keys`
 :type abs_values: bool, optional
 :param log_y: Log-scale the y-axis (pairs with `abs_values`; x is always log). Default: `False`.
 :type log_y: bool, optional
-:param fit_line: Overlay the plateau fit `|m|(N) = a_hat + b_hat*N^(-1/2)` per kind as a dotted line, read from the `a_hat`/`b_hat` in `panel_annotations` (no-op without them). The fit is in `|m|` space, so it lines up with the curve when `abs_values` is on. Default: `False`.
-:type fit_line: bool, optional
+:param show_fit_line: Overlay the plateau fit |m|(N) = a_hat + b_hat*N^(-1/2) per kind as a dotted line, read from ``panel_annotations`` (a_hat/b_hat). No-op unless ``panel_annotations`` is given. The fit is in |m| space, so it lines up with the curve when ``abs_values`` is on.
+:type show_fit_line: bool, default=False
 :param connect_points: Connect each kind's data points with a solid line. Set `False` to draw them as a bare scatter — pairs with `fit_line` so the only line per panel is the `a + b*N^(-1/2)` fit. Default: `True`.
 :type connect_points: bool, optional
 :returns: **fig** (*plotly.graph_objects.Figure*) – The grid figure.
@@ -1316,6 +1350,8 @@ Per-kind distribution of one `convergence_stats` column (one subplot per kind, c
 :type save_path: str or None, optional
 :param png_meta: PNG tEXt metadata. Default: `None`.
 :type png_meta: dict or None, optional
+:param show: Display the figure. Default: `True`.
+:type show: bool, optional
 :param fonts: Override `title/axis/tick/legend` font sizes. Default: `None`.
 :type fonts: dict or None, optional
 :param height: Figure height in pixels. Default: `900`.
@@ -1357,8 +1393,6 @@ Single-class overlay that puts **all metrics on one figure** for one `(class, re
 
 :param records: `compare_folders` output. Rows with `class != cls` are dropped; pass records already restricted to numeric-token rows (the non-checkpoint reference rows carry a non-numeric tag).
 :type records: list[dict]
-:param cls: Class name to plot.
-:type cls: str
 :param fid_by_x: Optional `{x_token: fid}` (e.g. from {py:func}`combra.metrics.load_fid_by_kimg`); adds a dashed FID curve on the right axis. Tokens with no entry are skipped. Default: `None`.
 :type fid_by_x: dict[str, float] or None, optional
 :param x_key: Record key whose leading underscore-split token gives the integer x. Default: `'kimg'`.
@@ -1369,6 +1403,8 @@ Single-class overlay that puts **all metrics on one figure** for one `(class, re
 :type save_path: str or None, optional
 :param png_meta: `{key: value}` written as PNG tEXt chunks. Default: `None`.
 :type png_meta: dict or None, optional
+:param show: Display the figure. Default: `True`.
+:type show: bool, optional
 :param fonts: Override the `title/axis/tick/legend` font sizes. Default: `None`.
 :type fonts: dict or None, optional
 :param height: Figure height in pixels. Default: `720`.
@@ -1421,6 +1457,8 @@ Grid of binned distributions: rows are `resolutions`, columns are `cols` (each a
 :type save_path: str or None, optional
 :param png_meta: PNG tEXt metadata. Default: `None`.
 :type png_meta: dict or None, optional
+:param show: Display the figure. Default: `True`.
+:type show: bool, optional
 :param fonts: Override `title/axis/tick/legend` font sizes. Default: `None`.
 :type fonts: dict or None, optional
 :param height_per_row: Per-cell height in pixels. Default: `420`.
@@ -1452,8 +1490,6 @@ Small-multiples of **every metric for a single `(resolution, class)`**: one subp
 :type records_by_panel: dict[tuple, list[dict]]
 :param resolution: Resolution key to plot.
 :type resolution: int
-:param cls: Class name to plot.
-:type cls: str
 :param metrics: Metric keys to tile, in order.
 :type metrics: list[str]
 :param metric_labels: `{metric: subplot title}`. Defaults to the key. Default: `None`.
@@ -1472,6 +1508,8 @@ Small-multiples of **every metric for a single `(resolution, class)`**: one subp
 :type save_path: str or None, optional
 :param png_meta: PNG tEXt metadata. Default: `None`.
 :type png_meta: dict or None, optional
+:param show: Display the figure. Default: `True`.
+:type show: bool, optional
 :param fonts: Override `title/axis/tick/legend` font sizes. Default: `None`.
 :type fonts: dict or None, optional
 :param height_per_row: Per-cell height in pixels. Default: `420`.
@@ -1521,6 +1559,8 @@ Grid of min-max-normalized training curves: one column per model, one row per me
 :type save_path: str or None, optional
 :param png_meta: `{key: value}` written as PNG tEXt chunks. Default: `None`.
 :type png_meta: dict or None, optional
+:param show: Display the figure. Default: `True`.
+:type show: bool, optional
 :param fonts: Override the `title/axis/tick/legend` font sizes. Default: `None`.
 :type fonts: dict or None, optional
 :param height_per_row: Per-row height in pixels. Default: `360`.

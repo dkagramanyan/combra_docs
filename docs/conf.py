@@ -12,8 +12,8 @@ import os
 project = "combra"
 copyright = "2026, D.G.Kagramanyan"
 author = "D.G.Kagramanyan"
-release = "0.7.1"
-version = "0.7"
+release = "0.9.1"
+version = "0.9"
 
 # -- General configuration ---------------------------------------------------
 
@@ -24,6 +24,22 @@ extensions = [
     "sphinx.ext.doctest",
     "sphinx.ext.linkcode",
 ]
+
+# -- Doctests ----------------------------------------------------------------
+#
+# `python -m sphinx -b doctest docs _doctest` runs the examples written as
+# ```{doctest}``` blocks. Plain ```pycon``` fences are NOT collected -- a MyST
+# fence becomes a literal_block, never a doctest_block, so the builder cannot see
+# it. That is deliberate: most examples on these pages are illustrative sessions
+# over names that do not exist (`real_batch`, `dpmpp_fn`), and can never run. Only
+# blocks that pass standalone carry the directive.
+#
+# Some of those write files (parquets, PNGs), so run them in a scratch directory
+# instead of the source tree.
+doctest_global_setup = """
+import os as _os, tempfile as _tempfile
+_os.chdir(_tempfile.mkdtemp(prefix='combra-doctest-'))
+"""
 
 # -- Copy button -------------------------------------------------------------
 #

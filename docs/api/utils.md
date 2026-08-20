@@ -18,7 +18,7 @@ self-describing (`ds.images`, `ds.class_names`) while still behaving as a plain
 
 **Example**
 
-```pycon
+```{doctest}
 >>> from combra.utils import Bunch
 >>> b = Bunch(images=[...], class_names=['Ultra_Co11', 'Ultra_Co25'])
 >>> b.class_names[0]

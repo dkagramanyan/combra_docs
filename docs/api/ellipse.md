@@ -52,36 +52,36 @@ SciPy-style named tuple returned by {py:func}`~combra.ellipse.fit_mvee` (cf.
 
 ## Plotting
 
-````{py:function} combra.ellipse.plot_beam_lengths(rows, step, width, height, indices=None, scatter_size=60, font_size=20, save_path=None, show=True) -> None
+````{py:function} combra.ellipse.plot_beam_lengths(rows, step, width, height, indices=None, scatter_size=60, font_size=20, save_path=None, show=True) -> list[matplotlib.figure.Figure]
 
-Plot the `a_beams` and `b_beams` distributions for each class in an $N \times M$ grid.
+Plot the `a_beams` and `b_beams` distributions for each class, one figure per beam type.
 
 :param rows: Rows from a beams parquet (e.g. via `pq.read_table().to_pylist()`).
 :type rows: list[dict]
-:param save_name: Title and filename.
-:type save_name: str
 :param step: Filter to this histogram step.
 :type step: float
-:param N: Grid rows.
-:type N: int
-:param M: Grid columns.
-:type M: int
+:param width: Figure width and height, in inches.
+:type width: float
+:param height: Figure width and height, in inches.
+:type height: float
 :param indices: Class indices to draw. Default: `None`.
 :type indices: list[int] or None, optional
-:param save: Write to `<save_name>.png`. Default: `False`.
-:type save: bool, optional
 :param scatter_size: Marker size. Default: `60`.
 :type scatter_size: int, optional
 :param font_size: Plot font size. Default: `20`.
 :type font_size: int, optional
-:returns: Nothing. Renders the grid and, when `save=True`, writes `<save_name>.png`.
-:rtype: None
+:param save_path: Filename stem. One PNG per beam type is written as ``{stem}_{beam_type}_step_{step}.png``. If ``None`` (default), nothing is written.
+:type save_path: str or pathlib.Path, optional
+:param show: Call ``plt.show()`` after drawing each figure.
+:type show: bool, default=True
+:returns: One figure per beam type, in ``['a', 'b']`` order.
+:rtype: list[matplotlib.figure.Figure]
 
 **Example**
 
 ```pycon
 >>> import pyarrow.parquet as pq
->>> from combra import data, mvee
+>>> from combra import data, ellipse
 >>> ds = data.MicrostructureDataset(path=data.microstructure_data_dir())
 >>> ds.generate_beams(
 ...     save_path='./beams',
@@ -89,30 +89,30 @@ Plot the `a_beams` and `b_beams` distributions for each class in an $N \times M$
 ...     step=4, pixel=50/1000,
 ... )
 >>> rows = pq.read_table('./beams/beams_n100.parquet').to_pylist()
->>> ellipse.plot_beam_lengths(rows, save_name='beams.png', step=4, N=2, M=1, save=False)
+>>> figs = ellipse.plot_beam_lengths(rows, step=4, width=7, height=7, show=False)
 ```
 ````
 
-````{py:function} combra.ellipse.plot_beam_orientations(data, step, width, height, indices=None, save_path=None, show=True) -> None
+````{py:function} combra.ellipse.plot_beam_orientations(data, step, width, height, indices=None, save_path=None, show=True) -> matplotlib.figure.Figure
 
 Plot the ellipse rotation-angle distributions across classes.
 
 :param data: Rows from a beams parquet.
 :type data: list[dict]
-:param saved_image_name: Output filename.
-:type saved_image_name: str
 :param step: Histogram step to filter on.
 :type step: float
-:param N: Grid rows.
-:type N: int
-:param M: Grid columns.
-:type M: int
+:param width: Figure width and height, in inches.
+:type width: float
+:param height: Figure width and height, in inches.
+:type height: float
 :param indices: Class indices to draw. Default: `None`.
 :type indices: list[int] or None, optional
-:param save: Write the figure. Default: `False`.
-:type save: bool, optional
-:returns: Nothing. Renders the figure and, when `save=True`, writes it to disk.
-:rtype: None
+:param save_path: Filename stem; the PNG is written as ``{stem}_step_{step}.png``. If ``None`` (default), nothing is written.
+:type save_path: str or pathlib.Path, optional
+:param show: Call ``plt.show()`` after drawing.
+:type show: bool, default=True
+:returns: The drawn figure.
+:rtype: matplotlib.figure.Figure
 
 **Example**
 
@@ -120,8 +120,7 @@ Plot the ellipse rotation-angle distributions across classes.
 >>> import pyarrow.parquet as pq
 >>> from combra import ellipse
 >>> rows = pq.read_table('./beams/beams_n100.parquet').to_pylist()
->>> ellipse.plot_angles(rows, saved_image_name='angles.png',
-...                  step=4, N=2, M=2, save=False)
+>>> fig = ellipse.plot_beam_orientations(rows, step=4, width=7, height=7, show=False)
 ```
 ````
 
@@ -133,24 +132,26 @@ Side-by-side comparison of two parquet datasets at the same step.
 :type data_1: list[dict]
 :param data_2: Rows from the second beams parquet.
 :type data_2: list[dict]
-:param save_name: Output filename.
-:type save_name: str
 :param beam_types: Which fields to compare — e.g. `['a_beams', 'b_beams']`.
 :type beam_types: list[str]
-:param N: Grid rows.
-:type N: int
-:param M: Grid columns.
-:type M: int
+:param width: Figure width and height, in inches.
+:type width: float
+:param height: Figure width and height, in inches.
+:type height: float
 :param indices_1: Class indices from the first set to align.
 :type indices_1: list[int]
 :param indices_2: Class indices from the second set to align.
 :type indices_2: list[int]
-:param save: Write the figure. Default: `False`.
-:type save: bool, optional
+:param title: Prefix for each figure's suptitle. Default: `''`.
+:type title: str, optional
 :param scatter_size: Marker size. Default: `60`.
 :type scatter_size: int, optional
 :param font_size: Plot font size. Default: `20`.
 :type font_size: int, optional
+:param save_path: Filename stem; one PNG per beam type is written as ``{stem}_{beam_type}.png``. If ``None`` (default), nothing is written.
+:type save_path: str or pathlib.Path, optional
+:param show: Call ``plt.show()`` after drawing each figure.
+:type show: bool, default=True
 :returns: **fit_metrics** (*list[str]*) – One formatted `"<Δk%> <Δb%>"` string per aligned class pair — the relative differences of the linear-fit slope `k` and intercept `b` between the two datasets, in percent.
 :rtype: list[str]
 
@@ -161,15 +162,16 @@ Side-by-side comparison of two parquet datasets at the same step.
 >>> from combra import ellipse
 >>> rows_real = pq.read_table('./beams/real_n360.parquet').to_pylist()
 >>> rows_gen  = pq.read_table('./beams/gen_n10000.parquet').to_pylist()
->>> metrics = ellipse.plot_beam_compare(
-...     rows_real, rows_gen, save_name='compare.png',
-...     beam_types=['a_beams', 'b_beams'], N=2, M=2,
-...     indices_1=[0, 1], indices_2=[0, 1],
+>>> comparison = ellipse.plot_beam_compare(
+...     rows_real, rows_gen,
+...     beam_types=['a_beams', 'b_beams'], width=7, height=7,
+...     indices_1=[0, 1], indices_2=[0, 1], show=False,
 ... )
+>>> comparison.figures, comparison.metrics
 ```
 ````
 
-````{py:function} combra.ellipse.plot_beam_heatmap(data, step, indices=None, bin_max=30, width=7, height=7, font_size=20, scatter_size=60, save_path=None, show=True) -> None
+````{py:function} combra.ellipse.plot_beam_heatmap(data, step, indices=None, bin_max=30, width=7, height=7, font_size=20, scatter_size=60, save_path=None, show=True) -> list[matplotlib.figure.Figure]
 
 2-D heatmap of `(a_beam, b_beam)` pairs per class.
 
@@ -177,24 +179,24 @@ Side-by-side comparison of two parquet datasets at the same step.
 :type data: list[dict]
 :param step: Histogram step to filter on.
 :type step: float
-:param saved_names: Per-class display names (overrides `meta.name`).
-:type saved_names: list[str]
 :param indices: Class indices to draw. Default: `None`.
 :type indices: list[int] or None, optional
 :param bin_max: Upper bound on histogram axes. Default: `30`.
 :type bin_max: float, optional
-:param N: Heatmap bin count along rows. Default: `7`.
-:type N: int, optional
-:param M: Heatmap bin count along columns. Default: `7`.
-:type M: int, optional
+:param width: Figure width and height, in inches. Default: `7`.
+:type width: float, optional
+:param height: Figure width and height, in inches. Default: `7`.
+:type height: float, optional
 :param font_size: Plot font size. Default: `20`.
 :type font_size: int, optional
-:param save: Write the figure. Default: `False`.
-:type save: bool, optional
 :param scatter_size: Marker size. Default: `60`.
 :type scatter_size: int, optional
-:returns: Nothing. Renders the heatmaps and, when `save=True`, writes them to disk.
-:rtype: None
+:param save_path: Filename stem. Per-sample heatmaps are written as ``{stem}_{sample_name}.png`` and the combined ridge figure as ``{stem}_ridge_step_{step}.png``. If ``None`` (default), nothing is written.
+:type save_path: str or pathlib.Path, optional
+:param show: Call ``plt.show()`` after drawing each figure.
+:type show: bool, default=True
+:returns: One figure per sample, followed by the combined ridge figure.
+:rtype: list[matplotlib.figure.Figure]
 
 **Example**
 
@@ -202,12 +204,12 @@ Side-by-side comparison of two parquet datasets at the same step.
 >>> import pyarrow.parquet as pq
 >>> from combra import ellipse
 >>> rows = pq.read_table('./beams/beams_n100.parquet').to_pylist()
->>> ellipse.plot_beam_heatmap(rows, step=4, saved_names=['small', 'medium', 'large'],
-...                    indices=[0, 1, 2], bin_max=30, N=7, M=7)
+>>> figs = ellipse.plot_beam_heatmap(rows, step=4, indices=[0, 1, 2],
+...                              bin_max=30, width=7, height=7, show=False)
 ```
 ````
 
-````{py:function} combra.ellipse.plot_enclosing_ellipse(image, pos=0, tolerance=0.2, size=15, save_path=None, show=True) -> None
+````{py:function} combra.ellipse.plot_enclosing_ellipse(image, pos=0, tolerance=0.2, size=15, save_path=None, show=True) -> matplotlib.figure.Figure
 
 Plot a single polygon (index `pos`) and the ellipse fitted around it. Useful for sanity-checking `tolerance`.
 
@@ -217,10 +219,14 @@ Plot a single polygon (index `pos`) and the ellipse fitted around it. Useful for
 :type pos: int, optional
 :param tolerance: MVEE tolerance. Default: `0.2`.
 :type tolerance: float, optional
-:param N: Number of points sampled on the rendered ellipse. Default: `15`.
-:type N: int, optional
-:returns: Nothing. Renders the polygon and its fitted ellipse.
-:rtype: None
+:param size: Figure side length, in inches. Default: `15`.
+:type size: float, optional
+:param save_path: PNG path to write. If ``None`` (default), nothing is written.
+:type save_path: str or pathlib.Path, optional
+:param show: Call ``plt.show()`` after drawing.
+:type show: bool, default=True
+:returns: The drawn figure.
+:rtype: matplotlib.figure.Figure
 
 **Example**
 

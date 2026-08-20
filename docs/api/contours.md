@@ -85,7 +85,7 @@ Draw simplified contours onto a `PIL.Image`. When `corners=True`, also draws fil
 
 **Example**
 
-```pycon
+```{doctest}
 >>> import cv2
 >>> from PIL import Image
 >>> from skimage import color

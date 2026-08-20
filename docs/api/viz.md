@@ -49,7 +49,7 @@ alongside it.
 
 **Example**
 
-```pycon
+```{doctest}
 >>> from combra.viz import axis_style
 >>> xaxis = dict(title=dict(text='angle'), tickvals=[0, 180, 360], **axis_style())
 ```
@@ -62,5 +62,7 @@ Write a plotly ``fig`` to ``path`` as PNG (via kaleido).
 :param fig: A plotly figure.
 :param path: Output PNG path.
 :param scale: Raster scale factor. Default: `2`.
+:param png_meta: Metadata to embed as PNG ``tEXt`` chunks. Keys and values are coerced with :func:`str`; ``None`` (default) writes no metadata.
+:type png_meta: dict or None, optional
 :rtype: None
 ````

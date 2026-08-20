@@ -234,7 +234,7 @@ Build the ``(rows, cols)`` edge-weight grid consumed by ``optimize_path_energies
 
 **Example**
 
-```pycon
+```{doctest}
 >>> from combra import graph
 >>> # sweep WC-Co (rows) × WC-WC (cols), Co fixed at 10
 >>> energy_conf = graph.build_energy_grid(20, 20, const={0: 10}, row_key=1, col_key=3)
@@ -446,10 +446,6 @@ Interactive Plotly plot of the graph overlaid on ``img_contours``.
 :type g: networkx.DiGraph
 :param img_contours: Background image. Default: ``None``.
 :type img_contours: ndarray or None, optional
-:param name: Output filename when ``save=True``. Default: ``'graph.html'``.
-:type name: str, optional
-:param save: Write HTML to disk. Default: ``False``.
-:type save: bool, optional
 :param node_size: Plotly marker size. Default: ``12``.
 :type node_size: int, optional
 :param edge_width: Default edge line width. Default: ``2``.
@@ -458,6 +454,8 @@ Interactive Plotly plot of the graph overlaid on ``img_contours``.
 :type color_dict: dict or None, optional
 :param edge_width_dict: ``{edge_type: width}``. Default: ``None``.
 :type edge_width_dict: dict or None, optional
+:param save_path: Write the figure here. Default: `None` (nothing is written).
+:type save_path: str or Path or None, optional
 :returns: **fig** (*plotly.graph_objects.Figure*) – The assembled graph figure.
 :rtype: plotly.graph_objects.Figure
 
@@ -468,7 +466,7 @@ Interactive Plotly plot of the graph overlaid on ``img_contours``.
 ```
 ````
 
-````{py:function} combra.graph.plot_optimized_energies(energies, path_index=0, n_rows=6, n_cols=6, y_label='co_co_e', x_label='wc_co_e', fixed_paths=False, fontsize_h=10, fontsize_axes=30, save_path=None, show=True) -> None
+````{py:function} combra.graph.plot_optimized_energies(energies, path_index=0, n_rows=6, n_cols=6, y_label='co_co_e', x_label='wc_co_e', fixed_paths=False, fontsize_h=10, fontsize_axes=30, save_path=None, show=True) -> matplotlib.figure.Figure
 
 Heatmap of optimal path energies over the ``(Co, WC-Co)`` weight grid for path index ``path_index``.
 
@@ -476,26 +474,26 @@ Heatmap of optimal path energies over the ``(Co, WC-Co)`` weight grid for path i
 :type energies: list[list[list[DataFrame]]]
 :param path_index: Path rank to plot. Default: ``0``.
 :type path_index: int, optional
-:param N: Grid rows. Default: ``6``.
-:type N: int, optional
-:param M: Grid columns. Default: ``6``.
-:type M: int, optional
-:param name: Output filename when ``save=True``. Default: ``'test.jpg'``.
-:type name: str, optional
+:param n_rows: Subplot grid dimensions. Default: `6`.
+:type n_rows: int, optional
+:param n_cols: Subplot grid dimensions. Default: `6`.
+:type n_cols: int, optional
 :param y_label: Y-axis label. Default: ``'co_co_e'``.
 :type y_label: str, optional
 :param x_label: X-axis label. Default: ``'wc_co_e'``.
 :type x_label: str, optional
-:param save: Write the figure to ``name``. Default: ``False``.
-:type save: bool, optional
 :param fixed_paths: Read cells as fixed-path results (output of ``evaluate_path_energies``) instead of optimised k-shortest paths. Default: ``False``.
 :type fixed_paths: bool, optional
 :param fontsize_h: Heatmap annotation font size. Default: ``10``.
 :type fontsize_h: int, optional
 :param fontsize_axes: Axis label font size. Default: ``30``.
 :type fontsize_axes: int, optional
-:returns: Nothing. Renders the heatmap and, when ``save=True``, writes it to ``name``.
-:rtype: None
+:param save_path: Write the figure here. Default: `None` (nothing is written).
+:type save_path: str or Path or None, optional
+:param show: Display the figure. Default: `True`.
+:type show: bool, optional
+:returns: The figure is displayed (and optionally saved).
+:rtype: matplotlib.figure.Figure
 
 **Example**
 
@@ -509,7 +507,7 @@ Heatmap of optimal path energies over the ``(Co, WC-Co)`` weight grid for path i
 ```
 ````
 
-````{py:function} combra.graph.plot_paths(g, df, img_aligned, border=30, save_path=None, show=True) -> None
+````{py:function} combra.graph.plot_paths(g, df, img_aligned, border=30, save_path=None, show=True) -> matplotlib.figure.Figure
 
 Overlay the paths in ``df`` (output of ``find_shortest_energy_paths``) on the background image.
 
@@ -521,8 +519,12 @@ Overlay the paths in ``df`` (output of ``find_shortest_energy_paths``) on the ba
 :type img_aligned: ndarray
 :param border: Padding to compensate for. Default: ``30``.
 :type border: int, optional
-:returns: Nothing. Renders the path overlay.
-:rtype: None
+:param save_path: Write the figure here. Default: `None` (nothing is written).
+:type save_path: str or Path or None, optional
+:param show: Display the figure. Default: `True`.
+:type show: bool, optional
+:returns: The figure is displayed.
+:rtype: matplotlib.figure.Figure
 
 **Example**
 
@@ -536,7 +538,7 @@ Overlay the paths in ``df`` (output of ``find_shortest_energy_paths``) on the ba
 ```
 ````
 
-````{py:function} combra.graph.plot_optimized_paths(g, energies_paths, img_contours_o, param_1=10, param_2=10, save_path=None, show=True) -> None
+````{py:function} combra.graph.plot_optimized_paths(g, energies_paths, img_contours_o, param_1=10, param_2=10, save_path=None, show=True) -> matplotlib.figure.Figure
 
 Overlay the energy-optimised paths from ``optimize_path_energies`` on the contour image at grid position ``(param_1, param_2)``.
 
@@ -550,8 +552,12 @@ Overlay the energy-optimised paths from ``optimize_path_energies`` on the contou
 :type param_1: int, optional
 :param param_2: Grid column coordinate to draw. Default: ``10``.
 :type param_2: int, optional
-:returns: Nothing. Renders the optimised-path overlay.
-:rtype: None
+:param save_path: Write the figure here. Default: `None` (nothing is written).
+:type save_path: str or Path or None, optional
+:param show: Display the figure. Default: `True`.
+:type show: bool, optional
+:returns: The figure is displayed.
+:rtype: matplotlib.figure.Figure
 
 **Example**
 
@@ -562,26 +568,24 @@ Overlay the energy-optimised paths from ``optimize_path_energies`` on the contou
 ```
 ````
 
-````{py:function} combra.graph.plot_path_length_distribution(data, title=False, bins=60, xlim=None, save_path=None, show=True) -> None
+````{py:function} combra.graph.plot_path_length_distribution(data, title=False, bins=60, xlim=None, save_path=None, show=True) -> matplotlib.figure.Figure
 
 Histogram of crack-path lengths with vertical markers at the mean and ±1σ / ±2σ, plus a legend reporting count, mean and std. Replaces the ``plot_path_length_distribution`` helper hand-written in the crack notebooks.
 
 :param data: Path-length values to histogram.
 :type data: array-like
-:param name: Filename under ``folder`` when ``save=True``. Default: ``None``.
-:type name: str or None, optional
 :param title: Plot title; falsy for none. Default: ``False``.
 :type title: str or bool, optional
-:param folder: Output directory (created if missing). Default: ``'tmp'``.
-:type folder: str, optional
-:param save: Write the figure to ``folder/name``. Default: ``False``.
-:type save: bool, optional
 :param bins: Histogram bins. Default: ``60``.
 :type bins: int, optional
 :param xlim: ``(low, high)`` x-axis limits. Default: ``None``.
 :type xlim: tuple or None, optional
-:returns: Nothing. Renders the histogram and, when ``save=True``, writes it to disk.
-:rtype: None
+:param save_path: Write the figure here. Default: `None` (nothing is written).
+:type save_path: str or Path or None, optional
+:param show: Display the figure. Default: `True`.
+:type show: bool, optional
+:returns: The figure that was drawn; written to disk when `save_path` is given.
+:rtype: matplotlib.figure.Figure
 
 **Example**
 
@@ -648,7 +652,7 @@ The `{edge_type: weight}` mapping the solver consumes, i.e.
 
 **Example**
 
-```pycon
+```{doctest}
 >>> from combra.graph import EnergyWeights, evaluate_path_energies
 >>> base = EnergyWeights(co=15, wc_co=15, wc=20, wc_wc=0)
 >>> sweep = EnergyWeights(co=20, wc_co=20, wc=20, wc_wc=0)   # 20x20 Co x WC-Co grid

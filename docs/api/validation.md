@@ -29,7 +29,7 @@ For each shape it prints the expected vs. estimated dimension and the relative e
 
 **Example**
 
-```pycon
+```{doctest}
 >>> import numpy as np
 >>> from combra import validation
 >>> validation.check_fractal_dimension(sizes=np.array([2, 3, 4, 6, 8, 12, 16, 24, 32]))
