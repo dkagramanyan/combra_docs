@@ -174,7 +174,7 @@ the (cached) reference features.
 >>> fid = frechet_from_features(ref_feats, gen_feats)          # == compute_fid(real, gen)
 ```
 
-````{py:function} combra.metrics.fid_features(images, device=None, batch_size=50, dims=2048, data_range=None) -> ndarray
+````{py:function} combra.metrics.fid_features(images, device=None, batch_size=50, dims=2048, data_range=None, amp=False) -> ndarray
 
 Feature half of {py:func}`combra.metrics.compute_fid`: run `images` through InceptionV3 and return the pooled activations as a float32 array `[N, dims]`. Pair with {py:func}`combra.metrics.frechet_from_features`. Same `device` / `batch_size` / `dims` semantics as `compute_fid`.
 
@@ -190,6 +190,10 @@ Feature half of {py:func}`combra.metrics.compute_fid`: run `images` through Ince
 :type data_range: tuple or None, optional
 :returns: **features** (*ndarray*) – InceptionV3 features, shape `[N, dims]`.
 :rtype: ndarray
+:param amp: Run the backbone forward under fp16 `torch.autocast` on CUDA. Off by
+    default so results match the documented fp32 values; on an RTX 3090 it roughly
+    triples CLIP throughput and moves the metric by well under 0.1%. Default: `False`.
+:type amp: bool, optional
 ````
 
 ````{py:function} combra.metrics.frechet_from_features(reference_features, generated_features) -> float
@@ -204,7 +208,7 @@ The distance half shared by every Fréchet-distance metric (FID and FD-DINOv2): 
 :rtype: float
 ````
 
-````{py:function} combra.metrics.cmmd_features(images, model_name='ViT-L-14-336-quickgelu', pretrained='openai', device=None, batch_size=64, data_range=None) -> ndarray
+````{py:function} combra.metrics.cmmd_features(images, model_name='ViT-L-14-336-quickgelu', pretrained='openai', device=None, batch_size=64, data_range=None, amp=False) -> ndarray
 
 Feature half of {py:func}`combra.metrics.compute_cmmd`: the per-image CLIP embeddings as a float32 array `[N, D]`. Pair with {py:func}`combra.metrics.cmmd_from_features`.
 
@@ -222,6 +226,10 @@ Feature half of {py:func}`combra.metrics.compute_cmmd`: the per-image CLIP embed
 :type data_range: tuple or None, optional
 :returns: **features** (*ndarray*) – CLIP embeddings, shape `[N, D]`.
 :rtype: ndarray
+:param amp: Run the backbone forward under fp16 `torch.autocast` on CUDA. Off by
+    default so results match the documented fp32 values; on an RTX 3090 it roughly
+    triples CLIP throughput and moves the metric by well under 0.1%. Default: `False`.
+:type amp: bool, optional
 ````
 
 ````{py:function} combra.metrics.cmmd_from_features(reference_features, generated_features, sigma=10.0, scale=1000.0, device=None, block=1024) -> float
@@ -244,7 +252,7 @@ Distance half of {py:func}`combra.metrics.compute_cmmd`: the Gaussian-RBF MMD be
 :rtype: float
 ````
 
-````{py:function} combra.metrics.fd_dinov2_features(images, model_name='dinov2_vitb14', device=None, batch_size=64, image_size=224, data_range=None) -> ndarray
+````{py:function} combra.metrics.fd_dinov2_features(images, model_name='dinov2_vitb14', device=None, batch_size=64, image_size=224, data_range=None, amp=False) -> ndarray
 
 Feature half of {py:func}`combra.metrics.compute_fd_dinov2`: the per-image DINOv2 features as a float32 array `[N, D]`. Pair with {py:func}`combra.metrics.frechet_from_features`.
 
@@ -262,6 +270,10 @@ Feature half of {py:func}`combra.metrics.compute_fd_dinov2`: the per-image DINOv
 :type data_range: tuple or None, optional
 :returns: **features** (*ndarray*) – DINOv2 features, shape `[N, D]`.
 :rtype: ndarray
+:param amp: Run the backbone forward under fp16 `torch.autocast` on CUDA. Off by
+    default so results match the documented fp32 values; on an RTX 3090 it roughly
+    triples CLIP throughput and moves the metric by well under 0.1%. Default: `False`.
+:type amp: bool, optional
 ````
 
 ### Angle-Wasserstein metrics
@@ -456,17 +468,113 @@ The three image-feature metrics run **sequentially**. They share one device and 
 ```
 ````
 
+## Distributed evaluation
+
+`combra.metrics.distributed` is the sharded eval harness the four model repos share.
+Every rank extracts features and pooled angles from its own shard; only the small
+feature rows and 1-D angle arrays cross the wire, and rank 0 takes the distances. The
+result is **exact**, not an approximation — verified against a single-process pass,
+the ten angle-density metrics come back bit-identical and the Fréchet distances agree
+to ~1e-8.
+
+It needs `torch`, so it lives behind the `[metrics]` extra and imports nothing until
+called. A caller supplies only what is model-specific: how to produce a shard of
+generated images as `uint8`.
+
+````{py:function} combra.metrics.distributed.precompute_reference(images_u8, device, rank, world_size, *, amp=False) -> tuple
+
+Extract and gather the reference side once, before the training loop. Returns
+`(reference, ok)`: `reference` is `{"angles": [M], "feat": {name: [N, D]}}` on rank 0
+and `None` elsewhere, and `ok` is a rank-uniform success flag — gate the per-tick eval
+on `ok`, not on `reference is not None`, which is also `None` on every non-zero rank.
+
+:param images_u8: This rank's slice of the real reference images.
+:type images_u8: ndarray
+:param device: Device for the feature backbones.
+:param rank: Rank of this process.
+:type rank: int
+:param world_size: Size of the process group.
+:type world_size: int
+:param amp: Run the backbones under fp16 autocast.
+:type amp: bool, optional
+````
+
+````{py:function} combra.metrics.distributed.gather_generated(images_u8, device, rank, world_size, *, amp=False) -> tuple
+
+Extract and gather the generated side for one eval tick. Returns `(features, angles)`
+on rank 0, with `None` values elsewhere. **Every rank must call this** — the gathers
+are collectives, so a rank that skips them hangs the ones that do not.
+
+:param images_u8: This rank's shard of generated images.
+:type images_u8: ndarray
+:param device: Device for the feature backbones.
+:param rank: Rank of this process.
+:type rank: int
+:param world_size: Size of the process group.
+:type world_size: int
+:param amp: Run the backbones under fp16 autocast.
+:type amp: bool, optional
+````
+
+````{py:function} combra.metrics.distributed.distributed_metrics(reference, generated_angles, generated_features, device=None, step=None) -> dict
+
+Rank-0 metrics from the already-gathered sides — equivalent to
+{py:func}`combra.metrics.compute_all_metrics` with `image_metrics=True`, but sharded.
+Pass `device` explicitly: left unset, the CMMD reduction resolves its own device, so a
+CPU extraction silently reduces on CUDA and the two do not agree bit-for-bit.
+
+:param reference: The cached reference from `precompute_reference`.
+:type reference: dict
+:param generated_angles: Pooled generated angles from `gather_generated`.
+:param generated_features: Gathered generated features from `gather_generated`.
+:type generated_features: dict
+:param device: Device for the CMMD reduction.
+:param step: Angle histogram bin width.
+:type step: float, optional
+````
+
+````{py:function} combra.metrics.distributed.all_ranks_ok(ok, device, world_size) -> bool
+
+Rank-uniform agreement on whether local work succeeded. Call between the purely local
+extraction and the collectives: without it a single rank's failure leaves the others
+blocked in `gather` until the NCCL watchdog fires, which surfaces as a timeout rather
+than the actual error.
+
+:param ok: Whether this rank's local work succeeded.
+:type ok: bool
+:param device: Device for the reduction tensor.
+:param world_size: Size of the process group.
+:type world_size: int
+````
+
+````{py:function} combra.metrics.distributed.angle_workers(world_size) -> int
+
+CPU processes for the angle extraction on one rank, divided by the rank count — every
+rank on an 8-GPU node asking for `min(32, cpu_count)` oversubscribes the box eightfold.
+
+:param world_size: Number of ranks sharing the machine.
+:type world_size: int
+````
+
 ## Startup check & normalization
 
-````{py:function} combra.metrics.self_test(image_metrics=False, device=None, size=64) -> dict
+````{py:function} combra.metrics.self_test(image_metrics=False, device=None, size=128, *, strict=False, images=None, n_polygons=40) -> dict
 
 Verify combra's metric pipeline is importable and runnable **before** a training
-run — the single shared implementation the model training loops call at startup
-(replacing the private per-repo copies). Runs the full
-{py:func}`~combra.metrics.compute_all_metrics` gather on two tiny synthetic grain
-batches; the angle-density metrics must come back finite (else it raises
-`RuntimeError`). With `image_metrics=True` the image-feature backends are
-exercised too, each allowed to be `nan` (missing optional dep / no network).
+run — the shared implementation the model training loops call at startup. Runs the
+full {py:func}`~combra.metrics.compute_all_metrics` gather; the angle-density
+metrics must come back finite, else it raises `RuntimeError`.
+
+Pass `strict=True` together with `image_metrics=True` to require the InceptionV3 /
+CLIP / DINOv2 metrics to be finite as well. That is what a training loop wants: a
+missing CLIP download otherwise surfaces as a whole run logging `nan` for
+`combra_fid` / `combra_cmmd` / `combra_fd_dinov2`. Pass `images=` to score a real
+reference batch against itself instead of synthetic grains.
+
+`size` and `n_polygons` set the synthetic geometry and default to ~300 vertex
+angles, enough to constrain the six-parameter bimodal fit. They were raised from
+`size=64, n_polygons=10`, a sample measured to fit degenerately on 6 of 12 seeds —
+it passed only because the seed is hardcoded to a lucky one.
 
 :param image_metrics: Also exercise the FID / CMMD / FD-DINOv2 backends. Default: `False`.
 :type image_metrics: bool, optional

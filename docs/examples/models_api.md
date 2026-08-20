@@ -62,8 +62,10 @@ Every repo follows the same conventions:
   `Metrics/combra_cmmd`, `Metrics/combra_fd_dinov2`, `Metrics/combra_fid_best`,
   `Metrics/combra_num_fid_samples` + the angle metrics) and `stats.jsonl` in all
   four repos, so post-hoc snapshot selection survives loss of the tfevents file.
-  Each repo carries its own copy of the shard-generate → extract → gather harness;
-  combra supplies the metric primitives, not the distribution plumbing.
+  The harness itself is {py:func}`combra.metrics.distributed.precompute_reference` /
+  `gather_generated` / `distributed_metrics` — one implementation shared by all four,
+  not four copies. Each repo supplies only what is model-specific: how to produce a
+  shard of generated images, and its float→uint8 denormalisation.
 - **combra install is `combra[metrics]`, and Python is 3.12+.** All four `[combra]`
   extras request `combra[metrics] @ git+https://…`, not bare `combra`: since combra
   0.5.0 the torch / `pytorch-fid` / `open-clip-torch` stack lives behind that extra,
@@ -197,7 +199,10 @@ model-family details, not tooling drift:
    4 kimg/tick × 50 ticks = 200 kimg between snapshots, EDM2-v2 to 128 × 64 = 8 192
    kimg, DiffiT-v2 to its per-`--cfg` values. Set `--tick`/`--snap` explicitly when
    comparing runs across repos.
-6. **The sharded eval harness is per-repo.** Each repo owns its shard-generate →
-   extract → all-gather → distance code. combra supplies the metric primitives
-   (feature extractors, distances, `angle_density_metrics_from_pooled`) and stays out
-   of the distribution plumbing, so it carries no `torch.distributed` dependency.
+6. **The sharded eval harness is shared, not per-repo.** It lives in
+   {py:mod}`combra.metrics.distributed`, behind the `[metrics]` extra that every repo
+   already installs, so combra's dependency-light core still carries no torch. The four
+   private copies had drifted apart — two used `all_gather` and two `gather`, two
+   reported a failure flag and two could not — which is why they were merged. A 2-rank
+   check pins the result: the ten angle-density metrics are bit-identical to a
+   single-process pass and the Fréchet distances agree to ~1e-8.

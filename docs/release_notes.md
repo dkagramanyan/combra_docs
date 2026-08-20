@@ -1,0 +1,74 @@
+# Release notes
+
+combra's changelog, and pointers to the four model repos' own.
+
+```{note}
+Until now no changelog reached a reader of this site. Someone reading the published
+documentation could not discover that san-v2 dropped `--resume`, or that the
+bimodal-Gaussian metrics changed to return `nan` for a degenerate fit — every
+changelog lived only in a private code repository.
+```
+
+## combra
+
+The authoritative copy is `CHANGELOG.md` in the combra repository; the highlights
+below track what changes for a *user* of the library.
+
+### Unreleased
+
+**Added**
+
+- {py:mod}`combra.metrics.distributed` — the sharded evaluation harness, moved into
+  combra from the four model repos that each carried a copy. One implementation now,
+  behind the `[metrics]` extra.
+- {py:func}`combra.io.flatten_hparams` / {py:func}`combra.io.write_hparams` — record a
+  run's configuration in TensorBoard's HPARAMS tab.
+- `amp=False` on {py:func}`combra.metrics.fid_features`,
+  {py:func}`combra.metrics.cmmd_features` and
+  {py:func}`combra.metrics.fd_dinov2_features` — opt-in fp16 autocast, roughly 2.9×
+  on the CLIP forward for a metric shift well under 0.1%.
+- `strict=True` and `images=` on {py:func}`combra.metrics.self_test`, so a training
+  loop can require the image-feature backends to be finite and can validate against
+  its own reference batch.
+
+**Fixed**
+
+- The angle worker pool ran serial on most real batches (a fixed `chunksize=64`).
+  7.2× at 64 images, 10.0× at 256, both measured at 512 px.
+- `self_test`'s synthetic sample was too small to constrain a bimodal fit — degenerate
+  on 6 of 12 seeds, passing only because its seed is hardcoded.
+
+### 0.7.1
+
+- {py:func}`combra.fitting.fit_bimodal_gaussian` could fit a mode outside the angle
+  domain, and the gauss metrics blew up when it did.
+
+### 0.7.0
+
+- {py:func}`combra.metrics.angle_density_metrics_from_pooled` restored — its removal
+  in 0.5.0 had silently disabled the model repos' combra metrics.
+- The metrics path no longer guesses image ranges; `data_range` is explicit.
+
+```{seealso}
+The bimodal-Gaussian metrics return **signed relative errors**, not distances. They
+can be negative, and they are `nan` when either fit is not two real modes — see
+{py:func}`combra.metrics.gauss_density_metrics`.
+```
+
+## Model repositories
+
+Each fork keeps its own `CHANGELOG.md`; {doc}`examples/models_api` is the cross-model
+map of what they share.
+
+| repo | current | changelog |
+| --- | --- | --- |
+| san-v2 | 0.3.0 | `CHANGELOG.md` in [san-v2](https://github.com/dkagramanyan/san-v2) |
+| StyleSwin-v2 | 0.3.0 | `CHANGELOG.md` in [StyleSwin-v2](https://github.com/dkagramanyan/StyleSwin-v2) |
+| DiffiT-v2 | 3.1.0 | `CHANGELOG.md` in [DiffiT-v2](https://github.com/dkagramanyan/DiffiT-v2) |
+| EDM2-v2 | 3.1.0 | `CHANGELOG.md` in [edm2-v2](https://github.com/dkagramanyan/edm2-v2) |
+
+The current cycle in all four: the conda environments moved to Python 3.12 (they were
+still 3.11, so `pip install -e .` could not succeed and combra was absent everywhere);
+the sharded eval harness moved into combra; hyperparameters now reach TensorBoard; and
+thirteen divergent scalar keys were settled against the §7 contract and pinned by a
+test in each repo.

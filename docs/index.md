@@ -17,6 +17,7 @@ distribution metrics.
 
 get_started
 glossary
+release_notes
 ```
 
 ```{toctree}

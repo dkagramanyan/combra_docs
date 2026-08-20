@@ -435,8 +435,21 @@ sizes, GPU counts and repos:
 | `LearningRate/*` | effective learning rates (`G`/`D`, or `lr`) | every tick |
 | `Timing/*` | sec/tick, sec/kimg, eval time | every tick |
 | `Resources/*` | GPU / CPU memory | every tick |
-| `Metrics/combra_*` | the §6 combra metrics | every snapshot tick, step-held between |
+| `Metrics/combra_*` | the §6 combra metrics | every snapshot tick; **not** step-held |
 | `Fakes` | EMA sample grid (image) | every snapshot tick |
+
+```{versionchanged} 2026-08-20
+**`Metrics/combra_*` are not step-held.** This table originally said the metric row was
+held between snapshot ticks. All four repos deliberately do the opposite: a tick with no
+eval writes no combra columns. Repeating the previous tick's values at a new step turns
+the metric curves into step functions and lets post-hoc snapshot selection resolve to a
+kimg that was never evaluated.
+
+**One shared `self_test` and one shared harness.** §6's "one shared implementation"
+and §7's "global step = `cur_nimg` everywhere" are now true of all four repos; they were
+not when written. DiffiT-v2 and EDM2-v2 carried private `combra_smoke_test` copies, and
+san-v2 and EDM2-v2 logged the step in kimg.
+```
 
 `stats.jsonl` keys are part of the contract, not an implementation detail:
 the wc_cv analysis layer reads them directly (e.g.

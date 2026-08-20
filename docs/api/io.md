@@ -119,6 +119,42 @@ Map event `steps` to a training-progress fraction in `[0, 1]` by interpolating t
 :rtype: numpy.ndarray
 ````
 
+## Hyperparameters
+
+````{py:function} combra.io.flatten_hparams(config, prefix='') -> dict
+
+Flatten a nested launch configuration into the scalar/string values TensorBoard's
+HPARAMS plugin accepts. `add_hparams` takes only `bool` / `int` / `float` / `str`,
+while a training config is nested and full of dicts, lists and `None`; this joins
+nested keys with `/`, renders anything else as `repr`, and drops empty containers.
+
+:param config: The resolved launch configuration.
+:type config: dict
+:param prefix: Key prefix, used by the recursion.
+:type prefix: str, optional
+:returns: Flat mapping safe to hand to `add_hparams`.
+:rtype: dict
+````
+
+````{py:function} combra.io.write_hparams(writer, config, metrics=None) -> None
+
+Record a run's configuration in TensorBoard's HPARAMS tab. Flattens `config` with
+{py:func}`combra.io.flatten_hparams` first, and swallows any writer error so a
+logging convenience can never abort a training run. Pass `metrics` — typically the
+run's final `Metrics/combra_fid_best` — so the HPARAMS table can rank runs;
+TensorBoard hides configurations that carry none.
+
+All four model repos call this at the end of training, reading the config back from
+the `training_options.json` their launcher already wrote.
+
+:param writer: The run's `SummaryWriter`.
+:type writer: torch.utils.tensorboard.SummaryWriter
+:param config: The resolved launch configuration.
+:type config: dict
+:param metrics: Metrics to associate with this configuration.
+:type metrics: dict, optional
+````
+
 ## See also
 
 - {py:class}`combra.data.MicrostructureDataset` — writes these parquets via `generate_angles` / `generate_beams`.
