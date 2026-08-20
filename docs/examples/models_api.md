@@ -13,7 +13,8 @@ per-repo migration deltas — is in {doc}`models_api_proposal`.
 
 ```{note}
 **All four repos now implement the v2 convention** ({doc}`models_api_proposal`).
-san-v2 (v0.2.0), StyleSwin-v2, DiffiT-v2 and EDM2-v2 each expose the shared API:
+san-v2 (v0.3.0), StyleSwin-v2 (v0.3.0), DiffiT-v2 (v3.1.0) and EDM2-v2 (v3.1.0)
+each expose the shared API:
 console scripts, the unified training CLI (`--precision`/`--tf32`/`--bench`,
 `True/False` booleans, kimg/tick progress), EMA-only `.pt` inference snapshots
 (atomic, no resume/best/latest/final), the unified HDF5 generation signature

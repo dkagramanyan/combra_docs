@@ -32,7 +32,7 @@ Checkpoints).
    combra metrics, install combra first (so DiffiT can find it), then DiffiT-v2:
 
    ```bash
-   pip install -e /path/to/combra   # the combra checkout (or wc_cv/combra submodule)
+   pip install -e /path/to/combra   # the combra checkout
    pip install -e .                 # run in the DiffiT-v2 checkout
    ```
 

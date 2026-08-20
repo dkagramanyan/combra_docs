@@ -32,7 +32,7 @@ import, so the env needs `nvcc` and `ninja`. `nvcc` comes from the system CUDA m
 installed from conda (a pip `ninja` conflicts with conda's). torch comes from the CUDA wheel index:
 
 ```bash
-conda create -n styleswin python=3.12 -y && conda activate styleswin
+conda create -n styleswin-v2 python=3.12 -y && conda activate styleswin-v2
 pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu132
 conda install anaconda::ninja -y         # torch's JIT build backend
 pip install -e .                         # base deps + console scripts, from the repo root

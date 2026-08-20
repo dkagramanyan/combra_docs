@@ -2,7 +2,7 @@
 
 [**san-v2**](https://github.com/dkagramanyan/san-v2) is a fork of Sony's
 StyleSAN-XL (Slicing Adversarial Network, StyleGAN3 + Projected GAN) used to
-generate WC-Co microstructure SEM images. As of **v0.2.0** it implements the v2
+generate WC-Co microstructure SEM images. As of **v0.3.0** it implements the v2
 model API convention specified in {doc}`models_api_proposal` (§12); this page
 documents that API. On every **snapshot** tick it scores generated samples with
 combra's sharded split-API metrics (numerically equivalent to
