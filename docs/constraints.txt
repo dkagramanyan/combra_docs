@@ -1,0 +1,44 @@
+# Pinned toolchain for a reproducible / offline docs build.
+#
+# `docs/requirements.txt` declares floors; this file pins the exact transitive
+# closure that built the site, so an offline install can be satisfied from a
+# wheel cache and a CI build cannot drift under us:
+#
+#   pip install -r docs/requirements.txt -c docs/constraints.txt
+#
+# Regenerate after intentionally upgrading the toolchain -- see
+# .claude/skills/run-combra-docs/SKILL.md.
+accessible-pygments==0.0.5
+alabaster==1.0.0
+babel==2.18.0
+beautifulsoup4==4.15.0
+certifi==2026.7.22
+charset-normalizer==3.5.1
+docutils==0.22.4
+idna==3.19
+imagesize==2.0.0
+Jinja2==3.1.6
+markdown-it-py==4.2.0
+MarkupSafe==3.0.3
+mdit-py-plugins==0.6.1
+mdurl==0.1.2
+myst-parser==5.1.0
+packaging==26.2
+pydata-sphinx-theme==0.20.0
+Pygments==2.21.0
+PyYAML==6.0.3
+requests==2.34.2
+roman-numerals==4.1.0
+snowballstemmer==3.1.1
+soupsieve==2.9.2
+Sphinx==9.1.0
+sphinx-copybutton==0.5.2
+sphinx_design==0.7.0
+sphinxcontrib-applehelp==2.0.0
+sphinxcontrib-devhelp==2.0.0
+sphinxcontrib-htmlhelp==2.1.0
+sphinxcontrib-jsmath==1.0.1
+sphinxcontrib-qthelp==2.0.0
+sphinxcontrib-serializinghtml==2.0.0
+typing_extensions==4.16.0
+urllib3==2.7.0
