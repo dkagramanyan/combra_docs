@@ -52,7 +52,7 @@ of these feature metrics — `compute_fid` scores two in-memory image batches, a
 core dependency, so a plain `pip install combra` covers them; the DINOv2 backbone is
 fetched from `torch.hub` on first use.
 
-````{py:function} combra.metrics.compute_fid(reference_images, generated_images, device=None, batch_size=50, dims=2048, reference_cache=None) -> float
+````{py:function} combra.metrics.compute_fid(reference_images, generated_images, device=None, batch_size=50, dims=2048, reference_cache=None, data_range=None) -> float
 
 Classic InceptionV3 FID between two **in-memory image batches** (a numpy array or torch tensor), using the [pytorch-fid](https://github.com/mseitzer/pytorch-fid) InceptionV3 backbone (a core dependency). Runs every image through InceptionV3 and returns the Fréchet distance between the two activation distributions. Like every Fréchet-distance metric it estimates a per-side covariance, so it needs **≥ 2 images per side** and raises `ValueError` otherwise. The weights are downloaded and cached by pytorch-fid on first use. `compute_all_metrics` computes this same metric under its `fid` key. Runs on PyTorch, selecting CUDA automatically when available.
 
@@ -68,6 +68,8 @@ Classic InceptionV3 FID between two **in-memory image batches** (a numpy array o
 :type dims: int, optional
 :param reference_cache: Opt-in dict memoising the reference `(mu, sigma)` across calls. Default: `None`.
 :type reference_cache: dict or None, optional
+:param data_range: Declared float range of the image input, e.g. `(-1, 1)`. **Required for anything that is not already `uint8`** — the range is never inferred. See {py:func}`combra.image.to_uint8`. Default: `None`.
+:type data_range: tuple or None, optional
 :returns: **fid** (*float*) – The Fréchet (FID) distance. `0.0` when both batches are identical.
 :rtype: float
 
@@ -82,7 +84,7 @@ Classic InceptionV3 FID between two **in-memory image batches** (a numpy array o
 `compute_fid` works from images; for sharded or distributed evaluation the feature-extraction and distance halves are exposed separately as {py:func}`combra.metrics.fid_features` / {py:func}`combra.metrics.frechet_from_features` (see [Sharded feature extraction](#sharded-feature-extraction) below). combra does not expose the raw mean/covariance (`mu`/`sigma`) form directly.
 ````
 
-````{py:function} combra.metrics.compute_cmmd(reference_images, generated_images, model_name='ViT-L-14-336-quickgelu', pretrained='openai', device=None, batch_size=64, sigma=10.0, scale=1000.0, reference_cache=None) -> float
+````{py:function} combra.metrics.compute_cmmd(reference_images, generated_images, model_name='ViT-L-14-336-quickgelu', pretrained='openai', device=None, batch_size=64, sigma=10.0, scale=1000.0, reference_cache=None, data_range=None) -> float
 
 CLIP-MMD (CMMD) between a reference and a generated image set. Features come from a ready CLIP model loaded with [open_clip](https://github.com/mlfoundations/open_clip); the distance is the Gaussian-RBF Maximum Mean Discrepancy of [Google's CMMD](https://github.com/google-research/google-research/tree/master/cmmd) (`sigma=10`, `scale=1000`). CMMD uses kernel means (no covariance), so each side may be a **single image or a batch**.
 
@@ -104,6 +106,8 @@ CLIP-MMD (CMMD) between a reference and a generated image set. Features come fro
 :type scale: float, optional
 :param reference_cache: Opt-in dict memoising the reference CLIP embedding across calls. Default: `None`.
 :type reference_cache: dict or None, optional
+:param data_range: Declared float range of the image input, e.g. `(-1, 1)`. **Required for anything that is not already `uint8`** — the range is never inferred. See {py:func}`combra.image.to_uint8`. Default: `None`.
+:type data_range: tuple or None, optional
 :returns: **cmmd** (*float*) – The scaled CLIP-MMD distance.
 :rtype: float
 
@@ -116,7 +120,7 @@ CLIP-MMD (CMMD) between a reference and a generated image set. Features come fro
 ```
 ````
 
-````{py:function} combra.metrics.compute_fd_dinov2(reference_images, generated_images, model_name='dinov2_vitb14', device=None, batch_size=64, image_size=224, reference_cache=None) -> float
+````{py:function} combra.metrics.compute_fd_dinov2(reference_images, generated_images, model_name='dinov2_vitb14', device=None, batch_size=64, image_size=224, reference_cache=None, data_range=None) -> float
 
 Fréchet distance between the [DINOv2](https://github.com/facebookresearch/dinov2) features of two image sets. The backbone is loaded from `torch.hub` (`facebookresearch/dinov2`); the Fréchet distance itself is the same one {py:func}`combra.metrics.frechet_from_features` computes. Like FID, it estimates a per-side covariance, so it needs **≥ 2 images per side** and raises `ValueError` on a single image.
 
@@ -134,6 +138,8 @@ Fréchet distance between the [DINOv2](https://github.com/facebookresearch/dinov
 :type image_size: int, optional
 :param reference_cache: Opt-in dict memoising the reference `(mu, sigma)` across calls. Default: `None`.
 :type reference_cache: dict or None, optional
+:param data_range: Declared float range of the image input, e.g. `(-1, 1)`. **Required for anything that is not already `uint8`** — the range is never inferred. See {py:func}`combra.image.to_uint8`. Default: `None`.
+:type data_range: tuple or None, optional
 :returns: **fd** (*float*) – Fréchet distance between the two DINOv2 feature sets.
 :rtype: float
 ````
@@ -168,7 +174,7 @@ the (cached) reference features.
 >>> fid = frechet_from_features(ref_feats, gen_feats)          # == compute_fid(real, gen)
 ```
 
-````{py:function} combra.metrics.fid_features(images, device=None, batch_size=50, dims=2048) -> ndarray
+````{py:function} combra.metrics.fid_features(images, device=None, batch_size=50, dims=2048, data_range=None) -> ndarray
 
 Feature half of {py:func}`combra.metrics.compute_fid`: run `images` through InceptionV3 and return the pooled activations as a float32 array `[N, dims]`. Pair with {py:func}`combra.metrics.frechet_from_features`. Same `device` / `batch_size` / `dims` semantics as `compute_fid`.
 
@@ -180,6 +186,8 @@ Feature half of {py:func}`combra.metrics.compute_fid`: run `images` through Ince
 :type batch_size: int, optional
 :param dims: Dimensionality of the InceptionV3 feature layer. Default: `2048`.
 :type dims: int, optional
+:param data_range: Declared float range of the image input, e.g. `(-1, 1)`. **Required for anything that is not already `uint8`** — the range is never inferred. See {py:func}`combra.image.to_uint8`. Default: `None`.
+:type data_range: tuple or None, optional
 :returns: **features** (*ndarray*) – InceptionV3 features, shape `[N, dims]`.
 :rtype: ndarray
 ````
@@ -196,7 +204,7 @@ The distance half shared by every Fréchet-distance metric (FID and FD-DINOv2): 
 :rtype: float
 ````
 
-````{py:function} combra.metrics.cmmd_features(images, model_name='ViT-L-14-336-quickgelu', pretrained='openai', device=None, batch_size=64) -> ndarray
+````{py:function} combra.metrics.cmmd_features(images, model_name='ViT-L-14-336-quickgelu', pretrained='openai', device=None, batch_size=64, data_range=None) -> ndarray
 
 Feature half of {py:func}`combra.metrics.compute_cmmd`: the per-image CLIP embeddings as a float32 array `[N, D]`. Pair with {py:func}`combra.metrics.cmmd_from_features`.
 
@@ -210,11 +218,13 @@ Feature half of {py:func}`combra.metrics.compute_cmmd`: the per-image CLIP embed
 :type device: str or torch.device or None, optional
 :param batch_size: Forward-pass batch size. Default: `64`.
 :type batch_size: int, optional
+:param data_range: Declared float range of the image input, e.g. `(-1, 1)`. **Required for anything that is not already `uint8`** — the range is never inferred. See {py:func}`combra.image.to_uint8`. Default: `None`.
+:type data_range: tuple or None, optional
 :returns: **features** (*ndarray*) – CLIP embeddings, shape `[N, D]`.
 :rtype: ndarray
 ````
 
-````{py:function} combra.metrics.cmmd_from_features(reference_features, generated_features, sigma=10.0, scale=1000.0) -> float
+````{py:function} combra.metrics.cmmd_from_features(reference_features, generated_features, sigma=10.0, scale=1000.0, device=None, block=1024) -> float
 
 Distance half of {py:func}`combra.metrics.compute_cmmd`: the Gaussian-RBF MMD between two CLIP-embedding sets produced by {py:func}`combra.metrics.cmmd_features`.
 
@@ -226,11 +236,15 @@ Distance half of {py:func}`combra.metrics.compute_cmmd`: the Gaussian-RBF MMD be
 :type sigma: float, optional
 :param scale: Multiplier applied to the MMD². Default: `1000.0`.
 :type scale: float, optional
+:param device: Torch device for the kernel accumulation. When `None`, picks `'cuda'` if available, else `'cpu'`. Default: `None`.
+:type device: str or torch.device or None, optional
+:param block: Rows per accumulation stripe. The three kernel means are accumulated in `block`-row stripes, so no `N x N` matrix is materialised; the result does not depend on this value. Default: `1024`.
+:type block: int, optional
 :returns: **cmmd** (*float*) – Scaled CLIP-MMD distance.
 :rtype: float
 ````
 
-````{py:function} combra.metrics.fd_dinov2_features(images, model_name='dinov2_vitb14', device=None, batch_size=64, image_size=224) -> ndarray
+````{py:function} combra.metrics.fd_dinov2_features(images, model_name='dinov2_vitb14', device=None, batch_size=64, image_size=224, data_range=None) -> ndarray
 
 Feature half of {py:func}`combra.metrics.compute_fd_dinov2`: the per-image DINOv2 features as a float32 array `[N, D]`. Pair with {py:func}`combra.metrics.frechet_from_features`.
 
@@ -244,6 +258,8 @@ Feature half of {py:func}`combra.metrics.compute_fd_dinov2`: the per-image DINOv
 :type batch_size: int, optional
 :param image_size: Square size images are resized to before the backbone. Default: `224`.
 :type image_size: int, optional
+:param data_range: Declared float range of the image input, e.g. `(-1, 1)`. **Required for anything that is not already `uint8`** — the range is never inferred. See {py:func}`combra.image.to_uint8`. Default: `None`.
+:type data_range: tuple or None, optional
 :returns: **features** (*ndarray*) – DINOv2 features, shape `[N, D]`.
 :rtype: ndarray
 ````
@@ -287,7 +303,7 @@ All four angle-Wasserstein distances in a single pass, returned as a dict `{'w1'
 The density-level core (used by the parquet comparison path) lives at `combra.metrics.wasserstein.wasserstein_density_metrics` if you need to call it on `(x, y)` densities directly.
 ````
 
-````{py:function} combra.metrics.images_to_angle_density(images, step=None, border_eps=5, tol=3, min_segment_len=10.0, workers=None) -> tuple[ndarray, ndarray]
+````{py:function} combra.metrics.images_to_angle_density(images, step=None, border_eps=5, tol=3, min_segment_len=10.0, workers=None, data_range=None) -> tuple[ndarray, ndarray]
 
 Reduce a batch of images to a single angle density `(x, y)`. Runs `_preprocess_image → vertex_angles` on each image, pools all vertex angles, then histograms them with {py:func}`combra.stats.density_histogram` at `step` degrees.
 
@@ -303,11 +319,13 @@ Reduce a batch of images to a single angle density `(x, y)`. Runs `_preprocess_i
 :type min_segment_len: float, optional
 :param workers: When `> 1`, distribute the per-image `_preprocess_image → vertex_angles` extraction over a multiprocessing pool of this many workers. `None` (or `1`) runs it serially. Default: `None`.
 :type workers: int or None, optional
+:param data_range: Declared float range of the image input, e.g. `(-1, 1)`. **Required for anything that is not already `uint8`** — the range is never inferred. See {py:func}`combra.image.to_uint8`. Default: `None`.
+:type data_range: tuple or None, optional
 :returns: **density** (*tuple[ndarray, ndarray]*) – `(x, y)` angle-bin centres and densities.
 :rtype: tuple(ndarray, ndarray)
 ````
 
-````{py:function} combra.metrics.images_to_pooled_angles(images, border_eps=5, tol=3, min_segment_len=10.0, workers=None) -> ndarray
+````{py:function} combra.metrics.images_to_pooled_angles(images, border_eps=5, tol=3, min_segment_len=10.0, workers=None, data_range=None) -> ndarray
 
 The step-independent part of {py:func}`combra.metrics.images_to_angle_density`: run `_preprocess_image → vertex_angles` on each image and concatenate the per-image vertex angles, but **without** histogramming. Histogram the result with {py:func}`combra.stats.density_histogram` to obtain the `(x, y)` density. Because pooling is plain concatenation and `density_histogram` is a `bincount`, pooled arrays from disjoint image shards combine exactly — `density_histogram(concat(pooled_a, pooled_b))` equals the density over the full set, in any order — so this is the unit to extract per worker/rank when the per-image angle work is sharded.
 
@@ -321,8 +339,36 @@ The step-independent part of {py:func}`combra.metrics.images_to_angle_density`: 
 :type min_segment_len: float, optional
 :param workers: When `> 1`, distribute the per-image `_preprocess_image → vertex_angles` extraction over a multiprocessing pool of this many workers. `None` (or `1`) runs it serially. Default: `None`.
 :type workers: int or None, optional
+:param data_range: Declared float range of the image input, e.g. `(-1, 1)`. **Required for anything that is not already `uint8`** — the range is never inferred. See {py:func}`combra.image.to_uint8`. Default: `None`.
+:type data_range: tuple or None, optional
 :returns: **pooled** (*ndarray*) – 1-D array of all pooled vertex angles (degrees).
 :rtype: ndarray
+````
+
+````{py:function} combra.metrics.angle_density_metrics_from_pooled(reference_angles, generated_angles, step=None) -> dict
+
+**Every** angle-density metric from two *pooled* vertex-angle arrays — the four Wasserstein distances (`w1`, `w2`, `circular_w1`, `circular_w2`) and the six bimodal-Gaussian relative errors (`mu1`, `mu2`, `sigma1`, `sigma2`, `amp1`, `amp2`), in one dict.
+
+This is the rank-0 half of a **sharded angle evaluation** and the natural partner to {py:func}`combra.metrics.images_to_pooled_angles`: each rank pools the angles of its own image shard, the 1-D arrays are gathered and concatenated, and this scores the two concatenations. Histogramming a concatenation of shards is identical to histogramming the whole set, so the sharded result is **exact** — the same numbers a single-process {py:func}`combra.metrics.compute_all_metrics` call would produce.
+
+:param reference_angles: Pooled reference vertex angles in degrees, 1-D.
+:type reference_angles: ndarray
+:param generated_angles: Pooled generated vertex angles in degrees, 1-D.
+:type generated_angles: ndarray
+:param step: Histogram bin width in degrees. Defaults to `5.0`. Default: `None`.
+:type step: float or None, optional
+:returns: **metrics** (*dict*) – The four Wasserstein keys followed by the six Gaussian relative-error keys.
+:rtype: dict
+:raises ValueError: Either pooled array yields an empty density — the angle pipeline found no vertices in that image set.
+
+**Example**
+
+```pycon
+>>> from combra.metrics import angle_density_metrics_from_pooled, images_to_pooled_angles
+>>> ref_angles = images_to_pooled_angles(real_batch)                       # once, cacheable
+>>> gen_angles = np.concatenate([images_to_pooled_angles(s) for s in shards])
+>>> angle_density_metrics_from_pooled(ref_angles, gen_angles)['w1']
+```
 ````
 
 ### Gaussian-fit metrics
@@ -368,9 +414,11 @@ The density-level core (used by the parquet comparison path) lives at `combra.me
 
 ### Unified entry point
 
-````{py:function} combra.metrics.compute_all_metrics(reference_images, generated_images, *, step=None, device=None, angle_kw=None, reference_cache=None, image_metrics=False, workers=None) -> dict
+````{py:function} combra.metrics.compute_all_metrics(reference_images, generated_images, *, step=None, device=None, angle_kw=None, reference_cache=None, image_metrics=False, workers=None, data_range=None) -> dict
 
-Run every requested batch metric for a (reference, generated) pair in parallel and return one flat dict. The angle-density metrics — the Wasserstein distances (`w1`, `w2`, `circular_w1`, `circular_w2`) and the bimodal-Gaussian relative errors (`mu1`, `mu2`, `sigma1`, `sigma2`, `amp1`, `amp2`) — compare the two samples' angle densities and are **always** computed. The image-feature metrics — `fid` (classic InceptionV3 FID on the in-memory images), `cmmd`, and `fd_dinov2` — compare their deep features and are added **only when `image_metrics=True`**; the default is `False`, so the cheap angle-only suite needs no GPU or optional deps. When `image_metrics=True`, an image-feature metric that cannot run (missing optional dependency, no network, **or fewer than 2 images per side** for the Fréchet-distance `fid`/`fd_dinov2`) is recorded as `nan` and logged, so the angle metrics still come back — a single image therefore yields real `w*`/`mu*`/`sigma*`/`amp*`/`cmmd` values and `nan` for `fid`/`fd_dinov2`.
+Run every requested batch metric for a (reference, generated) pair and return one flat dict. The angle-density metrics — the Wasserstein distances (`w1`, `w2`, `circular_w1`, `circular_w2`) and the bimodal-Gaussian relative errors (`mu1`, `mu2`, `sigma1`, `sigma2`, `amp1`, `amp2`) — compare the two samples' angle densities and are **always** computed. The image-feature metrics — `fid` (classic InceptionV3 FID on the in-memory images), `cmmd`, and `fd_dinov2` — compare their deep features and are added **only when `image_metrics=True`**; the default is `False`, so the cheap angle-only suite needs no GPU or optional deps. When `image_metrics=True`, an image-feature metric that cannot run (missing optional dependency, no network, **or fewer than 2 images per side** for the Fréchet-distance `fid`/`fd_dinov2`) is recorded as `nan` and logged, so the angle metrics still come back — a single image therefore yields real `w*`/`mu*`/`sigma*`/`amp*`/`cmmd` values and `nan` for `fid`/`fd_dinov2`.
+
+The three image-feature metrics run **sequentially**. They share one device and each streams its own image conversion, so running them concurrently only multiplied peak host memory without shortening the call.
 
 :param reference_images: Batch of reference (real) images.
 :type reference_images: ndarray or torch.Tensor

@@ -7,12 +7,23 @@ ships, see the {doc}`Python API reference <../index>`.
 :::
 
 ```{note}
-**Status: implemented.** All four repos — san-v2 (v0.2.0), StyleSwin-v2,
-DiffiT-v2 and EDM2-v2 — now expose the Part 1 API; the converged current state is
-documented in {doc}`models_api`. This page is retained as the specification of
-record: **Part 1** specifies the target API every repo exposes; **Part 2** lists
-the per-repo deltas that got each there (and the dataset-rebuild rails that remain
-before the legacy `CLASS_MAP` warnings can be dropped).
+**Status: implemented.** All four repos — san-v2 (v0.3.0), StyleSwin-v2 (v0.3.0),
+DiffiT-v2 (v3.1.0) and EDM2-v2 (v3.1.0) — expose the Part 1 API; the converged
+current state is documented in {doc}`models_api`. This page is retained as the
+specification of record: **Part 1** specifies the target API every repo exposes;
+**Part 2** lists the per-repo deltas that got each there (and the dataset-rebuild
+rails that remain before the legacy `CLASS_MAP` warnings can be dropped).
+```
+
+```{warning}
+**Read the "today …" asides as history, not as current state.** Sections 6 and 7
+below name specific defects in the present tense — EDM2-v2 taking the first N
+reference images, EDM2-v2 scoring against VAE round-tripped reals, StyleSwin-v2
+flip-doubling its reference, DiffiT-v2 interleaving text records into
+`stats.jsonl`, san-v2 and StyleSwin-v2 writing metrics to TensorBoard only. **All
+of those were fixed.** They are left in the text because the rationale for each
+requirement is the defect that motivated it. {doc}`models_api` is the page that
+describes what the repos do now.
 ```
 
 The goal: any command, flag, checkpoint name, or generated artifact learned on
@@ -316,14 +327,22 @@ What a dataset yields is part of the API, identical in all four repos:
   class-sorted, so a first-N slice is class-biased (today EDM2-v2 takes the
   first N while its fakes draw classes uniformly — the two sides of the FID
   that drives `best_model.pt` don't even share a class distribution).
-- **Uniform keys**: `Metrics/combra_fid10k`, `Metrics/combra_cmmd10k`,
-  `Metrics/combra_fd_dinov2_10k`, the angle-density metrics, and
-  `Metrics/combra_fid10k_best` — all mirrored to `stats.jsonl` (today san-v2
-  and StyleSwin-v2 write `Metrics/combra_*` to TensorBoard **only**: lose the
-  tfevents file and the run's entire metric history is gone). The `10k`
-  suffix is **literal**: the key names never change with `--num-fid-samples`
-  (as in EDM2-v2 today), so a run evaluated at a non-default count carries
-  the same keys — its count is recorded only in `training_options.json`.
+- **Uniform keys**: `Metrics/combra_fid`, `Metrics/combra_cmmd`,
+  `Metrics/combra_fd_dinov2`, the angle-density metrics, and
+  `Metrics/combra_fid_best` — all mirrored to `stats.jsonl` (san-v2 and
+  StyleSwin-v2 originally wrote `Metrics/combra_*` to TensorBoard **only**: lose the
+  tfevents file and the run's entire metric history was gone).
+
+  ```{versionchanged} 2026-08-18
+  **The `10k` suffix is gone.** This section originally specified a *literal* `10k`
+  in the key names, so that keys stayed stable across runs whatever
+  `--num-fid-samples` said. That backfired: every run evaluated at a non-default
+  count emitted a key claiming 10 000 samples, and every chart built from it was
+  mislabelled. Keys are now bare and the count is its own scalar,
+  `Metrics/combra_num_fid_samples` — stable *and* honest.
+  {py:func}`combra.metrics.load_fid_by_kimg` reads the bare key and still accepts
+  the legacy one, so archived runs remain readable.
+  ```
 - `<model>-eval` standalone evaluator in all four.
 
 ### How the combra metrics are computed
@@ -351,8 +370,10 @@ One eval pass per snapshot tick, identical in all four repos:
    `fd_dinov2`), the CLIP MMD (`cmmd`) and the angle-density metrics
    (Wasserstein `w1`/`w2`/`circular_*` + bimodal-Gaussian fit errors) against
    the cached reference
-   ({py:func}`combra.metrics.frechet_from_features` + analogues,
-   {py:func}`combra.metrics.images_to_pooled_angles`).
+   ({py:func}`combra.metrics.frechet_from_features` for both Fréchet metrics,
+   {py:func}`combra.metrics.cmmd_from_features` for CMMD, and
+   {py:func}`combra.metrics.angle_density_metrics_from_pooled` over the gathered
+   {py:func}`combra.metrics.images_to_pooled_angles` arrays).
 4. **Logging.** Results land in TensorBoard as `Metrics/combra_*` and in
    `stats.jsonl`. A metric whose backend is unavailable (e.g. no network for
    DINOv2 weights) records `nan`; a missing combra package prints a startup
@@ -419,10 +440,9 @@ sizes, GPU counts and repos:
 
 `stats.jsonl` keys are part of the contract, not an implementation detail:
 the wc_cv analysis layer reads them directly (e.g.
-`combra.metrics.load_fid_by_kimg` — which must itself be updated to the
-contract keys `Metrics/combra_fid10k` + `Progress/kimg`: today it parses
-the legacy bare `FID` / `kimg` pair, which no standardized run will emit;
-see the combra deltas in §12), so renaming a key is a breaking change for
+`combra.metrics.load_fid_by_kimg`, which reads the contract keys
+`Metrics/combra_fid` + `Progress/kimg` from the same JSON line and falls back to
+the legacy `Metrics/combra_fid10k`), so renaming a key is a breaking change for
 the analysis notebooks.
 
 ## 8. Samplers (diffusion models)

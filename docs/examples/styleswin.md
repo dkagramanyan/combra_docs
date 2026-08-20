@@ -124,7 +124,7 @@ rebuild the generator). It is written **atomically** (temp file + `os.replace`) 
 tick **and always at the last tick**, so the newest snapshot *is* the final model; history is
 pruned to the most recent `--snapshot-keep-last` (default `3`; `0` = keep all). There is **no
 resume, no rolling `latest`, and no `best_model.pt`** — pick the best snapshot post-hoc from
-`stats.jsonl` (`Metrics/combra_fid10k`). Because runs are unrecoverable by design, size `--kimg`
+`stats.jsonl` (`Metrics/combra_fid`). Because runs are unrecoverable by design, size `--kimg`
 (or split stages) to fit the job's time limit.
 
 ## Metrics
@@ -144,11 +144,13 @@ combra uses the **whole training set** as the reference (raw, unflipped uint8 pi
 training-set class distribution, latents seeded from `--seed` alone so the metric set is identical
 at any `--gpus`). Each snapshot computes **both** the angle-density metrics (Wasserstein `w1`,
 `w2`, `circular_w1`, `circular_w2` and the bimodal-Gaussian `mu/sigma/amp` errors) **and** the
-image-feature metrics `fid`, `cmmd`, `fd_dinov2` (keys `combra_fid10k`, `combra_cmmd10k`,
-`combra_fd_dinov2_10k`; the running best is `combra_fid10k_best`). All are **mirrored into
+image-feature metrics `fid`, `cmmd`, `fd_dinov2` (keys `combra_fid`, `combra_cmmd`,
+`combra_fd_dinov2`; the running best is `combra_fid_best`, and `combra_num_fid_samples`
+records the count the run used — the keys previously carried a literal `10k` suffix that
+never tracked `--num-fid-samples`). All are **mirrored into
 `stats.jsonl`** (`Metrics/combra_*`) as well as TensorBoard, so post-hoc best-snapshot selection
-survives the loss of the tfevents file; a **failed** eval tick clears the row instead of re-logging
-the previous tick's values. `styleswin-eval` scores a checkpoint standalone.
+survives the loss of the tfevents file; the combra row is cleared every tick, so a tick with no eval
+writes no combra columns rather than repeating the previous tick's values at a new step. `styleswin-eval` scores a checkpoint standalone.
 
 On a **multi-GPU** run all per-image extraction is **sharded across ranks** — each rank generates
 its own shard of the fakes, extracts the CLIP / DINOv2 / InceptionV3 features and pools the vertex

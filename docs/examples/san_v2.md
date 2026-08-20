@@ -136,8 +136,7 @@ features (pooled angles, FID/DINOv2 `(mu, sigma)`, CLIP embedding) are extracted
 recomputes each tick. Both the image-feature metrics (`fid`, `cmmd`, `fd_dinov2`)
 and the angle-density metrics (Wasserstein `w1`/`w2`/`circular_*` + bimodal-Gaussian
 fit errors) are logged under `Metrics/combra_*` in TensorBoard **and** `stats.jsonl`;
-the three image metrics carry their 10k sample size literally in the key
-(`combra_fid10k`, `combra_cmmd10k`, `combra_fd_dinov2_10k`).
+The metric keys are **bare** — `Metrics/combra_fid`, `combra_cmmd`, `combra_fd_dinov2`, plus `combra_fid_best` and `combra_num_fid_samples`, which records the count the run actually used. (They previously carried a literal `10k` suffix that stayed `10k` whatever `--num-fid-samples` said, so any chart built from them was mislabelled.)
 
 `G_ema` emits float images in `[-1, 1]`; the loop denormalizes fakes to `uint8`
 with the single normalize/denormalize pair (asserted to round-trip) so reals and

@@ -178,9 +178,7 @@ aborting the job.
 generated each tick for both the combra and the Inception path. The combra
 reference is the **whole training set** by default; `--combra-ref-count N` caps it
 to a **seeded random subset** of `N` reals (never the first N — dataset zips are
-class-sorted, so a first-N slice would be class-biased). The `10k` suffix in the
-metric keys (`Metrics/combra_fid10k`, …) is literal and does not change with
-`--num-fid-samples`. Set `--num-fid-samples 0` to disable eval entirely.
+class-sorted, so a first-N slice would be class-biased). The metric keys are **bare** — `Metrics/combra_fid`, `combra_cmmd`, `combra_fd_dinov2`, plus `combra_fid_best` and `combra_num_fid_samples`, which records the count the run actually used. (They previously carried a literal `10k` suffix that stayed `10k` whatever `--num-fid-samples` said, so any chart built from them was mislabelled.) Set `--num-fid-samples 0` to disable eval entirely.
 
 All per-tick scalars are written to `stats.jsonl` (one JSON line per tick,
 scalar rows only) and mirrored to TensorBoard under the `Loss/*`,
