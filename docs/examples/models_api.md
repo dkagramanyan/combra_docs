@@ -7,12 +7,12 @@ identical everywhere (the contract) and the few model-family details that stay
 per-repo (samplers, EMA, float training space).
 
 ```{seealso}
-This page documents the **current** state. The full specification — including the
-per-repo migration deltas — is in {doc}`models_api_proposal`.
+This page is the cross-model map. The full specification each repo implements,
+section by section, is {doc}`models_api_spec`.
 ```
 
 ```{note}
-**All four repos now implement the v2 convention** ({doc}`models_api_proposal`).
+**All four repos now implement the v2 convention** ({doc}`models_api_spec`).
 san-v2 (v0.3.0), StyleSwin-v2 (v0.3.0), DiffiT-v2 (v3.1.0) and EDM2-v2 (v3.1.0)
 each expose the shared API:
 console scripts, the unified training CLI (`--precision`/`--tf32`/`--bench`,
@@ -170,7 +170,7 @@ non-alphabetical order `0 → Ultra_Co25`, `1 → Ultra_Co11`, `2 → Ultra_Co6_
 `Co11`↔`Co25` swap) and record no `class_names`. Those checkpoints and everything
 generated from them stay under combra's legacy `CLASS_MAP` until retrained on rebuilt
 zips — classify each run by the dataset path in its `training_options.json` before
-remapping. See the {doc}`models_api_proposal` label contract (§5).
+remapping. See the {doc}`models_api_spec` label contract (§5).
 ```
 
 ## Other known divergences

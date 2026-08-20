@@ -4,7 +4,7 @@
 [StyleSwin](https://github.com/microsoft/StyleSwin) (a Swin-transformer StyleGAN) specialised
 for generating WC-Co microstructure SEM images. Upstream StyleSwin is **unconditional**; this
 fork adds **class-conditional** generation over the three grain classes and **implements the
-shared generative-model API convention** ({doc}`models_api_proposal`): the console commands,
+shared generative-model API convention** ({doc}`models_api_spec`): the console commands,
 training flags, checkpoint format and generated-artifact layout match the sibling repos, and its
 output feeds the wc_cv angle pipeline with zero conversion. On every **snapshot** tick it scores
 generated samples with combra's sharded split-API metrics (numerically equivalent to
@@ -48,9 +48,10 @@ combra lives in a **private** repo, so the `.[combra]` extra clones it over `git
 succeeds when you are authenticated to GitHub — sign in once with the GitHub CLI
 (`gh auth login` → github.com → HTTPS) and `pip` inherits its credential helper.
 
-The `sh/` scripts `module load CUDA/13.1`, derive `CUDA_HOME` from the loaded `nvcc`, set
-`TORCH_CUDA_ARCH_LIST=9.0` (H200 / `sm_90`) and force `HF_HUB_OFFLINE=1` so the combra CLIP load
-reads the prefetched cache on offline nodes.
+The `sh/` scripts `module load CUDA/13.1`, derive `CUDA_HOME` from the loaded `nvcc`, derive
+`TORCH_CUDA_ARCH_LIST` from the GPUs actually present (`nvidia-smi --query-gpu=compute_cap`,
+falling back to `9.0` on a login node where there are none — an explicit value always wins), and
+force `HF_HUB_OFFLINE=1` so the combra CLIP load reads the prefetched cache on offline nodes.
 
 ## Dataset
 

@@ -3,7 +3,7 @@
 [**san-v2**](https://github.com/dkagramanyan/san-v2) is a fork of Sony's
 StyleSAN-XL (Slicing Adversarial Network, StyleGAN3 + Projected GAN) used to
 generate WC-Co microstructure SEM images. As of **v0.3.0** it implements the v2
-model API convention specified in {doc}`models_api_proposal` (§12); this page
+model API convention specified in {doc}`models_api_spec`; this page
 documents that API. On every **snapshot** tick it scores generated samples with
 combra's sharded split-API metrics (numerically equivalent to
 {py:func}`combra.metrics.compute_all_metrics`) and logs the results to both
@@ -228,5 +228,5 @@ retrained on rebuilt zips — classify each run by the dataset path in its
 `training_options.json` before remapping. Once san-v2 is retrained on
 `san-prepare-data`-built zips, all artifacts are self-describing by name and the
 class-map warning becomes a historical note. See the {doc}`label contract
-<models_api_proposal>` (§5) and the current-state {doc}`API scheme <models_api>`.
+<models_api_spec>` (§5) and the current-state {doc}`API scheme <models_api>`.
 ```

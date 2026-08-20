@@ -48,6 +48,7 @@ api/validation
 
 examples/angles
 examples/models_api
+examples/models_api_spec
 examples/san_v2
 examples/styleswin
 examples/diffit
