@@ -2,12 +2,15 @@
 
 The four model repos are **separate forks that deliberately converge on one
 tooling convention**. This page is that convention: the specification every one of
-them implements, section by section. {doc}`models_api` is the companion
-cross-model map — what is identical, and the few model-family details that stay
-per-repo.
+them implements, section by section. All four ship it — san-v2 (v0.3.0),
+StyleSwin-v2 (v0.3.0), DiffiT-v2 (v3.1.0) and EDM2-v2 (v3.1.0).
 
-All four ship it: san-v2 (v0.3.0), StyleSwin-v2 (v0.3.0), DiffiT-v2 (v3.1.0) and
-EDM2-v2 (v3.1.0).
+| repo | family | upstream | docs |
+|---|---|---|---|
+| [san-v2](https://github.com/dkagramanyan/san-v2) | GAN — StyleGAN3 + Projected GAN + SAN | Sony StyleSAN-XL | {doc}`san_v2` |
+| [StyleSwin-v2](https://github.com/dkagramanyan/StyleSwin-v2) | GAN — Swin transformer | Microsoft StyleSwin | {doc}`styleswin` |
+| [DiffiT-v2](https://github.com/dkagramanyan/DiffiT-v2) | latent diffusion — transformer, DDPM 1000-step schedule | NVlabs DiffiT | {doc}`diffit` |
+| [EDM2-v2](https://github.com/dkagramanyan/edm2-v2) | latent diffusion — EDM σ-space U-Net | NVlabs EDM2 | {doc}`edm2` |
 
 ```{warning}
 **The "today …" asides in sections 6 and 7 are history.** They name specific
@@ -197,7 +200,7 @@ the training sbatch scripts allow 3–4 days. Because there is no resume, the
 two MUSTs above are load-bearing — atomic writes guarantee a kill never
 corrupts an already-written snapshot, and the last-tick snapshot guarantees a
 completed run always ends in a usable model — and both are verified by the
-§13 conformance suite.
+conformance suite below.
 ```
 
 ## 4. Generation contract
@@ -251,16 +254,14 @@ folder in `sorted()` (alphabetical) order. Every `dataset_tool*.py` derives
 labels this way.
 
 ```{warning}
-**The legacy artifacts do not follow Rule 1.** The on-disk `imagenet_9to4_*`
-archives consumed by the real DiffiT-v2 and StyleSwin-v2 runs carry the same
-swapped `1, 0, 2` label order as the san-v2 zips (`Ultra_Co11 → 1`,
-`Ultra_Co25 → 0`), and every repo takes zip labels **verbatim** at train time
-— so the existing checkpoints of all four models most likely share san-v2's
-convention, whatever the model pages' class tables say. The zips themselves
-record no class names or original filenames, so class identity is
-unrecoverable from the artifact — exactly what Rule 2 fixes. Classify every
-existing run by the dataset path in its `training_options.json` before
-applying any `CLASS_MAP` remap (details: the san-v2 rebuild rails in §12).
+**Artifacts predating Rule 1 do not follow it, and combra will not guess.** The
+on-disk `imagenet_9to4_*` archives the earlier runs consumed carry a swapped
+`1, 0, 2` label order and record no class names, so class identity is simply not
+recoverable from those files. combra no longer ships a legacy index→name table:
+a generated `.h5` whose groups are bare `class_0` / `class_1` with no
+`class_names` is **rejected**, because the alternative was silently attributing
+every metric to the wrong grain class whenever the guess was wrong. Rebuild the
+dataset (Rule 2) and retrain rather than remapping.
 ```
 
 **Rule 2 — names travel with every artifact.**
@@ -272,7 +273,7 @@ applying any `CLASS_MAP` remap (details: the san-v2 rebuild rails in §12).
 | generated h5 | `class_names` stamped as a root attribute + per-`class_<c>` group attribute |
 | generated dir | a `classes.json` manifest next to the `class_<c>/` folders |
 | CLI | `--classes` accepts **names as well as indices** |
-| downstream | combra matches by **name**; `CLASS_MAP` remains only as the fallback for legacy artifacts that lack `class_names` — note `CLASS_MAP` exists **only in the docs today** (combra's code has just per-call `class_map` dict arguments), so it must first be implemented: see the combra deltas in §12 |
+| downstream | combra matches by **name**. There is no index→name fallback: a file with bare `class_<n>` groups and no names raises rather than being guessed at |
 
 ### Dataset item contract
 
@@ -526,6 +527,40 @@ Rules:
   and other inherited clutter are removed (kept: the actual licenses).
 
 ---
+
+# Model-family differences
+
+Everything above is identical across the four repos. What follows is deliberately
+not — these are model-family details, not tooling drift:
+
+1. **combra install** is uniform: all four pull the private repo over `git+https`
+   via the `[combra]` extra — which requests `combra[metrics]`, so the FID / CMMD /
+   FD-DINOv2 backends come with it — and none ship a `requirements.txt`
+   (`pip install -e .`). All four require Python 3.12+, matching combra.
+2. **CUDA toolchain**: san-v2 and StyleSwin-v2 build custom CUDA ops (san-v2 against
+   conda's `nvcc` with `CUDA_HOME=$CONDA_PREFIX`; StyleSwin-v2 via the system CUDA
+   module); DiffiT-v2 and EDM2-v2 are pure-torch and need no custom ops.
+3. **Model-family internals stay per-repo** (documented, not unified): the samplers
+   (above), the EMA algorithm (classic half-life vs `--ema-rate` vs PowerFunctionEMA),
+   and the float training space (`[-1, 1]` for san-v2/DiffiT-v2, ImageNet mean/std for
+   StyleSwin-v2, the VAE latent space for EDM2-v2). Every artifact still crosses the
+   boundary as uint8, so cross-repo comparisons remain valid.
+4. **DiffiT-v2 has no `--cond`.** It is class-conditional by construction —
+   classifier-free guidance trains against a null class — so an unconditional switch
+   would be a flag that cannot do anything, not CLI alignment. The other three take
+   `--cond`.
+5. **Tick and snapshot cadence differ.** `--snap` counts ticks and a tick is a
+   different amount of training per repo: san-v2 and StyleSwin-v2 default to
+   4 kimg/tick × 50 ticks = 200 kimg between snapshots, EDM2-v2 to 128 × 64 = 8 192
+   kimg, DiffiT-v2 to its per-`--cfg` values. Set `--tick`/`--snap` explicitly when
+   comparing runs across repos.
+6. **The sharded eval harness is shared, not per-repo.** It lives in
+   {py:mod}`combra.metrics.distributed`, behind the `[metrics]` extra that every repo
+   already installs, so combra's dependency-light core still carries no torch. The four
+   private copies had drifted apart — two used `all_gather` and two `gather`, two
+   reported a failure flag and two could not — which is why they were merged. A 2-rank
+   check pins the result: the ten angle-density metrics are bit-identical to a
+   single-process pass and the Fréchet distances agree to ~1e-8.
 
 # Conformance
 

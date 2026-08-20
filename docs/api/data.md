@@ -397,33 +397,6 @@ The output sweep folder is exactly the shape {py:func}`combra.metrics.angle_metr
 `combra.metrics.compare.find_reference` expect.
 ````
 
-## Class-label remapping
-
-````{py:data} combra.data.CLASS_MAP
-
-Module-level registry mapping a legacy generated-image class **index string**
-(`'0'` / `'1'` / `'2'`) to its grain-class **name**, in the san-v2 training-zip
-order every existing checkpoint was most likely trained on:
-
-```python
-CLASS_MAP = {'0': 'Ultra_Co25', '1': 'Ultra_Co11', '2': 'Ultra_Co6_2'}
-```
-
-Generated HDF5 files written by the standardized pipeline carry a `class_names`
-attribute and resolve by name, so they never need this map. `CLASS_MAP` is the
-fallback identity for **legacy** generated artifacts that predate that attribute
-— pass it (or a per-call `class_map` dict) to the comparison helpers so a
-generated `class_0` group is matched against the correct real grain class.
-
-**Example**
-
-```pycon
->>> from combra.data import CLASS_MAP
->>> from combra.metrics import compare_folders
->>> compare_folders(folder_paths, reference, class_map=CLASS_MAP, steps=[2])
-```
-````
-
 ## See also
 
 - {doc}`combra.angles <angles>` — the angle extractor `MicrostructureDataset.generate_angles` calls per image.

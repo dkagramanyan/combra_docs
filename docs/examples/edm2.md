@@ -248,6 +248,7 @@ archives (consumed by the real DiffiT and StyleSwin runs) carry labels in
 **SAN's swapped order** (`0 → Ultra_Co25`, `1 → Ultra_Co11`) — a zip's
 provenance, not the repo, decides the convention. Classify each checkpoint
 by the dataset path in its `training_options.json` before comparing across
-models or remapping with combra's `CLASS_MAP`. New zips built with the current
+models. combra ships no index→name fallback, so an artifact without
+`class_names` is rejected rather than guessed at. New zips built with the current
 `edm2-prepare-data` carry `class_names`, so this ambiguity does not arise for them.
 ```

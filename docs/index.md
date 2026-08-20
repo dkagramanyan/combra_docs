@@ -7,7 +7,7 @@ distribution metrics.
 ```{doctest}
 >>> import combra
 >>> combra.__version__
-'0.9.1'
+'0.10.0'
 ```
 
 ```{toctree}
@@ -47,7 +47,6 @@ api/validation
 :hidden:
 
 examples/angles
-examples/models_api
 examples/models_api_spec
 examples/san_v2
 examples/styleswin

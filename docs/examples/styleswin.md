@@ -204,10 +204,10 @@ nominal **alphabetical** convention the indices map as:
 (`0 → Ultra_Co25`, `1 → Ultra_Co11`, `2 → Ultra_Co6_2` — see {doc}`san_v2`), not the
 alphabetical order the build tool nominally produces — and StyleSwin trains on the zip
 labels verbatim. Classify each checkpoint by the dataset path in its
-`training_options.json` before assuming either convention, and do **not** apply a
-`CLASS_MAP` remap (via {py:func}`combra.angles.resolve_overlay_rows` /
-{py:func}`combra.angles.build_overlay_grid` `gen_name_for_mode`) to a checkpoint
-trained on those archives — it would introduce the very swap it is meant to fix.
+`training_options.json` before assuming either convention. combra ships no
+index→name fallback: a generated `.h5` with bare `class_<n>` groups and no
+`class_names` is rejected rather than guessed at, so such a checkpoint's output
+has to be rebuilt, not remapped.
 Newly built zips (via `styleswin-prepare-data`) record `class_names`, which travel into
 every checkpoint and generated h5, so new artifacts are self-describing and this ambiguity
 does not recur.

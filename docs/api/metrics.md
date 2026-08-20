@@ -162,7 +162,7 @@ per-image, so `concat(features(shard_a), features(shard_b))` equals
 approximation. This is how the model training loops (DiffiT-v2, EDM2-v2, san-v2,
 StyleSwin-v2) spread the `fid` /
 `cmmd` / `fd_dinov2` work over every rank (see the {doc}`DiffiT example
-</examples/diffit>` and the {doc}`models API scheme </examples/models_api>`): each rank extracts features from its own generated shard,
+</examples/diffit>` and the {doc}`v2 API convention </examples/models_api_spec>`): each rank extracts features from its own generated shard,
 the feature rows are gathered to rank 0, and the distance is taken there against
 the (cached) reference features.
 

@@ -12,8 +12,8 @@ import os
 project = "combra"
 copyright = "2026, D.G.Kagramanyan"
 author = "D.G.Kagramanyan"
-release = "0.9.1"
-version = "0.9"
+release = "0.10.0"
+version = "0.10"
 
 # -- General configuration ---------------------------------------------------
 

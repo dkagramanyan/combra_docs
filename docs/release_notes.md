@@ -14,6 +14,25 @@ changelog lived only in a private code repository.
 The authoritative copy is `CHANGELOG.md` in the combra repository; the highlights
 below track what changes for a *user* of the library.
 
+### 0.10.0
+
+**Removed (breaking)**
+
+- **`combra.data.CLASS_MAP` and the legacy index→name fallback.** A generated `.h5`
+  with bare `class_0` / `class_1` groups and no `class_names` used to be resolved
+  through a hard-coded table whose order was itself a guess about which training zip
+  the checkpoint had seen. When the guess was wrong, every metric was silently
+  attributed to the wrong grain class — a plausible number, not an error. Such a file
+  now raises {py:class}`combra.exceptions.SchemaError`, naming the attributes that fix
+  it. Artifacts from the standardized writers carry `class_names` and are unaffected;
+  the per-call `class_map=` argument stays.
+
+**Fixed**
+
+- The synthetic gauss-metric suite was flaky on seeds it does not use. Tolerances are
+  now set from measurement over unused seeds, and the mode assertions check the
+  *direction* of the rasterisation bias rather than a symmetric window.
+
 ### 0.9.1
 
 - `contour_fractal_dimension` could not accept the contours
@@ -92,8 +111,8 @@ can be negative, and they are `nan` when either fit is not two real modes — se
 
 ## Model repositories
 
-Each fork keeps its own `CHANGELOG.md`; {doc}`examples/models_api` is the cross-model
-map of what they share.
+Each fork keeps its own `CHANGELOG.md`; {doc}`examples/models_api_spec` is the
+convention all four implement.
 
 | repo | current | changelog |
 | --- | --- | --- |

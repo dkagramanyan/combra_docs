@@ -63,8 +63,8 @@ Checkpoints).
    The `.zip`'s `dataset.json` carries both the integer `labels` and an
    index-aligned `class_names` list (§5 label contract), where the integer label
    is the class-folder index in **alphabetical** order. `class_names` then travels
-   into every checkpoint and every generated `.h5`, so grain-class identity is
-   recoverable without a `CLASS_MAP`. Grayscale SEM images are converted to RGB
+   into every checkpoint and every generated `.h5`, so grain-class identity
+   travels with the artifact. Grayscale SEM images are converted to RGB
    **at build time** (the loader asserts 3 channels rather than converting
    silently). If you point `--data` at a plain directory instead, the class is the
    immediate parent folder name (alphabetical). A dataset with any unlabeled image
@@ -315,8 +315,7 @@ indices map as:
 ```{note}
 **New (post-contract) runs are self-describing.** `diffit-prepare-data` writes an
 index-aligned `class_names` into `dataset.json`; it flows into every checkpoint
-and every generated `.h5`, so combra matches by name and no `CLASS_MAP` is
-needed.
+and every generated `.h5`, so combra matches by name.
 ```
 
 ```{warning}
@@ -325,11 +324,10 @@ table.** Runs trained before the label contract took zip labels **verbatim**, an
 the on-disk `imagenet_9to4_*` archives the real runs consumed (e.g. run 00017, per
 its `training_options.json`) carry labels in **SAN's swapped order**
 (`0 → Ultra_Co25`, `1 → Ultra_Co11`, `2 → Ultra_Co6_2` — see {doc}`san_v2`).
-Classify each legacy checkpoint by the dataset path in its `training_options.json`
-before assuming either convention, and do **not** apply a `CLASS_MAP` remap
-(via {py:func}`combra.angles.resolve_overlay_rows` /
-{py:func}`combra.angles.build_overlay_grid` `gen_name_for_mode`) to a checkpoint
-trained on those archives — it would introduce the very swap it is meant to fix.
+Classify each such checkpoint by the dataset path in its `training_options.json`
+before assuming either convention. combra ships no index→name fallback: an
+artifact with bare `class_<n>` groups and no `class_names` is rejected rather than
+silently attributed to the wrong grain class.
 ```
 
 **Why the order differs.** The dataset stores only an integer label per image — never
@@ -347,8 +345,8 @@ Because the source `dataset.json` lists `Co25` before `Co11` while the folder so
 `Ultra_Co6_2` is last under both rules, so it stays `2`. **Which rule a legacy
 checkpoint follows depends on which zip it trained on** — the shipped
 `imagenet_9to4_*` archives carry the SAN-order labels, whichever tool nominally built
-them. For those legacy artifacts, which recorded neither `class_names` nor original
-filenames, the correspondence has to be recovered per run from
-`training_options.json` and pinned in combra's `CLASS_MAP`. New DiffiT-v2 runs avoid
-the problem entirely: `class_names` is written into the zip, the checkpoint and every
-generated `.h5`, so identity travels with the artifact.
+them. Those artifacts recorded neither `class_names` nor original filenames, so the
+correspondence is not recoverable from the file at all — it has to come from the run's
+`training_options.json`, and combra will not accept a guess in its place. New
+DiffiT-v2 runs avoid the problem entirely: `class_names` is written into the zip, the
+checkpoint and every generated `.h5`, so identity travels with the artifact.

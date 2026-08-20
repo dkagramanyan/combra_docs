@@ -222,11 +222,11 @@ is self-describing:
 **Legacy artifacts (pre-0.2.0) use a different, swapped order.** The on-disk
 `imagenet_9to4_*` archives that the existing checkpoints trained on carry the
 non-alphabetical order `Ultra_Co25 → 0`, `Ultra_Co11 → 1`, `Ultra_Co6_2 → 2`
-(the `Co11`↔`Co25` swap), and they record no `class_names`. Those checkpoints
-and everything generated from them stay under combra's legacy `CLASS_MAP` until
-retrained on rebuilt zips — classify each run by the dataset path in its
-`training_options.json` before remapping. Once san-v2 is retrained on
+(the `Co11`↔`Co25` swap), and they record no `class_names`. combra ships no
+index→name fallback for them: a generated `.h5` with bare `class_<n>` groups and
+no names is rejected rather than guessed at, so those runs have to be retrained on
+rebuilt zips — classify each by the dataset path in its `training_options.json`. Once san-v2 is retrained on
 `san-prepare-data`-built zips, all artifacts are self-describing by name and the
 class-map warning becomes a historical note. See the {doc}`label contract
-<models_api_spec>` (§5) and the current-state {doc}`API scheme <models_api>`.
+<models_api_spec>` (§5).
 ```
