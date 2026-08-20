@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import importlib
 import inspect
+import json
 import os
 import pathlib
 import re
@@ -125,8 +126,9 @@ def _real_params(obj) -> list[str] | None:
 def _version_drift(real: str) -> list[str]:
     """Every place the docs hard-code a combra version must match the real one.
 
-    ``index.md``'s opening example prints ``combra.__version__``, and ``conf.py``
-    sets ``release`` / ``version``. All three have gone stale at least once each
+    ``index.md``'s opening example prints ``combra.__version__``, ``conf.py`` sets
+    ``release`` / ``version``, and ``_static/switcher.json`` names the published
+    version. All four have gone stale at least once each
     (the index block claimed 0.6.0 against an installed 0.7.1), because nothing
     reads them back. This does.
     """
@@ -141,6 +143,14 @@ def _version_drift(real: str) -> list[str]:
         elif m.group(1) != expected:
             problems.append(f"[version] conf.py: {key} = {m.group(1)!r}, combra is {expected!r}")
 
+    switcher = json.loads((DOCS_ROOT / "_static" / "switcher.json").read_text())
+    for entry in switcher:
+        if entry.get("preferred") and entry.get("version") != real:
+            problems.append(
+                f"[version] _static/switcher.json: preferred entry is "
+                f"{entry.get('version')!r}, combra is {real!r}"
+            )
+
     index = (DOCS_ROOT / "index.md").read_text()
     m = re.search(r"^>>> combra\.__version__\n'([^']*)'", index, re.M)
     if m is None:
@@ -152,10 +162,10 @@ def _version_drift(real: str) -> list[str]:
 
 
 def main() -> int:
-    # The docs repo cannot always import combra (it is a separate, private
-    # repo — see the docs-CI note in API_DOCS_UPGRADE_PLAN.md). Skip loudly
-    # rather than fail the docs build, unless COMBRA_DRIFT_STRICT is set, which
-    # CI should turn on once it can install combra.
+    # The docs repo cannot always import combra: it lives in a separate, private
+    # repo, so a fork's PR has no access to it. Skip loudly rather than fail the
+    # docs build, unless COMBRA_DRIFT_STRICT is set -- which CI does whenever the
+    # COMBRA_TOKEN secret is present.
     try:
         combra = importlib.import_module("combra")
     except ImportError as exc:
