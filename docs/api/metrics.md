@@ -405,18 +405,26 @@ Bimodal-Gaussian relative-error metrics between a reference and a generated samp
 ```pycon
 >>> from combra.metrics import compute_gauss_metrics
 >>> errs = compute_gauss_metrics(real_batch, generated_batch)   # batches
->>> one  = compute_gauss_metrics(real_image, generated_image)   # single images
+>>> one  = compute_gauss_metrics(real_image, generated_image)   # accepted, but see below
 >>> errs['mu1'], errs['sigma2']
 ```
 
 The density-level core (used by the parquet comparison path) lives at `combra.metrics.gauss.gauss_density_metrics`; the raw per-mode error math, shared with `compute_angle_metrics`, is `combra.metrics.gauss.gauss_relative_errors`.
+
+```{important}
+All six keys come back as `nan` when either side's angle density is not genuinely
+bimodal — a single mode leaves the fit nothing to put in its second one, and the
+relative error would otherwise be computed by dividing by that phantom. A single
+small image is below this bar; pool ~1000 angles. See
+[Undefined rather than wrong](#undefined-rather-than-wrong).
+```
 ````
 
 ### Unified entry point
 
 ````{py:function} combra.metrics.compute_all_metrics(reference_images, generated_images, *, step=None, device=None, angle_kw=None, reference_cache=None, image_metrics=False, workers=None, data_range=None) -> dict
 
-Run every requested batch metric for a (reference, generated) pair and return one flat dict. The angle-density metrics — the Wasserstein distances (`w1`, `w2`, `circular_w1`, `circular_w2`) and the bimodal-Gaussian relative errors (`mu1`, `mu2`, `sigma1`, `sigma2`, `amp1`, `amp2`) — compare the two samples' angle densities and are **always** computed. The image-feature metrics — `fid` (classic InceptionV3 FID on the in-memory images), `cmmd`, and `fd_dinov2` — compare their deep features and are added **only when `image_metrics=True`**; the default is `False`, so the cheap angle-only suite needs no GPU or optional deps. When `image_metrics=True`, an image-feature metric that cannot run (missing optional dependency, no network, **or fewer than 2 images per side** for the Fréchet-distance `fid`/`fd_dinov2`) is recorded as `nan` and logged, so the angle metrics still come back — a single image therefore yields real `w*`/`mu*`/`sigma*`/`amp*`/`cmmd` values and `nan` for `fid`/`fd_dinov2`.
+Run every requested batch metric for a (reference, generated) pair and return one flat dict. The angle-density metrics — the Wasserstein distances (`w1`, `w2`, `circular_w1`, `circular_w2`) and the bimodal-Gaussian relative errors (`mu1`, `mu2`, `sigma1`, `sigma2`, `amp1`, `amp2`) — compare the two samples' angle densities and are **always** computed. The image-feature metrics — `fid` (classic InceptionV3 FID on the in-memory images), `cmmd`, and `fd_dinov2` — compare their deep features and are added **only when `image_metrics=True`**; the default is `False`, so the cheap angle-only suite needs no GPU or optional deps. When `image_metrics=True`, an image-feature metric that cannot run (missing optional dependency, no network, **or fewer than 2 images per side** for the Fréchet-distance `fid`/`fd_dinov2`) is recorded as `nan` and logged, so the angle metrics still come back — a single image therefore yields real `w*`/`cmmd` values and `nan` for `fid`/`fd_dinov2`. The `mu*`/`sigma*`/`amp*` keys are `nan` there too, for a different reason: one small image yields too few vertex angles to determine a bimodal fit (see [Undefined rather than wrong](#undefined-rather-than-wrong)).
 
 The three image-feature metrics run **sequentially**. They share one device and each streams its own image conversion, so running them concurrently only multiplied peak host memory without shortening the call.
 
@@ -802,11 +810,11 @@ distribution, these localise *where* a generator is wrong — a shifted mode
 :type x_reference, y_reference: array_like
 :param x_generated, y_generated: Generated density.
 :type x_generated, y_generated: array_like
-:returns: `{'mu1', 'mu2', 'sigma1', 'sigma2', 'amp1', 'amp2'}` relative errors.
+:returns: `{'mu1', 'mu2', 'sigma1', 'sigma2', 'amp1', 'amp2'}` relative errors, or **all six as `nan`** when either density is not genuinely bimodal — see [Undefined rather than wrong](#undefined-rather-than-wrong).
 :rtype: dict[str, float]
 ````
 
-````{py:function} combra.metrics.gauss_relative_errors(reference_mus, reference_sigmas, reference_amps, generated_mus, generated_sigmas, generated_amps) -> tuple
+````{py:function} combra.metrics.gauss_relative_errors(reference_mus, reference_sigmas, reference_amps, generated_mus, generated_sigmas, generated_amps, reference_density=None, generated_density=None) -> tuple
 
 Per-mode relative error between two already-fitted bimodal Gaussians,
 
@@ -819,9 +827,76 @@ for each of $\mu$, $\sigma$ and $amp$. Use this when you already hold fits
 :type reference_mus, reference_sigmas, reference_amps: array_like
 :param generated_mus, generated_sigmas, generated_amps: The generated fit's per-mode parameters.
 :type generated_mus, generated_sigmas, generated_amps: array_like
-:returns: `(mus_error, sigmas_error, amps_error)`, each a length-2 array.
+:param reference_density: The `(x, y)` the reference fit was made against. Optional, but pass it when you have it — a spike-shaped phantom mode is only visible against the data. Default: `None`.
+:type reference_density: tuple[array_like, array_like] or None, optional
+:param generated_density: The `(x, y)` the generated fit was made against. Default: `None`.
+:type generated_density: tuple[array_like, array_like] or None, optional
+:returns: `(mus_error, sigmas_error, amps_error)`, each a length-2 array — or three all-`nan` arrays when either fit is degenerate.
 :rtype: tuple[ndarray, ndarray, ndarray]
 ````
+
+````{py:function} combra.metrics.degenerate_fit_reason(mus, sigmas, amps, density=None) -> str | None
+
+Why a bimodal-Gaussian fit is not two real modes, or `None` when it is. This is
+the check `gauss_relative_errors` applies to both sides; call it directly to find
+out *why* a metric came back `nan`, or to screen a fit before trusting it.
+
+:param mus, sigmas, amps: One fit's length-2 per-mode parameters, as returned by {py:func}`combra.fitting.fit_bimodal_gaussian`.
+:type mus, sigmas, amps: array_like
+:param density: The `(x, y)` the fit was made against. When given, each mode must additionally sit on at least 5% of the density. Default: `None`.
+:type density: tuple[array_like, array_like] or None, optional
+:returns: A human-readable reason the fit is degenerate, or `None` if it is usable.
+:rtype: str or None
+
+**Example**
+
+```pycon
+>>> from combra import fitting, metrics, stats
+>>> x, y = stats.density_histogram(angles, step=5)
+>>> _, mus, sigmas, amps = fitting.fit_bimodal_gaussian(x, y)
+>>> metrics.degenerate_fit_reason(mus, sigmas, amps, density=(x, y))
+'mode 2 at 307.9 deg sits on 0.00% of the density, under the 5% floor -- ...'
+```
+````
+
+(undefined-rather-than-wrong)=
+### Undefined rather than wrong
+
+`fit_bimodal_gaussian` always returns two modes, because the model has two. When
+an angle density has only one, the solver still has to put the second somewhere,
+and it parks a **phantom** — either a flat pedestal (a fitted $\sigma$ of
+3.3 × 10⁴ degrees has been observed) or a narrow spike at a position with no data
+under it. The relative errors above divide by the reference fit, so a phantom
+denominator produces numbers that look like measurements but are not: two
+densities differing by 2° once scored `sigma1 = 1357` and `amp2 = 3050`.
+
+Every gauss entry point therefore screens both fits with
+{py:func}`combra.metrics.degenerate_fit_reason` and returns `nan` — with the
+reason logged at warning level — when a fit is:
+
+- carrying under 5% of its mass in one mode (there is only one real mode);
+- sitting on the `[0, 360]` boundary the means are clamped to (a fit artefact,
+  and `0` is also the denominator of the $\mu$ relative error);
+- wider than 120° in one mode (a pedestal, not a peak);
+- unresolved, the two means closer together than one $\sigma$;
+- placed where the density has under 5% of its mass (checked only when the
+  density is passed — this is the one that catches a spike, whose *amplitude*
+  is an integral and therefore not small).
+
+**What this means in practice.** The metrics are reliable on realistic WC-Co
+angle densities (~23% reflex vertices): over 900 such fits none was rejected.
+They go undefined as the second mode thins — which is exactly the regime where
+they were previously returning nonsense, so a `nan` is new information, not a
+regression. Two consequences worth knowing:
+
+- **Small samples now say so.** A single 128×128 image yields ~20 vertex angles,
+  far too few to determine two modes, so it returns `nan`. Pool on the order of
+  1000 angles (roughly 48 such images) for a fit worth reporting.
+- **`nan` is a signal about the generator.** Early in training, samples whose
+  grains are near-convex have no reflex mode. Use the Wasserstein keys
+  (`w1` / `circular_w1`), which are defined unconditionally, until the Gaussian
+  keys come back.
+
 
 ````{py:function} combra.metrics.frechet_distance(mu1, sigma1, mu2, sigma2) -> float
 

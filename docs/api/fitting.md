@@ -68,6 +68,23 @@ Bimodal Gaussian fit + sampled curve. Used inside {py:meth}`combra.data.Microstr
 
 The model is symmetric under swapping its two modes, so the returned modes are **sorted by `mu`** — slot 1 is always the lower-angle mode. Without that convention which mode lands in slot 1 is arbitrary, and {py:func}`combra.metrics.gauss_relative_errors` compares modes slot-wise.
 
+**The fit is bounded**, which the initial guesses below do not tell you:
+
+| parameter | bounds | why |
+| --- | --- | --- |
+| `mu1`, `mu2` | `[0, 360]` | The angle domain, and the only interval the returned curve is evaluated on. Left free the solver walks a mode out of the data — fitted means of 648° and −167° were both observed on ordinary bimodal angle densities. |
+| `sigma1`, `sigma2` | `[1e-6, inf)` | A real peak has positive width. |
+| `amp1`, `amp2` | `[0, inf)` | A real peak has non-negative amplitude; unbounded, a weakly-bimodal density drives the solver into a sign-flipped local minimum. |
+
+```{warning}
+A returned `mu` of exactly `0` or `360` is the solver sitting on that bound, not
+a measured angle — and `0` is also the denominator of the $\mu$ relative error in
+{py:func}`combra.metrics.gauss_relative_errors`. More generally the model has two
+modes whether or not the data does, so on a unimodal density the second mode is a
+*phantom*. Screen a fit with {py:func}`combra.metrics.degenerate_fit_reason`
+before reading its parameters; the gauss metrics do this for you and return `nan`.
+```
+
 :param x: Input histogram bin centres.
 :type x: array_like
 :param y: Input histogram densities.
@@ -100,6 +117,66 @@ The model is symmetric under swapping its two modes, so the returned modes are *
 >>> print(f'mu = {mus},  sigma = {sigmas},  amp = {amps}')
 ```
 ````
+
+### Checking a bimodal fit
+
+`fit_bimodal_gaussian` **always** returns two modes, because the model has two.
+It cannot tell you that your angle density only had one — when it does, the
+solver still has to put the second mode somewhere, and it parks a *phantom*:
+either a flat pedestal (a fitted `sigma` of 3.3 × 10⁴ degrees has been observed)
+or a narrow spike at a position with no data under it. Read such a fit's
+parameters as if they were measurements and you get nonsense.
+
+{py:func}`combra.metrics.degenerate_fit_reason` is the check for exactly that.
+Give it a fit and it returns `None` when the two modes are real, or a sentence
+naming what is wrong:
+
+```pycon
+>>> from combra import fitting, metrics, stats
+>>> # `two_mode_angles` came off real grain contours: convex and reflex vertices
+>>> x, y = stats.density_histogram(two_mode_angles, step=5)
+>>> fit = fitting.fit_bimodal_gaussian(x, y)
+>>> metrics.degenerate_fit_reason(fit.mus, fit.sigmas, fit.amps, density=(x, y))
+None
+```
+
+`None` means the two modes are real and their parameters mean something. Run the
+same check on a density that has only one mode and it names the problem instead:
+
+```pycon
+>>> # `convex_only_angles` has no reflex vertices, so there is no second mode
+>>> x1, y1 = stats.density_histogram(convex_only_angles, step=5)
+>>> bad = fitting.fit_bimodal_gaussian(x1, y1)
+>>> bad.mus, bad.sigmas
+([83.0, 343.4], [25.0, 0.6])
+>>> metrics.degenerate_fit_reason(bad.mus, bad.sigmas, bad.amps, density=(x1, y1))
+'mode 2 at 343.4 deg sits on 0.00% of the density, under the 5% floor -- ...'
+```
+
+A fit is rejected when any of these hold:
+
+| condition | what it catches |
+| --- | --- |
+| one mode holds < 5% of the total `amp` | there is only one real mode |
+| a `mu` is within 5° of the `[0, 360]` bounds | the solver sitting on a bound, not a measured angle — and `0` is the denominator of the $\mu$ relative error |
+| a `sigma` exceeds 120° | a pedestal spanning the domain, not a peak |
+| the two `mu` are closer together than one `sigma` | the modes are not resolved |
+| a mode sits on < 5% of the density | the fit put a mode where there is no data — the only test that catches a *spike*, whose `amp` is an integral and therefore not small |
+
+The last one needs `density=(x, y)`, so pass it whenever you have it; the checks
+on the parameters alone still run without it.
+
+```{tip}
+You do not need to call this before {py:func}`combra.metrics.compute_gauss_metrics`
+or the other gauss metrics — they apply it to both sides themselves and return
+`nan` rather than a number derived from a phantom mode. Call it directly to find
+out *why* a metric came back `nan`, or to screen a fit you are reading by hand.
+Full parameter reference: {py:func}`combra.metrics.degenerate_fit_reason`.
+```
+
+To *see* whether the fit is behaving on data of your own shape, the combra test
+suite ships an interactive plotly view of it — `pytest -m visual -s` writes a
+gallery of fits with their verdicts (see {doc}`Getting started <../get_started>`).
 
 ## Linear fits
 

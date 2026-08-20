@@ -44,7 +44,7 @@ Single Gaussian, $amp \cdot \mathcal{N}(x \mid \mu, \sigma)$.
 :type mu: float
 :param sigma: Standard deviation.
 :type sigma: float
-:param amp: Multiplicative amplitude. Default: `1`.
+:param amp: Amplitude — the **integral** of the curve, not its peak height, since `norm.pdf` already integrates to 1. A mode of height $h$ and width $\sigma$ therefore has `amp` $= h\sigma\sqrt{2\pi}$. Default: `1`.
 :type amp: float, optional
 :returns: **y** (*ndarray*) – Function values at `x`.
 :rtype: ndarray
@@ -73,9 +73,9 @@ Sum of two Gaussians. Use {py:func}`combra.fitting.fit_bimodal_gaussian` to fit 
 :type sigma1: float
 :param sigma2: Second standard deviation.
 :type sigma2: float
-:param amp1: First amplitude. Default: `1`.
+:param amp1: First amplitude — the integral of that mode, not its peak height (see {py:func}`combra.stats.gaussian`). Default: `1`.
 :type amp1: float, optional
-:param amp2: Second amplitude. Default: `1`.
+:param amp2: Second amplitude, likewise an integral. Default: `1`.
 :type amp2: float, optional
 :returns: **y** (*ndarray*) – Function values at `x`.
 :rtype: ndarray

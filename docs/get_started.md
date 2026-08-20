@@ -41,6 +41,22 @@ ruff check combra tests          # lint
 ruff format combra tests         # format
 ```
 
+Two suites are deselected from a bare `pytest` (and therefore from CI) because
+they are not pass/fail checks a push should pay for:
+
+```bash
+pytest -m slow                   # ~11 s: ground-truth check of the angle metrics
+                                 # against synthetic images whose vertex angles
+                                 # are known exactly. Run after touching the angle
+                                 # pipeline, the bimodal fit, or the gauss metrics.
+
+pytest -m visual -s              # writes interactive plotly HTML for you to look
+                                 # at: the bimodal-Gaussian fit on synthetic angle
+                                 # data, and whether each fit was judged usable.
+                                 # Paths are printed; COMBRA_VISUAL_DIR overrides
+                                 # where they are written.
+```
+
 CI (GitHub Actions) runs the ruff lint + format checks and `pytest` on Python 3.10, 3.11, and 3.12.
 
 For a quick post-install sanity check that doesn't need the dev tools, run the bundled self-validation helper — it estimates the fractal dimension of reference shapes with known answers (see {doc}`combra.validation <api/validation>`):
