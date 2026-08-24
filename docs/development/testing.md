@@ -51,3 +51,24 @@ python -m sphinx -b doctest -W --keep-going docs _doctest
 
 Before writing documentation, read {doc}`docs_style` — it fixes the register,
 the docstring section order, and the rules for math and examples.
+
+### The build needs combra installed
+
+The API reference is generated from combra's docstrings, so the package must be
+importable or there is no reference to render. Locally, `conf.py` finds a
+checkout sitting next to the docs repository, and `COMBRA_SRC` overrides the
+path:
+
+```bash
+export COMBRA_SRC=/path/to/combra
+```
+
+In CI this means the workflow installs combra from git before building. Because
+combra is a **private** repository, that install needs a token: a fine-grained
+personal access token with read access to `dkagramanyan/combra`, stored on the
+`combra_docs` repository as the `COMBRA_TOKEN` secret
+(*Settings → Secrets and variables → Actions → New repository secret*).
+
+Without it the build fails immediately, by design. The alternative — carrying on
+and publishing a site whose entire API reference is missing — is worse than a red
+build, because it looks like a successful deploy.
