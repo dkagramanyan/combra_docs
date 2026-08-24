@@ -55,7 +55,19 @@ jobs:
                  "installed for the docs to build."
             exit 1
           fi
-          pip install "combra[metrics] @ git+https://x-access-token:${COMBRA_TOKEN}@github.com/dkagramanyan/combra.git"
+          # A 403 here means the token reached GitHub and was refused on
+          # permissions. GitHub words that refusal "Write access to repository not
+          # granted" even when all the clone needs is read, so say what it means.
+          if ! pip install "combra[metrics] @ git+https://x-access-token:${COMBRA_TOKEN}@github.com/dkagramanyan/combra.git"; then
+            echo "::error::Installing combra failed. If the clone reported 403" \
+                 "'Write access to repository not granted', COMBRA_TOKEN is a valid" \
+                 "token that cannot read dkagramanyan/combra. For a fine-grained" \
+                 "token, set Repository access to 'Only select repositories' ->" \
+                 "dkagramanyan/combra (the default, 'Public repositories', cannot" \
+                 "see it) and Permissions -> Repository permissions -> Contents:" \
+                 "Read-only. A classic token needs the 'repo' scope."
+            exit 1
+          fi
 
       # autodoc makes a documented signature structurally incapable of drifting
       # from the code, which is why the old docs/check_api_drift.py is gone. The
