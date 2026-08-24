@@ -9,7 +9,7 @@ samples with combra's sharded split-API metrics, computed across all GPU ranks
 
 ```{note}
 **EDM2-v2 implements the v2 model-API convention** specified in
-{doc}`models_api_spec` (unified CLI, EMA-only `.pt` inference snapshots, HDF5
+{doc}`spec` (unified CLI, EMA-only `.pt` inference snapshots, HDF5
 class-batch generation, raw-pixel combra reference). The pages below describe the
 **current** EDM2-v2 CLI; the other three repos have not yet adopted the convention.
 ```
@@ -186,7 +186,7 @@ all in the native EDM σ-space on the `net(x, σ, labels)` denoiser:
 
 Pass `--eval-sampler` / `--eval-sampling-steps` during training; `edm2-gen-images`
 takes the same choice via `--sampler` / `--steps`. Use `edm2-compare-samplers` to
-confirm the step count on your own data ({doc}`sampler_comparison`).
+confirm the step count on your own data ({doc}`/examples/sampler_comparison`).
 
 ## Generation
 

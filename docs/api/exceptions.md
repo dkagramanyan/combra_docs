@@ -1,53 +1,39 @@
 # combra.exceptions
 
-combra's typed error + warning hierarchy. Every library-specific error derives from
-{py:class}`~combra.exceptions.CombraError`, so a caller can catch all of combra's
-failures with one `except`. Each concrete error also subclasses the built-in it
-logically *is* (e.g. `ValueError`), so existing `except ValueError` handlers keep
-working.
+```{eval-rst}
+.. module:: combra.exceptions
+.. currentmodule:: combra.exceptions
+```
+
+combra's typed error and warning hierarchy. Every error the library raises
+derives from {py:class}`~combra.exceptions.CombraError`, so one `except` catches
+all of them; each concrete error also derives from the built-in exception it
+logically is — {py:class}`ValueError` for a malformed file — so an existing
+`except ValueError` keeps working. The warnings sit under
+{py:class}`~combra.exceptions.CombraWarning`, itself a `UserWarning`, so the
+usual {py:mod}`warnings` filters apply.
 
 ```python
 from combra import exceptions
 ```
 
-````{py:exception} combra.exceptions.CombraError(*args, **kwargs)
+```{eval-rst}
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
 
-Base class for all combra-specific errors (subclasses `Exception`).
-````
-
-````{py:exception} combra.exceptions.SchemaError(*args, **kwargs)
-
-A parquet / HDF5 file does not match the expected combra schema — e.g.
-{py:func}`combra.io.load_rows` on a non-current-schema parquet. Subclasses
-{py:class}`~combra.exceptions.CombraError` and `ValueError`.
-````
-
-````{py:exception} combra.exceptions.IncompleteShardError(*args, **kwargs)
-
-A generated-image HDF5 shard is incomplete (a nonzero `missing_count` or unwritten
-slots in the `written` mask). Raised by {py:class}`combra.data.MicrostructureDataset` when
-it refuses to consume a crashed generation run. Subclasses
-{py:class}`~combra.exceptions.CombraError` and `ValueError`.
-````
-
-````{py:exception} combra.exceptions.CombraWarning(*args, **kwargs)
-
-Base class for all combra-specific warnings (subclasses `UserWarning`).
-````
-
-````{py:exception} combra.exceptions.UnknownFormatWarning(*args, **kwargs)
-
-An HDF5 file carries an unrecognized `format` attribute. Emitted (not raised) by
-{py:class}`combra.data.MicrostructureDataset`. Subclasses
-{py:class}`~combra.exceptions.CombraWarning`.
-````
-
-**Example**
-
-```pycon
->>> from combra import exceptions, io
->>> try:
-...     io.load_rows('old_schema.parquet')
-... except exceptions.CombraError as e:   # catches SchemaError and any other combra error
-...     print('combra rejected the file:', e)
+   CombraError
+   SchemaError
+   IncompleteShardError
+   CombraWarning
+   UnknownFormatWarning
 ```
+
+## See also
+
+- {doc}`combra.io <io>` — raises {py:class}`~combra.exceptions.SchemaError` on a
+  parquet predating the current schema.
+- {doc}`combra.data <data>` — raises
+  {py:class}`~combra.exceptions.IncompleteShardError` on a crashed generation
+  run and emits {py:class}`~combra.exceptions.UnknownFormatWarning` on an
+  unrecognized HDF5 `format` attribute.

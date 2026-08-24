@@ -17,7 +17,7 @@ vertex angle
   The interior angle at one vertex of a simplified grain contour, in degrees.
   {py:func}`combra.angles.vertex_angles` walks each closed polygon and emits one
   angle per vertex. WC-Co angle densities are characteristically **bimodal** —
-  hence the bimodal-Gaussian fit everywhere in {doc}`combra.fitting <api/fitting>`.
+  hence the bimodal-Gaussian fit everywhere in {doc}`combra.fitting </api/fitting>`.
 
 step
   The bin width, in degrees, used to reduce raw angles to an
@@ -25,7 +25,7 @@ step
   comparable when reduced at the same `step`, which is why `step` is stored on
   every parquet row and checked by
   {py:func}`combra.metrics.parquet_has_step`. Defaults to
-  {py:data}`combra.metrics.DEFAULT_ANGLE_STEP` (5.0°).
+  {py:data}`~combra.metrics.training.DEFAULT_ANGLE_STEP` (5.0°).
 
 beam
   A WC grain approximated by its {term}`MVEE`. Its `a` and `b` semi-axis lengths

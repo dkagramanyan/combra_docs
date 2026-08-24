@@ -1,68 +1,52 @@
 # combra.viz
 
-Shared plotting theme used by every `combra.*` plot module, so figures are visually
-consistent and the palette / axis styling / PNG export live in one place instead of
-being duplicated per module. plotly ships with the core install, so it is always
-importable.
+```{eval-rst}
+.. module:: combra.viz
+.. currentmodule:: combra.viz
+```
+
+The plotting theme shared by every `combra.*` plot module: one categorical
+palette, one axis style, one PNG export, so that a figure looks the same
+whichever module drew it. plotly ships with the core install, so this module is
+always importable.
 
 ```python
 from combra import viz
 ```
 
-````{py:data} combra.viz.SERIES_PALETTE
+## Styling and export
 
-The categorical series colour cycle (`['orange', 'red', 'blue', 'green', 'indigo']`).
-````
+```{eval-rst}
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
 
-````{py:data} combra.viz.METRIC_PALETTE
-
-Hex categorical palette (matplotlib `tab10` order) used by the
-{doc}`combra.metrics <metrics>` plots. Distinct from
-{py:data}`~combra.viz.SERIES_PALETTE` — these are two different palettes, not
-two notations of one: `SERIES_PALETTE` carries the historical angle-plot colour
-order by CSS name, `METRIC_PALETTE` the metric-plot order by hex.
-
-```python
-['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b']
+   axis_style
+   export_png
 ```
-````
 
-````{py:data} combra.viz.MARKERS
+## Palettes and marker cycles
 
-The marker-symbol cycle (`['triangle-down', 'square', 'diamond', ...]`).
-````
+Module constants. Each is indexed modulo its length, so a figure with more
+series than the cycle has entries repeats them.
 
-````{py:data} combra.viz.MARKER_GLYPHS
+```{eval-rst}
+.. currentmodule:: combra.viz.theme
 
-`{plotly_marker: unicode_glyph}` map used for the per-cell legend annotations.
-````
+.. autodata:: SERIES_PALETTE
 
-````{py:function} combra.viz.axis_style(**overrides) -> dict
+.. autodata:: METRIC_PALETTE
 
-The shared plotly axis styling (black frame + light grid). Returns the styling keys
-every combra axis uses; merge caller-specific keys (`title` / `tickvals` / `range` / …)
-alongside it.
+.. autodata:: MARKERS
 
-:param overrides: Extra axis keys merged over the shared style.
-:returns: **style** – the axis-styling dict.
-:rtype: dict
+.. autodata:: MARKER_GLYPHS
 
-**Example**
-
-```{doctest}
->>> from combra.viz import axis_style
->>> xaxis = dict(title=dict(text='angle'), tickvals=[0, 180, 360], **axis_style())
+.. currentmodule:: combra.viz
 ```
-````
 
-````{py:function} combra.viz.export_png(fig, path, scale=2, png_meta=None) -> None
+## See also
 
-Write a plotly ``fig`` to ``path`` as PNG (via kaleido).
-
-:param fig: A plotly figure.
-:param path: Output PNG path.
-:param scale: Raster scale factor. Default: `2`.
-:param png_meta: Metadata to embed as PNG ``tEXt`` chunks. Keys and values are coerced with :func:`str`; ``None`` (default) writes no metadata.
-:type png_meta: dict or None, optional
-:rtype: None
-````
+- {doc}`combra.angles <angles>` — angle plots, styled from `SERIES_PALETTE`,
+  `MARKERS` and `MARKER_GLYPHS`.
+- {doc}`combra.metrics <metrics>` — metric plots, styled from
+  `METRIC_PALETTE`.

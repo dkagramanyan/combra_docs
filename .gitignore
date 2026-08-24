@@ -1,4 +1,10 @@
 # `sphinx -b doctest docs _doctest` (the CI doctest step) writes here.
 _doctest/
-# docs/check_api_drift.py is imported by the doctest tooling.
 __pycache__/
+
+# Per-object API pages written by sphinx autosummary at build time.
+docs/api/generated/
+
+# Build artifacts: the rendered site, and the screenshots the run skill takes.
+public/
+_shots/

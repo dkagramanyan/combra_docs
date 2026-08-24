@@ -12,14 +12,14 @@ StyleSwin-v2 (v0.3.0), DiffiT-v2 (v3.1.0) and EDM2-v2 (v3.1.0).
 | [DiffiT-v2](https://github.com/dkagramanyan/DiffiT-v2) | latent diffusion — transformer, DDPM 1000-step schedule | NVlabs DiffiT | {doc}`diffit` |
 | [EDM2-v2](https://github.com/dkagramanyan/edm2-v2) | latent diffusion — EDM σ-space U-Net | NVlabs EDM2 | {doc}`edm2` |
 
-```{warning}
+```{note}
 **The "today …" asides in sections 6 and 7 are history.** They name specific
 defects in the present tense — EDM2-v2 taking the first N reference images,
 EDM2-v2 scoring against VAE round-tripped reals, StyleSwin-v2 flip-doubling its
 reference, DiffiT-v2 interleaving text records into `stats.jsonl`, san-v2 and
-StyleSwin-v2 writing metrics to TensorBoard only. **All of them were fixed.** They
-are kept because the rationale for each requirement is the defect that motivated
-it.
+StyleSwin-v2 writing metrics to TensorBoard only. All of them have since been
+fixed; each is kept because the rationale for a requirement is the defect that
+motivated it.
 ```
 
 The goal: any command, flag, checkpoint name, or generated artifact learned on
@@ -38,9 +38,9 @@ diffusion — transformer, DDPM schedule) and
 
 ---
 
-# The convention
+## The convention
 
-## 1. Packaging & entry points
+### 1. Packaging & entry points
 
 Every repo is pip-installable (`pip install -e .`) and exposes the same
 console-script family:
@@ -69,7 +69,7 @@ console-script family:
 - Bulk generation is `<model>-gen-images --save-mode hdf5`; scoring is the
   combra eval and `<model>-eval`.
 
-## 2. Training CLI
+### 2. Training CLI
 
 ```bash
 <model>-train --outdir <dir> --cfg <preset> --data <zip> --gpus N --batch-gpu B
@@ -142,7 +142,7 @@ console-script family:
   a matching directory only when `--resume` is passed — all of that goes
   away with §3). The directory contents are fixed by the §7 log contract.
 
-## 3. Checkpoint contract
+### 3. Checkpoint contract
 
 Exactly one artifact kind — no resume, no best-model tracking, no separate
 final checkpoint:
@@ -203,7 +203,7 @@ completed run always ends in a usable model — and both are verified by the
 conformance suite below.
 ```
 
-## 4. Generation contract
+### 4. Generation contract
 
 ```bash
 <model>-gen-images \
@@ -244,7 +244,7 @@ conformance suite below.
   anyway — and the combra consumer never reads it, so a crashed generation
   run's zero-filled slots are consumed downstream as black images).
 
-## 5. Class-label & dataset contract
+### 5. Class-label & dataset contract
 
 The integer label is an implementation detail; the grain-class *name* is the
 identity. Two rules:
@@ -307,7 +307,7 @@ What a dataset yields is part of the API, identical in all four repos:
   scoring — one normalize/denormalize pair per repo, defined in one place,
   asserted to round-trip.
 
-## 6. Evaluation contract
+### 6. Evaluation contract
 
 - **In-training combra eval** (all four): every snapshot tick, fakes generated
   **sharded across all ranks**; reference = whole training set — **raw,
@@ -327,7 +327,9 @@ What a dataset yields is part of the API, identical in all four repos:
   StyleSwin-v2 originally wrote `Metrics/combra_*` to TensorBoard **only**: lose the
   tfevents file and the run's entire metric history was gone).
 
-  ```{versionchanged} 2026-08-18
+  ```{admonition} Amended 2026-08-18
+  :class: note
+
   **The `10k` suffix is gone.** This section originally specified a *literal* `10k`
   in the key names, so that keys stayed stable across runs whatever
   `--num-fid-samples` said. That backfired: every run evaluated at a non-default
@@ -377,7 +379,7 @@ Because feature extraction is per-image and angle pooling is concatenation,
 the sharded result is **exact** — numerically identical to a single-GPU
 {py:func}`combra.metrics.compute_all_metrics` call over the full batches.
 
-## 7. Logging & TensorBoard contract
+### 7. Logging & TensorBoard contract
 
 Every run directory contains the same five artifacts — no more, no fewer.
 One console log, one scalar stream, one TensorBoard event file:
@@ -432,7 +434,9 @@ sizes, GPU counts and repos:
 | `Metrics/combra_*` | the §6 combra metrics | every snapshot tick; **not** step-held |
 | `Fakes` | EMA sample grid (image) | every snapshot tick |
 
-```{versionchanged} 2026-08-20
+```{admonition} Amended 2026-08-20
+:class: note
+
 **`Metrics/combra_*` are not step-held.** This table originally said the metric row was
 held between snapshot ticks. All four repos deliberately do the opposite: a tick with no
 eval writes no combra columns. Repeating the previous tick's values at a new step turns
@@ -452,7 +456,7 @@ the wc_cv analysis layer reads them directly (e.g.
 the legacy `Metrics/combra_fid10k`), so renaming a key is a breaking change for
 the analysis notebooks.
 
-## 8. Samplers (diffusion models)
+### 8. Samplers (diffusion models)
 
 Sampler **algorithms stay per-family** — DiffiT-v2's `dpm++/unipc/ddim/ddpm`
 (DDPM 1000-step schedule) and EDM2-v2's `dpm++/edm/euler/ddim` (σ-space) are
@@ -468,10 +472,10 @@ are standardized:
 The overlapping names are **not interchangeable**: `ddim` and `dpm++`
 integrate different parameterisations of the reverse process in the two
 repos, so step counts and quality do not transfer. Calibrate per repo with
-its own `<model>-compare-samplers` ({doc}`sampler_comparison`).
+its own `<model>-compare-samplers` ({doc}`/examples/sampler_comparison`).
 ```
 
-## 9. Launch scripts
+### 9. Launch scripts
 
 Cluster launches are plain shell scripts — **no `.sbatch` files in the
 repos**. Each repo ships the same set under `sh/`:
@@ -500,7 +504,7 @@ Rules:
 - The same script runs unmodified on a workstation:
   `bash sh/train_256.sh`.
 
-## 10. Repository infrastructure
+### 10. Repository infrastructure
 
 - **Tests**: every repo ships `tests/test_smoke.py` (CPU: forward contracts,
   CLI parsing) plus CUDA-op tests where custom kernels exist (san-v2,
@@ -528,7 +532,7 @@ Rules:
 
 ---
 
-# Model-family differences
+## Model-family differences
 
 Everything above is identical across the four repos. What follows is deliberately
 not — these are model-family details, not tooling drift:
@@ -562,7 +566,7 @@ not — these are model-family details, not tooling drift:
    check pins the result: the ten angle-density metrics are bit-identical to a
    single-process pass and the Fréchet distances agree to ~1e-8.
 
-# Conformance
+## Conformance
 
 Each repo proves the convention with its own CPU-only test suite — no GPU, no
 dataset, no model execution — so drift is caught by `pytest`, not by a failed

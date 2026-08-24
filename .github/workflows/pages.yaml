@@ -41,38 +41,35 @@ jobs:
         id: pages
         uses: actions/configure-pages@v6
 
-      # combra is a private repo. When a token with read access is configured as
-      # the COMBRA_TOKEN secret, install it and make the drift check FATAL; without
-      # one the check still runs but is allowed to skip, so a fork's PR still builds.
-      - name: Install combra (for the API-drift check)
-        id: combra
+      # combra is a private repo, and since the API reference is generated from its
+      # docstrings by autodoc, the site cannot be built without it -- there is no
+      # degraded mode to fall back to. A fork without the secret fails here, with a
+      # message saying why, rather than producing a site missing its reference.
+      - name: Install combra (the API reference is generated from it)
         env:
           COMBRA_TOKEN: ${{ secrets.COMBRA_TOKEN }}
         run: |
-          if [ -n "$COMBRA_TOKEN" ]; then
-            pip install "combra[metrics] @ git+https://x-access-token:${COMBRA_TOKEN}@github.com/dkagramanyan/combra.git"
-            echo "strict=1" >> "$GITHUB_OUTPUT"
-          else
-            echo "COMBRA_TOKEN not set -- the API-drift check will skip."
-            echo "strict=0" >> "$GITHUB_OUTPUT"
+          if [ -z "$COMBRA_TOKEN" ]; then
+            echo "::error::COMBRA_TOKEN is not set. The API reference is generated" \
+                 "from combra's docstrings by autodoc, so the package must be" \
+                 "installed for the docs to build."
+            exit 1
           fi
+          pip install "combra[metrics] @ git+https://x-access-token:${COMBRA_TOKEN}@github.com/dkagramanyan/combra.git"
 
-      # Guards the hand-authored py: directives against the real combra API. This is
-      # the check whose absence let combra 0.5.0 remove three functions the model
-      # repos import without anything noticing, so it gates whenever it can run.
-      - name: Check API reference against combra
-        env:
-          COMBRA_DRIFT_STRICT: ${{ steps.combra.outputs.strict }}
-        run: python docs/check_api_drift.py
+      # autodoc makes a documented signature structurally incapable of drifting
+      # from the code, which is why the old docs/check_api_drift.py is gone. The
+      # one gap it leaves is a public name that no page lists -- such an object
+      # silently never gets a page. This is that guard, and only that.
+      - name: Check every public name is on a page
+        run: python docs/check_api_coverage.py
 
-      # Runs the ```{doctest}``` blocks -- the examples that are actually runnable.
-      # Only meaningful when combra is installed, so it is gated on the same secret
-      # as the drift check; skipping loudly beats passing vacuously. Before this,
-      # `-b doctest` collected 0 tests (a MyST fence is a literal_block, never a
-      # doctest_block), so adding the step alone would have been armed-looking and
-      # tested nothing. It now collects 74.
+      # Runs every runnable example: the ```{doctest}``` blocks on the hand-written
+      # pages AND the ``Examples`` sections of the docstrings, which autodoc pulls
+      # into the generated reference pages. Examples that cannot run in CI carry an
+      # explicit ``# doctest: +SKIP``. This is what keeps an example from drifting
+      # away from the code it documents.
       - name: Run the runnable doc examples
-        if: steps.combra.outputs.strict == '1'
         run: python -m sphinx -b doctest -W --keep-going docs _doctest
 
       - name: Build the site (warnings are errors)

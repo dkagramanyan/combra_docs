@@ -2,13 +2,6 @@
 
 combra's changelog, and pointers to the four model repos' own.
 
-```{note}
-Until now no changelog reached a reader of this site. Someone reading the published
-documentation could not discover that san-v2 dropped `--resume`, or that the
-bimodal-Gaussian metrics changed to return `nan` for a degenerate fit — every
-changelog lived only in a private code repository.
-```
-
 ## combra
 
 The authoritative copy is `CHANGELOG.md` in the combra repository; the highlights
@@ -109,9 +102,17 @@ can be negative, and they are `nan` when either fit is not two real modes — se
 {py:func}`combra.metrics.gauss_density_metrics`.
 ```
 
+## Migrating from 0.5 or earlier
+
+0.6 was an API-convention release. Functions were renamed to `verb_noun` form, two
+modules moved (`combra.approx` → {doc}`combra.fitting <api/fitting>`,
+`combra.mvee` → {doc}`combra.ellipse <api/ellipse>`), and every plotter now returns
+its figure and takes `save_path=` and `show=`. There are no compatibility aliases;
+the repository `CHANGELOG.md` carries the full rename table.
+
 ## Model repositories
 
-Each fork keeps its own `CHANGELOG.md`; {doc}`examples/models_api_spec` is the
+Each fork keeps its own `CHANGELOG.md`; {doc}`models/spec` is the
 convention all four implement.
 
 | repo | current | changelog |

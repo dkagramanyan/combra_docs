@@ -1,329 +1,90 @@
 # combra.fitting
 
-The `combra.fitting` module fits parametric distributions and lines to 1-D data.
-
-One generic {py:func}`~combra.fitting.fit_distribution` covers the standard
-distributions; the two domain-specific models keep named fitters. Every
-result is a SciPy-style named tuple carrying the fitted parameters *and* a
-`curve` sampled ready for plotting, plus an `evaluate(x)` method that
-re-evaluates the model on any grid without refitting:
-
-```pycon
->>> from combra import fitting, stats
->>> x, y = stats.density_histogram(angles, step=5)
->>> fit = fitting.fit_bimodal_gaussian(x, y)
->>> fit.mus, fit.sigmas, fit.amps          # named access
->>> x_curve, y_curve = fit.curve           # ready to plot
->>> fit.evaluate([0, 90, 180, 270])        # re-evaluate anywhere
+```{eval-rst}
+.. module:: combra.fitting
+.. currentmodule:: combra.fitting
 ```
 
-Results also unpack positionally, so
-`(x_g, y_g), mus, sigmas, amps = fitting.fit_bimodal_gaussian(x, y)` works too.
+Least-squares fits of the {doc}`combra.stats <stats>` distributions, of a
+straight line, and of the Monte-Carlo convergence law, to one-dimensional data.
+Every fitter returns a SciPy-style named tuple carrying the fitted parameters,
+a `curve` sampled ready for plotting, and an `evaluate(x)` method that
+re-applies the model on any grid without refitting.
+
+```python
+from combra import fitting
+```
 
 ## Distribution fits
 
-````{py:function} combra.fitting.fit_distribution(model, x, y, p0, bounds=None, x_lim=None, N=100, drop_invalid=True) -> DistributionFit
+One generic {py:func}`~combra.fitting.fit_distribution` covers the standard
+distributions; the angle density keeps a named fitter because its bounds and
+mode ordering are part of the model.
 
-Least-squares fit of any `model(x, *params)` callable to `(x, y)`, plus the fitted curve sampled on a dense grid. One fitter for every distribution in {doc}`combra.stats <stats>` — the initial guesses and bounds that belong to a distribution stay with the caller rather than being baked into a per-distribution wrapper.
+```{eval-rst}
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
 
-:param model: Model callable `model(x, *params) -> ndarray`, e.g. {py:func}`combra.stats.gaussian`.
-:type model: callable
-:param x: Input histogram bin centres.
-:type x: array_like
-:param y: Input histogram densities.
-:type y: array_like
-:param p0: Initial guesses, in the model's parameter order.
-:type p0: sequence of float
-:param bounds: `(lower, upper)` per parameter. Bounds put `curve_fit` on its trust-region solver; without them it runs Levenberg-Marquardt and parameters are free to take unphysical signs. Default: `None`.
-:type bounds: tuple[sequence, sequence] or None, optional
-:param x_lim: `(x_min, x_max)` for the fit and the sampled curve. Defaults to `(x.min(), x.max())`. Default: `None`.
-:type x_lim: tuple[float, float] or None, optional
-:param N: Number of sample points on the returned curve. Default: `100`.
-:type N: int, optional
-:param drop_invalid: Drop non-finite and negative-`y` samples before fitting. Pass `False` to keep samples a decay drives below zero. Default: `True`.
-:type drop_invalid: bool, optional
-:returns: **result** – a {py:class}`~combra.fitting.DistributionFit` `(curve, params, model)`.
-:rtype: DistributionFit
-
-**Example**
-
-Per-group Gaussian and exponential fits on contour-length histograms:
-
-```pycon
->>> from combra import fitting, stats
->>> x, y = stats.density_histogram(len_list, step=1)
->>> fit = fitting.fit_distribution(stats.gaussian, x, y, p0=[3, 3, 1], x_lim=(0, 25))
->>> mu, sigma, amp = fit.params
->>> x_fit, y_fit = fit.curve
->>> decay = fitting.fit_distribution(
-...     stats.exponential, x, y, p0=[5, 1],
-...     bounds=([1e-10, 0.0], [1e6, float("inf")]), x_lim=(0, 25),
-... )
+   fit_distribution
+   fit_bimodal_gaussian
 ```
-````
-
-````{py:function} combra.fitting.fit_bimodal_gaussian(x, y, mu1=100, mu2=240, sigma1=30, sigma2=30, amp1=1, amp2=1) -> BimodalGaussianFit
-
-Bimodal Gaussian fit + sampled curve. Used inside {py:meth}`combra.data.MicrostructureDataset.generate_angles` to populate `prep_per_step.angles_gauss_*`.
-
-The model is symmetric under swapping its two modes, so the returned modes are **sorted by `mu`** — slot 1 is always the lower-angle mode. Without that convention which mode lands in slot 1 is arbitrary, and {py:func}`combra.metrics.gauss_relative_errors` compares modes slot-wise.
-
-**The fit is bounded**, which the initial guesses below do not tell you:
-
-| parameter | bounds | why |
-| --- | --- | --- |
-| `mu1`, `mu2` | `[0, 360]` | The angle domain, and the only interval the returned curve is evaluated on. Left free the solver walks a mode out of the data — fitted means of 648° and −167° were both observed on ordinary bimodal angle densities. |
-| `sigma1`, `sigma2` | `[1e-6, inf)` | A real peak has positive width. |
-| `amp1`, `amp2` | `[0, inf)` | A real peak has non-negative amplitude; unbounded, a weakly-bimodal density drives the solver into a sign-flipped local minimum. |
 
 ```{warning}
-A returned `mu` of exactly `0` or `360` is the solver sitting on that bound, not
-a measured angle — and `0` is also the denominator of the $\mu$ relative error in
-{py:func}`combra.metrics.gauss_relative_errors`. More generally the model has two
-modes whether or not the data does, so on a unimodal density the second mode is a
-*phantom*. Screen a fit with {py:func}`combra.metrics.degenerate_fit_reason`
-before reading its parameters; the gauss metrics do this for you and return `nan`.
+{py:func}`~combra.fitting.fit_bimodal_gaussian` returns two modes whether or not
+the data has two, so a single-moded density acquires a phantom second mode whose
+parameters are solver artifacts. Screen a fit with
+{py:func}`combra.metrics.degenerate_fit_reason` before reading its parameters;
+the gauss metrics do this themselves and return `nan`. See
+{ref}`undefined-rather-than-wrong`.
 ```
-
-:param x: Input histogram bin centres.
-:type x: array_like
-:param y: Input histogram densities.
-:type y: array_like
-:param mu1: Initial guess for the first mean. Default: `100`.
-:type mu1: float, optional
-:param mu2: Initial guess for the second mean. Default: `240`.
-:type mu2: float, optional
-:param sigma1: Initial guess for the first sigma. Default: `30`.
-:type sigma1: float, optional
-:param sigma2: Initial guess for the second sigma. Default: `30`.
-:type sigma2: float, optional
-:param amp1: Initial guess for the first amplitude. Default: `1`.
-:type amp1: float, optional
-:param amp2: Initial guess for the second amplitude. Default: `1`.
-:type amp2: float, optional
-:returns: **result** – a {py:class}`~combra.fitting.BimodalGaussianFit` ``(curve, mus, sigmas, amps)``: the `(x_gauss, y_gauss)` sampled curve, and the fitted per-mode means, sigmas and amplitudes.
-:rtype: BimodalGaussianFit
-
-**Example**
-
-```pycon
->>> import numpy as np
->>> from combra import angles, fitting, stats
->>> # Suppose `arr` is the angles array from combra.angles.vertex_angles
->>> arr = np.concatenate([np.random.normal(90, 20, 1000),
-...                       np.random.normal(270, 25, 1500)])
->>> x, y = stats.density_histogram(arr, step=2)
->>> (x_g, y_g), mus, sigmas, amps = fitting.fit_bimodal_gaussian(x, y)
->>> print(f'mu = {mus},  sigma = {sigmas},  amp = {amps}')
-```
-````
-
-### Checking a bimodal fit
-
-`fit_bimodal_gaussian` **always** returns two modes, because the model has two.
-It cannot tell you that your angle density only had one — when it does, the
-solver still has to put the second mode somewhere, and it parks a *phantom*:
-either a flat pedestal (a fitted `sigma` of 3.3 × 10⁴ degrees has been observed)
-or a narrow spike at a position with no data under it. Read such a fit's
-parameters as if they were measurements and you get nonsense.
-
-{py:func}`combra.metrics.degenerate_fit_reason` is the check for exactly that.
-Give it a fit and it returns `None` when the two modes are real, or a sentence
-naming what is wrong:
-
-```pycon
->>> from combra import fitting, metrics, stats
->>> # `two_mode_angles` came off real grain contours: convex and reflex vertices
->>> x, y = stats.density_histogram(two_mode_angles, step=5)
->>> fit = fitting.fit_bimodal_gaussian(x, y)
->>> metrics.degenerate_fit_reason(fit.mus, fit.sigmas, fit.amps, density=(x, y))
-None
-```
-
-`None` means the two modes are real and their parameters mean something. Run the
-same check on a density that has only one mode and it names the problem instead:
-
-```pycon
->>> # `convex_only_angles` has no reflex vertices, so there is no second mode
->>> x1, y1 = stats.density_histogram(convex_only_angles, step=5)
->>> bad = fitting.fit_bimodal_gaussian(x1, y1)
->>> bad.mus, bad.sigmas
-([83.0, 343.4], [25.0, 0.6])
->>> metrics.degenerate_fit_reason(bad.mus, bad.sigmas, bad.amps, density=(x1, y1))
-'mode 2 at 343.4 deg sits on 0.00% of the density, under the 5% floor -- ...'
-```
-
-A fit is rejected when any of these hold:
-
-| condition | what it catches |
-| --- | --- |
-| one mode holds < 5% of the total `amp` | there is only one real mode |
-| a `mu` is within 5° of the `[0, 360]` bounds | the solver sitting on a bound, not a measured angle — and `0` is the denominator of the $\mu$ relative error |
-| a `sigma` exceeds 120° | a pedestal spanning the domain, not a peak |
-| the two `mu` are closer together than one `sigma` | the modes are not resolved |
-| a mode sits on < 5% of the density | the fit put a mode where there is no data — the only test that catches a *spike*, whose `amp` is an integral and therefore not small |
-
-The last one needs `density=(x, y)`, so pass it whenever you have it; the checks
-on the parameters alone still run without it.
-
-```{tip}
-You do not need to call this before {py:func}`combra.metrics.compute_gauss_metrics`
-or the other gauss metrics — they apply it to both sides themselves and return
-`nan` rather than a number derived from a phantom mode. Call it directly to find
-out *why* a metric came back `nan`, or to screen a fit you are reading by hand.
-Full parameter reference: {py:func}`combra.metrics.degenerate_fit_reason`.
-```
-
-To *see* whether the fit is behaving on data of your own shape, the combra test
-suite ships an interactive plotly view of it — `pytest -m visual -s` writes a
-gallery of fits with their verdicts (see {doc}`Getting started <../get_started>`).
 
 ## Linear fits
 
-````{py:function} combra.fitting.fit_line(x, y) -> tuple[tuple[ndarray, ndarray], float, float, float, float]
+```{eval-rst}
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
 
-Least-squares line $y = kx + b$, solved by a numba-compiled kernel. Used in {py:meth}`combra.data.MicrostructureDataset.generate_beams` to populate `prep.a_*` and `prep.b_*` fit fields.
-
-:param x: Input series.
-:type x: array_like
-:param y: Input series.
-:type y: array_like
-:returns: **result** – a {py:class}`~combra.fitting.LineFit` ``(curve, slope, intercept, angle_deg, r2)``: the `(x_pred, y_pred)` sampled line, the slope, the intercept, `arctan(slope)` in degrees, and the R².
-:rtype: LineFit
-
-**Example**
-
-```pycon
->>> import numpy as np
->>> from combra import fitting
->>> x = np.linspace(0, 10, 50)
->>> y = 2.5 * x + 1.0 + np.random.normal(scale=0.5, size=50)
->>> fit = fitting.fit_line(x, y)
->>> print(f'k={fit.slope:.3f}  b={fit.intercept:.3f}  angle={fit.angle_deg:.2f}°  R²={fit.r2:.3f}')
->>> (x_pred, y_pred), k, b, angle_deg, score = fit  # positional unpacking still works
+   fit_line
 ```
-````
-
 
 ## Plateau / asymptote fits
 
-````{py:function} combra.fitting.fit_plateau(ns, vals) -> PlateauFit
+```{eval-rst}
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
 
-Fit $|m|(N) = a + b \cdot N^{-1/2}$ with `a, b ≥ 0`. The asymptote `a` is the irreducible `|m|` as `N → ∞` (e.g. a generator's bias floor); `b` captures the Monte-Carlo sampling-noise term (theoretical `N^(-1/2)` decay for Wasserstein / Gaussian-fit moment errors).
-
-Used by {py:func}`combra.metrics.convergence_stats` to estimate per-curve plateaus and the standard error around them.
-
-:param ns: Sample sizes (N values along the convergence curve).
-:type ns: array_like[int]
-:param vals: Metric values at each `N`. Sign is ignored; the fit is on `|vals|`.
-:type vals: array_like[float]
-:returns: **a_hat** (*float*) – Plateau (irreducible `|m|` at infinite N); and **a_se** (*float*) – Standard error on `a_hat` from the covariance matrix. NaN if the fit fails or is degenerate; and **b_hat** (*float*) – Sampling-noise coefficient. NaN for all three when the fit fails, when fewer than 3 points are supplied, or when all `vals` are identical.
-:rtype: tuple(float, float, float)
-
-**Example**
-
-Driven inside {py:func}`combra.metrics.convergence_stats` over a W-dist curve. Standalone:
-
-```pycon
->>> import numpy as np
->>> from combra import fitting
->>> ns = np.array([100, 250, 500, 1000, 2500, 5000, 10000])
->>> # True asymptote a=0.05; sampling-noise b=0.30; small additive jitter
->>> vals = 0.05 + 0.30 / np.sqrt(ns) + np.random.normal(scale=0.005, size=len(ns))
->>> a, a_se, b = fitting.fit_plateau(ns, vals)
->>> print(f'plateau a={a:.4f} ± {a_se:.4f}    b={b:.4f}')
+   fit_plateau
 ```
-````
 
 ## Result types
 
-The fit functions return SciPy-style named tuples (cf. `scipy.stats.linregress`),
-so results carry attribute names while staying unpacking-compatible with the
-historical plain tuples.
+SciPy-style named tuples (cf. `scipy.stats.linregress`): results carry attribute
+names while staying unpacking-compatible with plain tuples, so
+`(x_g, y_g), mus, sigmas, amps = fitting.fit_bimodal_gaussian(x, y)` works as
+well as attribute access.
 
-````{py:class} combra.fitting.LineFit(curve, slope, intercept, angle_deg, r2)
+```{eval-rst}
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
 
-Result of {py:func}`~combra.fitting.fit_line`.
-
-Deliberately its own type rather than a {py:class}`~combra.fitting.DistributionFit`: `angle_deg` and `r2` are derived diagnostics rather than parameters the solver searched for, so they do not belong in that class's `params` — and a line is not one of the {doc}`combra.stats <stats>` densities. `scipy.stats.linregress` draws the same distinction.
-
-:param curve: `(x_pred, y_pred)` of the fitted line sampled across the data span.
-:type curve: tuple[ndarray, ndarray]
-:param slope: Line slope `k`.
-:type slope: float
-:param intercept: Line intercept `b` (value at `x = 0`).
-:type intercept: float
-:param angle_deg: Slope as an angle in degrees, `atan(k)`.
-:type angle_deg: float
-:param r2: Coefficient of determination on the input points.
-:type r2: float
-````
-
-````{py:class} combra.fitting.BimodalGaussianFit(curve, mus, sigmas, amps)
-
-Result of {py:func}`~combra.fitting.fit_bimodal_gaussian`.
-
-:param curve: `(x, y)` of the fitted bimodal-Gaussian density.
-:type curve: tuple[ndarray, ndarray]
-:param mus: The two per-mode means.
-:type mus: list[float]
-:param sigmas: The two per-mode standard deviations.
-:type sigmas: list[float]
-:param amps: The two per-mode amplitudes.
-:type amps: list[float]
-````
-
-`````{py:class} combra.fitting.DistributionFit(curve, params, model)
-
-Result of {py:func}`~combra.fitting.fit_distribution`.
-
-:param curve: `(x, y)` of the fitted density sampled on the evaluation grid.
-:type curve: tuple[ndarray, ndarray]
-:param params: Fitted parameters, in the model's own signature order (after `x`).
-:type params: tuple[float, ...]
-:param model: The model that was fitted, so `evaluate` can re-apply it.
-:type model: callable
-
-````{py:method} evaluate(x) -> ndarray
-Re-evaluate the fitted model on an arbitrary grid, without refitting.
-````
-`````
-`````{py:class} combra.fitting.PlateauFit(asymptote, asymptote_stderr, decay)
-
-Result of {py:func}`~combra.fitting.fit_plateau`, which fits the
-Monte-Carlo convergence law
-
-$$|m|(N) = a + b \, N^{-1/2}$$
-
-:param asymptote: The irreducible $|m|$ as $N \to \infty$ — coefficient $a$, constrained non-negative. For a generator this is its bias floor.
-:type asymptote: float
-:param asymptote_stderr: Standard error of `asymptote`, from the covariance of the fit. NaN when the covariance is not finite.
-:type asymptote_stderr: float
-:param decay: Coefficient $b$ of the $N^{-1/2}$ term, unconstrained in sign. $b > 0$ is the canonical decay (the curve approaches the asymptote from above); $b < 0$ means small-$N$ fits landed lucky-close to the reference and the systematic bias only emerges as $N$ grows.
-:type decay: float
-
-All three fields are NaN when the input has fewer than 3 points, is perfectly
-flat, or the fit fails.
-
-````{py:method} evaluate(ns) -> ndarray
-Evaluate $a + b N^{-1/2}$ at the sample sizes `ns`.
-````
-
-**Example**
-
-```pycon
->>> import numpy as np
->>> from combra import fitting
->>> ns = np.array([100, 250, 500, 1000, 2500, 5000])
->>> vals = 0.08 + 1.2 * ns ** -0.5
->>> fit = fitting.fit_plateau(ns, vals)
->>> print(f'floor={fit.asymptote:.3f} +- {fit.asymptote_stderr:.3f}, b={fit.decay:.2f}')
+   DistributionFit
+   BimodalGaussianFit
+   LineFit
+   PlateauFit
 ```
-`````
 
 ## See also
 
 - {doc}`combra.stats <stats>` — the distribution functions these fits target.
-- {doc}`combra.angles <angles>` — uses `fit_bimodal_gaussian` for angle histograms.
-- {doc}`combra.ellipse <ellipse>` — uses `fit_line` for beam-length log-density fits.
-- {py:func}`combra.metrics.convergence_stats` — uses `fit_plateau` to estimate per-curve bias floors.
+- {doc}`combra.angles <angles>` — uses `fit_bimodal_gaussian` for angle
+  histograms.
+- {doc}`combra.ellipse <ellipse>` — uses `fit_line` for beam-length log-density
+  fits.
+- {py:func}`combra.metrics.convergence_stats` — uses `fit_plateau` to estimate
+  per-curve bias floors.
+- {doc}`Comparing microstructures </user_guide/metrics>` — why a parametric
+  metric goes undefined, and how an N-sweep is read.

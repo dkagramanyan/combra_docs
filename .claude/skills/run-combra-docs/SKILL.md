@@ -21,12 +21,25 @@ relative to the `combra_docs/` unit root** (the directory containing `docs/`).
   `google-chrome`/`chromium`.
 - The Sphinx toolchain (exactly what CI installs):
   ```bash
-  pip install -r docs/requirements.txt
+  pip install -r docs/requirements.txt -c docs/constraints.txt
   ```
   That pulls `sphinx>=7`, `myst-parser>=2`, `pydata-sphinx-theme>=0.15`,
-  `sphinx-design>=0.5`, `sphinx-copybutton>=0.5`.
-  **If PyPI is unreachable** (this container has no network) see
-  [Gotchas](#gotchas) for the offline install from pip's wheel cache.
+  `sphinx-design>=0.5`, `sphinx-copybutton>=0.5`, `numpydoc>=1.7`.
+  **If PyPI is unreachable** see [Gotchas](#gotchas) for the offline install from
+  pip's wheel cache.
+- **Network at build time.** `intersphinx` fetches the numpy / scipy / pandas /
+  networkx / python inventories on every cold build, and `nitpicky` mode is on,
+  so without network every cross-reference into those projects fails the build.
+  There is no offline fallback configured; if you need one, cache the
+  `objects.inv` files and point `intersphinx_mapping` at the local copies.
+- **The `combra` package must be importable.** The API reference is generated
+  from its docstrings by `autodoc` + `autosummary`, so the build fails without
+  it. `conf.py` looks for a `combra` checkout next to this repo
+  (`../combra`) and falls back to whatever is installed; `COMBRA_SRC`
+  overrides the path:
+  ```bash
+  export COMBRA_SRC=/path/to/combra
+  ```
 
 Point the driver at the interpreter that has the toolchain with `SPHINX_PY`
 (defaults to `python3`):
@@ -39,7 +52,7 @@ export SPHINX_PY=/path/to/venv/bin/python
 Build + serve + screenshot in one shot. Screenshots land in `_shots/`:
 ```bash
 ./.claude/skills/run-combra-docs/driver.sh shot                         # index.html
-./.claude/skills/run-combra-docs/driver.sh shot api/angles.html get_started.html
+./.claude/skills/run-combra-docs/driver.sh shot api/angles.html getting_started/installation.html
 ```
 Output:
 ```
@@ -47,11 +60,15 @@ built -> public/index.html
 shot -> .../_shots/index_html.png  (184850 bytes)
 ```
 Then **look at the PNG** in `_shots/` — a correct landing page shows the
-"🔧 combra" wordmark, a "0.5 (stable)" version dropdown, the left nav tree
-(Getting started / Python API / Examples), and a right-hand "On this page" TOC
-with "Edit on GitHub" / "Show Source" links. API pages (e.g. `api/angles.html`)
-show `py:` function signatures with teal `[source]` links, param/return tables,
-and copy-button code blocks.
+"🔧 combra" wordmark, a version dropdown, the left nav tree (Getting started /
+User guide / API reference / Examples / Generative models / Development), and a
+right-hand "On this page" TOC with "Edit on GitHub" / "Show Source" links.
+
+A module page such as `api/angles.html` is a short intro plus `autosummary`
+tables; the per-object pages it links to live under `api/generated/` (e.g.
+`api/generated/combra.angles.vertex_angles.html`) and show the signature, a
+teal `[source]` link, and Parameters / Returns / See Also / Notes / Examples
+sections.
 
 Other subcommands:
 ```bash
@@ -82,16 +99,33 @@ browser. Useless headless — use the driver's `shot`/`serve` instead.
 There is no test suite; the **warnings-as-errors build is the test**. If
 `driver.sh build` exits 0, the docs are valid.
 
+CI additionally runs every runnable example — the ```` ```{doctest} ```` blocks on
+the hand-written pages and the `Examples` sections of combra's docstrings, which
+autodoc pulls into the generated reference pages:
+```bash
+python -m sphinx -b doctest -W --keep-going docs _doctest
+```
+Examples that cannot run in CI carry an explicit `# doctest: +SKIP`. Run this
+after touching any example or docstring.
+
 ## Gotchas
 
-- **No sphinx-design directives are actually used** in the content, but
-  `sphinx_design` is still listed in `conf.py`'s `extensions`, so the build
-  hard-fails if it isn't installed. Install the full `docs/requirements.txt`;
-  don't drop it.
-- **linkcode `[source]` links** are resolved from a pre-built AST index
-  (`docs/_static/source_index.json`), **not** autodoc — the combra source tree
-  does not need to be importable to build the docs. If `[source]` links 404,
-  that JSON is stale, not the build.
+- **`sphinx_design` powers the module grid** on the landing page
+  (`::::{grid}` / `:::{grid-item-card}`), so the build hard-fails if it isn't
+  installed. Install the full `docs/requirements.txt`; don't drop it.
+- **The API reference is generated, not written.** `docs/api/*.md` are short
+  intro pages holding `autosummary` tables; the per-object pages under
+  `docs/api/generated/` are written at build time and are **not** checked in
+  (`rm -rf docs/api/generated` is safe and often the right first move when a
+  stale stub lingers). To change what an API page says, edit the **docstring in
+  the combra source**, not the docs repo.
+- **`autosummary` tables must sit inside an ```` ```{eval-rst} ```` fence.** The
+  stub generator scans raw source text for `.. autosummary::` and cannot see a
+  MyST `{autosummary}` fence — one renders an empty table and silently generates
+  no pages.
+- **linkcode `[source]` links** are resolved by `inspect` against the imported
+  package, and point at the combra commit that `conf.py` resolved via
+  `git rev-parse` in the source tree (falling back to `main`).
 - **`--headless` (old) vs `--headless=new`**: use `--headless=new` (the driver
   does). Old headless renders the pydata theme with broken fonts/layout.
 - **`--no-sandbox` is required** for Chrome as root / in this container, else it
@@ -101,9 +135,15 @@ There is no test suite; the **warnings-as-errors build is the test**. If
 
 ## Troubleshooting
 
-- **`Could not import extension sphinx_design` (or myst_parser / pydata…)** →
+- **`Could not import extension sphinx_design` (or myst_parser / pydata / numpydoc…)** →
   toolchain not installed into `SPHINX_PY`'s interpreter. Run
-  `pip install -r docs/requirements.txt` into that env.
+  `pip install -r docs/requirements.txt -c docs/constraints.txt` into that env.
+- **`ModuleNotFoundError: No module named 'combra'`** in `conf.py` → the package
+  is neither installed nor sitting at `../combra`. Point `COMBRA_SRC` at a
+  checkout.
+- **An API page renders an empty table and no per-object pages appear** → the
+  `autosummary` block is in a MyST `{autosummary}` fence instead of an
+  ```` ```{eval-rst} ```` one. See Gotchas.
 - **`pip install` fails with `Connection reset` / `No matching distribution`**
   (no network) → install offline from pip's HTTP cache. All five deps and their
   transitive wheels were present under `~/.cache/pip/http-v2` in this container.

@@ -30,7 +30,7 @@ function works for any generator.
 
 ## Running it on EDM2-v2
 
-{doc}`EDM2-v2 <edm2>` provides this wiring via `edm2-compare-samplers`, over its
+{doc}`EDM2-v2 </models/edm2>` provides this wiring via `edm2-compare-samplers`, over its
 EDM σ-space samplers (`edm`, `euler`, `ddim`, `dpm++`). It loads a checkpoint,
 pulls `--num-samples` real reference images from `--data`, builds a `fn(k)` per
 sampler, and calls `compare_samplers`. It writes a tidy

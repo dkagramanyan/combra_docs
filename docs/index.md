@@ -15,14 +15,21 @@ distribution metrics.
 :caption: Getting started
 :hidden:
 
-get_started
-glossary
-release_notes
+getting_started/installation
+getting_started/quickstart
+```
+
+```{toctree}
+:maxdepth: 2
+:caption: User guide
+:hidden:
+
+user_guide/index
 ```
 
 ```{toctree}
 :maxdepth: 1
-:caption: Python API
+:caption: API reference
 :hidden:
 
 api/data
@@ -47,18 +54,39 @@ api/validation
 :hidden:
 
 examples/angles
-examples/models_api_spec
-examples/san_v2
-examples/styleswin
-examples/diffit
-examples/edm2
+examples/beams
+examples/crack_graph
+examples/metrics
 examples/sampler_comparison
+```
+
+```{toctree}
+:maxdepth: 1
+:caption: Generative models
+:hidden:
+
+models/spec
+models/san_v2
+models/styleswin
+models/diffit
+models/edm2
+```
+
+```{toctree}
+:maxdepth: 1
+:caption: Development
+:hidden:
+
+development/testing
+development/docs_style
+release_notes
 ```
 
 ## The pipeline
 
 SEM image → contours → per-vertex angles → a fitted distribution → a metric that
-scores a generated microstructure against a real one.
+scores a generated microstructure against a real one. The
+{doc}`user guide <user_guide/index>` walks through each stage.
 
 ::::{grid} 1 2 2 3
 :gutter: 3
@@ -191,6 +219,6 @@ Reference vs. generated
   counts are `n`; figure geometry is `width`/`height` or `n_rows`/`n_cols`.
 
 :::{seealso}
-{doc}`glossary` defines the domain terms — angle density, beam, MVEE, `step`,
-`kind`, N-sweep.
+{doc}`user_guide/glossary` defines the domain terms — angle density, beam, MVEE,
+`step`, `kind`, N-sweep.
 :::

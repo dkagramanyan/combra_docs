@@ -1,9 +1,13 @@
 {# Full site navigation as a structured tree in the left sidebar.
    Uses Sphinx's global ``toctree()`` so every section (the per-module API
-   pages, getting started, examples) appears here instead of in the header. #}
+   pages, getting started, examples) appears here instead of in the header.
+
+   ``collapse=True`` expands only the branch the reader is in. The API reference
+   generates one page per object, so an always-expanded tree would list every
+   documented function on every page. #}
 <nav class="bd-docs-nav bd-links" aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Site navigation</p>
   <div class="bd-toc-item navbar-nav">
-    {{ toctree(collapse=False, maxdepth=2, includehidden=True, titles_only=True) }}
+    {{ toctree(collapse=True, maxdepth=2, includehidden=True, titles_only=True) }}
   </div>
 </nav>

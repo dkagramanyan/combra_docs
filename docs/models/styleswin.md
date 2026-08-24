@@ -4,7 +4,7 @@
 [StyleSwin](https://github.com/microsoft/StyleSwin) (a Swin-transformer StyleGAN) specialised
 for generating WC-Co microstructure SEM images. Upstream StyleSwin is **unconditional**; this
 fork adds **class-conditional** generation over the three grain classes and **implements the
-shared generative-model API convention** ({doc}`models_api_spec`): the console commands,
+shared generative-model API convention** ({doc}`spec`): the console commands,
 training flags, checkpoint format and generated-artifact layout match the sibling repos, and its
 output feeds the wc_cv angle pipeline with zero conversion. On every **snapshot** tick it scores
 generated samples with combra's sharded split-API metrics (numerically equivalent to

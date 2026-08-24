@@ -1,12 +1,17 @@
 # combra.metrics
 
-The `combra.metrics` module bundles three families of metrics:
+```{eval-rst}
+.. module:: combra.metrics
+.. currentmodule:: combra.metrics
+```
 
-- **Training-loop / batch metrics** — score generated images on the fly (no parquet round-trip): classic InceptionV3 FID (`compute_fid`), CLIP-MMD (`compute_cmmd`), Fréchet distance on DINOv2 features (`compute_fd_dinov2`), the four angle-Wasserstein distances between two samples' angle densities (`compute_wasserstein_metrics`), and the bimodal-Gaussian fit relative errors (`compute_gauss_metrics`). Every metric takes **in-memory images** (a numpy array or torch tensor), not a folder of files. Each side may be a **single image or a batch** (Wasserstein, Gaussian and CMMD are valid on one image; the Fréchet-distance metrics FID/FD-DINOv2 need ≥ 2). `compute_all_metrics` runs the whole set — FID included — in one call. Every two-input metric takes the *reference* first, then the *generated*.
-- **Distribution comparison helpers** — for comparing per-class angle distributions stored as parquet files.
-- **Sampler comparison** — sweep a diffusion sampler over a range of step counts, score each batch with the training-loop metrics, and plot metric-vs-steps (`compare_samplers`, `plot_sampler_comparison`) to see how many steps a sampler needs for good quality.
-- **Convergence analysis** — N-sweep aggregation, Kendall trend tests, plateau fits, and the convergence-grid / gain-distribution plots used by `3_metrics_convergence.ipynb`.
-- **TensorBoard training curves** — read the metrics/losses a training run logged as TensorBoard scalars ({py:func}`~combra.io.read_tb_scalars`, {py:func}`~combra.io.progress_fraction`) and plot them as a models × metric-family grid (`plot_training_curve_grid`) to compare convergence *shape* across runs on different scales.
+Metrics that score a generated sample against a reference one. Three families are
+provided: transport distances between two {term}`angle density` curves, relative
+errors between the bimodal-Gaussian fits of those curves, and Fréchet or MMD
+distances between deep image features. Every two-input metric takes the reference
+first and the generated second. The concepts — what each family measures, when
+the parametric one goes undefined, and how an N-sweep is read — are in
+{doc}`Comparing microstructures </user_guide/metrics>`.
 
 ```python
 from combra import metrics
@@ -14,1583 +19,263 @@ from combra import metrics
 
 ## Training-loop metrics
 
-These score **in-memory images** (a numpy array or torch tensor) and return a
-scalar, so generated samples can be evaluated on the fly during training without
-writing them to disk. They live in `combra.metrics.training`.
+These score in-memory images — a numpy array or a torch tensor — and return a
+scalar, so generated samples can be evaluated during training without a disk
+round-trip. Each side may be a single image or a batch: the angle-density metrics
+and CMMD are defined on one image, while the Fréchet-distance metrics estimate a
+per-side covariance and need at least two.
 
-**Batches vs single data points.** Every metric accepts both a **single image**
-(`(H, W)`) and a **batch** (`(N, H, W)`, `(N, C, H, W)`, or `(N, H, W, C)`), but
-they differ in what a single image *means*:
-
-- `compute_wasserstein_metrics`, `compute_gauss_metrics` and `compute_cmmd` are
-  valid on a **single image** — the angle metrics reduce each side to an angle
-  density (then, for the Gaussian metrics, fit it), and CMMD uses kernel means,
-  none of which needs a sample of images.
-- The **Fréchet-distance** metrics — `compute_fd_dinov2` and the InceptionV3 FID
-  (`compute_fid`, also computed inside `compute_all_metrics`) — estimate a
-  per-side **covariance**, which is undefined for one image, so they require
-  **≥ 2 images per side** and raise `ValueError` otherwise (inside
-  `compute_all_metrics` this surfaces as a `nan` for that metric).
-- `compute_wasserstein_metrics` and `compute_gauss_metrics` additionally accept a
-  precomputed `(x, y)` angle density in place of images on either side.
-
-The backbone models (CLIP / DINOv2 / InceptionV3) are loaded once per process and
-memoised with `functools.cache`. Each two-input metric also takes an optional
-`reference_cache` dict: pass the **same** dict across calls that share one fixed
-reference batch and the reference-side work (CLIP embedding, DINOv2 / Inception
-`(mu, sigma)`, angle density) runs only once. The cache is keyed by metric and
-parameters, **not** by the reference content — use one cache per reference batch.
+Every two-input metric takes an optional `reference_cache` dict. The same dict
+passed across calls that share one fixed reference batch makes the reference-side
+work — the CLIP embedding, the Inception or DINOv2 moments, the angle density —
+run only once. The cache is keyed by metric and parameters, not by content, so one
+cache belongs to one reference batch.
 
 ### Image-feature metrics
 
-These compare the deep-feature distributions of a *reference* and a *generated*
-image set: classic InceptionV3 **FID** (`compute_fid`), CLIP-MMD (`compute_cmmd`),
-and the Fréchet distance on DINOv2 features (`compute_fd_dinov2`). FID is just one
-of these feature metrics — `compute_fid` scores two in-memory image batches, and
-`compute_all_metrics` computes the same FID alongside the others.
-`compute_cmmd` and `compute_fd_dinov2` work out of the box — `open-clip-torch` is a
-core dependency, so a plain `pip install combra` covers them; the DINOv2 backbone is
-fetched from `torch.hub` on first use.
+Compare the deep-feature distributions of a reference and a generated image set.
+All three need the optional `metrics` extra; the DINOv2 backbone is fetched from
+`torch.hub` and the InceptionV3 weights by `pytorch-fid`, both on first use.
 
-````{py:function} combra.metrics.compute_fid(reference_images, generated_images, device=None, batch_size=50, dims=2048, reference_cache=None, data_range=None) -> float
+```{eval-rst}
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
 
-Classic InceptionV3 FID between two **in-memory image batches** (a numpy array or torch tensor), using the [pytorch-fid](https://github.com/mseitzer/pytorch-fid) InceptionV3 backbone (a core dependency). Runs every image through InceptionV3 and returns the Fréchet distance between the two activation distributions. Like every Fréchet-distance metric it estimates a per-side covariance, so it needs **≥ 2 images per side** and raises `ValueError` otherwise. The weights are downloaded and cached by pytorch-fid on first use. `compute_all_metrics` computes this same metric under its `fid` key. Runs on PyTorch, selecting CUDA automatically when available.
-
-:param reference_images: Batch of reference (real) images.
-:type reference_images: ndarray or torch.Tensor
-:param generated_images: Batch of generated images.
-:type generated_images: ndarray or torch.Tensor
-:param device: Torch device to run on (e.g. `'cuda'` or `'cpu'`). When `None`, picks `'cuda'` if available, otherwise `'cpu'`. Default: `None`.
-:type device: str or torch.device or None, optional
-:param batch_size: Forward-pass batch size. Default: `50`.
-:type batch_size: int, optional
-:param dims: Dimensionality of the InceptionV3 feature layer (`64`, `192`, `768`, or `2048`). Default: `2048`.
-:type dims: int, optional
-:param reference_cache: Opt-in dict memoising the reference `(mu, sigma)` across calls. Default: `None`.
-:type reference_cache: dict or None, optional
-:param data_range: Declared float range of the image input, e.g. `(-1, 1)`. **Required for anything that is not already `uint8`** — the range is never inferred. See {py:func}`combra.image.to_uint8`. Default: `None`.
-:type data_range: tuple or None, optional
-:returns: **fid** (*float*) – The Fréchet (FID) distance. `0.0` when both batches are identical.
-:rtype: float
-
-**Example**
-
-```pycon
->>> from combra.metrics import compute_fid
->>> fid = compute_fid(real_batch, generated_batch)  # CUDA when available, else CPU
->>> print(f'FID = {fid:.4f}')
+   compute_fid
+   compute_cmmd
+   compute_fd_dinov2
 ```
-
-`compute_fid` works from images; for sharded or distributed evaluation the feature-extraction and distance halves are exposed separately as {py:func}`combra.metrics.fid_features` / {py:func}`combra.metrics.frechet_from_features` (see [Sharded feature extraction](#sharded-feature-extraction) below). combra does not expose the raw mean/covariance (`mu`/`sigma`) form directly.
-````
-
-````{py:function} combra.metrics.compute_cmmd(reference_images, generated_images, model_name='ViT-L-14-336-quickgelu', pretrained='openai', device=None, batch_size=64, sigma=10.0, scale=1000.0, reference_cache=None, data_range=None) -> float
-
-CLIP-MMD (CMMD) between a reference and a generated image set. Features come from a ready CLIP model loaded with [open_clip](https://github.com/mlfoundations/open_clip); the distance is the Gaussian-RBF Maximum Mean Discrepancy of [Google's CMMD](https://github.com/google-research/google-research/tree/master/cmmd) (`sigma=10`, `scale=1000`). CMMD uses kernel means (no covariance), so each side may be a **single image or a batch**.
-
-:param reference_images: Batch of reference (real) images.
-:type reference_images: ndarray or torch.Tensor
-:param generated_images: Batch of generated images.
-:type generated_images: ndarray or torch.Tensor
-:param model_name: open_clip architecture name. Default: `'ViT-L-14-336-quickgelu'` (the QuickGELU variant that matches the `'openai'` weights).
-:type model_name: str, optional
-:param pretrained: open_clip pretrained-weights tag. Default: `'openai'`.
-:type pretrained: str, optional
-:param device: Torch device. When `None`, picks `'cuda'` if available, else `'cpu'`. Default: `None`.
-:type device: str or torch.device or None, optional
-:param batch_size: Forward-pass batch size for the CLIP encoder. Default: `64`.
-:type batch_size: int, optional
-:param sigma: Gaussian-RBF kernel bandwidth. Default: `10.0`.
-:type sigma: float, optional
-:param scale: Multiplier applied to the MMD². Default: `1000.0`.
-:type scale: float, optional
-:param reference_cache: Opt-in dict memoising the reference CLIP embedding across calls. Default: `None`.
-:type reference_cache: dict or None, optional
-:param data_range: Declared float range of the image input, e.g. `(-1, 1)`. **Required for anything that is not already `uint8`** — the range is never inferred. See {py:func}`combra.image.to_uint8`. Default: `None`.
-:type data_range: tuple or None, optional
-:returns: **cmmd** (*float*) – The scaled CLIP-MMD distance.
-:rtype: float
-
-**Example**
-
-```pycon
->>> from combra.metrics import compute_cmmd
->>> cmmd = compute_cmmd(real_batch, generated_batch)   # CUDA when available
->>> print(f'CMMD = {cmmd:.4f}')
-```
-````
-
-````{py:function} combra.metrics.compute_fd_dinov2(reference_images, generated_images, model_name='dinov2_vitb14', device=None, batch_size=64, image_size=224, reference_cache=None, data_range=None) -> float
-
-Fréchet distance between the [DINOv2](https://github.com/facebookresearch/dinov2) features of two image sets. The backbone is loaded from `torch.hub` (`facebookresearch/dinov2`); the Fréchet distance itself is the same one {py:func}`combra.metrics.frechet_from_features` computes. Like FID, it estimates a per-side covariance, so it needs **≥ 2 images per side** and raises `ValueError` on a single image.
-
-:param reference_images: Batch of reference (real) images.
-:type reference_images: ndarray or torch.Tensor
-:param generated_images: Batch of generated images.
-:type generated_images: ndarray or torch.Tensor
-:param model_name: DINOv2 `torch.hub` entrypoint. Default: `'dinov2_vitb14'`.
-:type model_name: str, optional
-:param device: Torch device. When `None`, picks `'cuda'` if available, else `'cpu'`. Default: `None`.
-:type device: str or torch.device or None, optional
-:param batch_size: Forward-pass batch size. Default: `64`.
-:type batch_size: int, optional
-:param image_size: Square size images are resized to before the backbone. Default: `224`.
-:type image_size: int, optional
-:param reference_cache: Opt-in dict memoising the reference `(mu, sigma)` across calls. Default: `None`.
-:type reference_cache: dict or None, optional
-:param data_range: Declared float range of the image input, e.g. `(-1, 1)`. **Required for anything that is not already `uint8`** — the range is never inferred. See {py:func}`combra.image.to_uint8`. Default: `None`.
-:type data_range: tuple or None, optional
-:returns: **fd** (*float*) – Fréchet distance between the two DINOv2 feature sets.
-:rtype: float
-````
 
 ### Sharded feature extraction
 
-Each image-feature metric is also exposed as **two halves** — a *feature
-extractor* (`fid_features`, `cmmd_features`, `fd_dinov2_features`) that turns an
-image batch into its backbone features, and a *distance* function
-(`frechet_from_features` for both Fréchet metrics — FID and FD-DINOv2 — and
-`cmmd_from_features` for CMMD) that scores two feature sets. The `compute_*`
-functions above are thin wrappers over these two halves, so the numbers are
-identical.
+Each image-feature metric is also exposed as two halves — a feature extractor and
+a distance — so the expensive half can be sharded across devices or processes.
+Extraction is per-image, so pooling the feature rows of disjoint shards before the
+distance is exact rather than an approximation. The `compute_*` functions above
+are thin wrappers over these, and the numbers are identical.
 
-Splitting them lets the (expensive) feature extraction be **sharded across
-devices or processes**: extract features for disjoint slices of the generated set
-in parallel, concatenate the rows, then take the distance once. Extraction is
-per-image, so `concat(features(shard_a), features(shard_b))` equals
-`features(concat(shard_a, shard_b))` — the pooled result is exact, not an
-approximation. This is how the model training loops (DiffiT-v2, EDM2-v2, san-v2,
-StyleSwin-v2) spread the `fid` /
-`cmmd` / `fd_dinov2` work over every rank (see the {doc}`DiffiT example
-</examples/diffit>` and the {doc}`v2 API convention </examples/models_api_spec>`): each rank extracts features from its own generated shard,
-the feature rows are gathered to rank 0, and the distance is taken there against
-the (cached) reference features.
+```{eval-rst}
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
 
-```pycon
->>> import numpy as np
->>> from combra.metrics import fid_features, frechet_from_features
->>> ref_feats = fid_features(real_batch)                       # once, cacheable
->>> gen_feats = np.concatenate([fid_features(s) for s in gen_shards])  # sharded
->>> fid = frechet_from_features(ref_feats, gen_feats)          # == compute_fid(real, gen)
+   fid_features
+   cmmd_features
+   fd_dinov2_features
+   frechet_from_features
+   cmmd_from_features
 ```
 
-````{py:function} combra.metrics.fid_features(images, device=None, batch_size=50, dims=2048, data_range=None, amp=False) -> ndarray
+### Angle-density metrics
 
-Feature half of {py:func}`combra.metrics.compute_fid`: run `images` through InceptionV3 and return the pooled activations as a float32 array `[N, dims]`. Pair with {py:func}`combra.metrics.frechet_from_features`. Same `device` / `batch_size` / `dims` semantics as `compute_fid`.
+Reduce both sides to their angle densities with the same image → angles →
+histogram pipeline that builds the angle parquets, then score the two curves.
+`compute_wasserstein_metrics` and `compute_gauss_metrics` additionally accept a
+precomputed `(x, y)` density in place of images on either side.
 
-:param images: Image batch (numpy array or torch tensor).
-:type images: ndarray or torch.Tensor
-:param device: Torch device. When `None`, picks `'cuda'` if available, else `'cpu'`. Default: `None`.
-:type device: str or torch.device or None, optional
-:param batch_size: Forward-pass batch size. Default: `50`.
-:type batch_size: int, optional
-:param dims: Dimensionality of the InceptionV3 feature layer. Default: `2048`.
-:type dims: int, optional
-:param data_range: Declared float range of the image input, e.g. `(-1, 1)`. **Required for anything that is not already `uint8`** — the range is never inferred. See {py:func}`combra.image.to_uint8`. Default: `None`.
-:type data_range: tuple or None, optional
-:returns: **features** (*ndarray*) – InceptionV3 features, shape `[N, dims]`.
-:rtype: ndarray
-:param amp: Run the backbone forward under fp16 `torch.autocast` on CUDA. Off by
-    default so results match the documented fp32 values; on an RTX 3090 it roughly
-    triples CLIP throughput and moves the metric by well under 0.1%. Default: `False`.
-:type amp: bool, optional
-````
+```{eval-rst}
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
 
-````{py:function} combra.metrics.frechet_from_features(reference_features, generated_features) -> float
-
-The distance half shared by every Fréchet-distance metric (FID and FD-DINOv2): reduce each feature set to its `(mu, sigma)` and take the Fréchet distance between the two. The backbone is irrelevant here — pair it with {py:func}`combra.metrics.fid_features` for FID or {py:func}`combra.metrics.fd_dinov2_features` for FD-DINOv2. Each side needs **≥ 2 rows** (it estimates a covariance). Pooling features from several shards before this call is exact.
-
-:param reference_features: Reference features, shape `[N, D]`.
-:type reference_features: ndarray
-:param generated_features: Generated features, shape `[M, D]`.
-:type generated_features: ndarray
-:returns: **fd** (*float*) – Fréchet distance between the two feature sets.
-:rtype: float
-````
-
-````{py:function} combra.metrics.cmmd_features(images, model_name='ViT-L-14-336-quickgelu', pretrained='openai', device=None, batch_size=64, data_range=None, amp=False) -> ndarray
-
-Feature half of {py:func}`combra.metrics.compute_cmmd`: the per-image CLIP embeddings as a float32 array `[N, D]`. Pair with {py:func}`combra.metrics.cmmd_from_features`.
-
-:param images: Image batch (numpy array or torch tensor).
-:type images: ndarray or torch.Tensor
-:param model_name: open_clip architecture name. Default: `'ViT-L-14-336-quickgelu'`.
-:type model_name: str, optional
-:param pretrained: open_clip pretrained-weights tag. Default: `'openai'`.
-:type pretrained: str, optional
-:param device: Torch device. When `None`, picks `'cuda'` if available, else `'cpu'`. Default: `None`.
-:type device: str or torch.device or None, optional
-:param batch_size: Forward-pass batch size. Default: `64`.
-:type batch_size: int, optional
-:param data_range: Declared float range of the image input, e.g. `(-1, 1)`. **Required for anything that is not already `uint8`** — the range is never inferred. See {py:func}`combra.image.to_uint8`. Default: `None`.
-:type data_range: tuple or None, optional
-:returns: **features** (*ndarray*) – CLIP embeddings, shape `[N, D]`.
-:rtype: ndarray
-:param amp: Run the backbone forward under fp16 `torch.autocast` on CUDA. Off by
-    default so results match the documented fp32 values; on an RTX 3090 it roughly
-    triples CLIP throughput and moves the metric by well under 0.1%. Default: `False`.
-:type amp: bool, optional
-````
-
-````{py:function} combra.metrics.cmmd_from_features(reference_features, generated_features, sigma=10.0, scale=1000.0, device=None, block=1024) -> float
-
-Distance half of {py:func}`combra.metrics.compute_cmmd`: the Gaussian-RBF MMD between two CLIP-embedding sets produced by {py:func}`combra.metrics.cmmd_features`.
-
-:param reference_features: Reference CLIP embeddings, shape `[N, D]`.
-:type reference_features: ndarray
-:param generated_features: Generated CLIP embeddings, shape `[M, D]`.
-:type generated_features: ndarray
-:param sigma: Gaussian-RBF kernel bandwidth. Default: `10.0`.
-:type sigma: float, optional
-:param scale: Multiplier applied to the MMD². Default: `1000.0`.
-:type scale: float, optional
-:param device: Torch device for the kernel accumulation. When `None`, picks `'cuda'` if available, else `'cpu'`. Default: `None`.
-:type device: str or torch.device or None, optional
-:param block: Rows per accumulation stripe. The three kernel means are accumulated in `block`-row stripes, so no `N x N` matrix is materialised; the result does not depend on this value. Default: `1024`.
-:type block: int, optional
-:returns: **cmmd** (*float*) – Scaled CLIP-MMD distance.
-:rtype: float
-````
-
-````{py:function} combra.metrics.fd_dinov2_features(images, model_name='dinov2_vitb14', device=None, batch_size=64, image_size=224, data_range=None, amp=False) -> ndarray
-
-Feature half of {py:func}`combra.metrics.compute_fd_dinov2`: the per-image DINOv2 features as a float32 array `[N, D]`. Pair with {py:func}`combra.metrics.frechet_from_features`.
-
-:param images: Image batch (numpy array or torch tensor).
-:type images: ndarray or torch.Tensor
-:param model_name: DINOv2 `torch.hub` entrypoint. Default: `'dinov2_vitb14'`.
-:type model_name: str, optional
-:param device: Torch device. When `None`, picks `'cuda'` if available, else `'cpu'`. Default: `None`.
-:type device: str or torch.device or None, optional
-:param batch_size: Forward-pass batch size. Default: `64`.
-:type batch_size: int, optional
-:param image_size: Square size images are resized to before the backbone. Default: `224`.
-:type image_size: int, optional
-:param data_range: Declared float range of the image input, e.g. `(-1, 1)`. **Required for anything that is not already `uint8`** — the range is never inferred. See {py:func}`combra.image.to_uint8`. Default: `None`.
-:type data_range: tuple or None, optional
-:returns: **features** (*ndarray*) – DINOv2 features, shape `[N, D]`.
-:rtype: ndarray
-:param amp: Run the backbone forward under fp16 `torch.autocast` on CUDA. Off by
-    default so results match the documented fp32 values; on an RTX 3090 it roughly
-    triples CLIP throughput and moves the metric by well under 0.1%. Default: `False`.
-:type amp: bool, optional
-````
-
-### Angle-Wasserstein metrics
-
-A single entry point, `compute_wasserstein_metrics`, reduces *both* the reference
-and the generated sample to their angle densities (the same image → angles →
-histogram pipeline used to build the parquet datasets) and returns all four
-Wasserstein distances at once — the linear `w1`/`w2` and the circular
-`circular_w1`/`circular_w2` (which treat 359° and 1° as neighbours). Each side
-may be a single image, a batch, or a precomputed `(x, y)` angle density.
-
-````{py:function} combra.metrics.compute_wasserstein_metrics(reference, generated, step=None, reference_cache=None, **angle_kw) -> dict
-
-All four angle-Wasserstein distances in a single pass, returned as a dict `{'w1', 'w2', 'circular_w1', 'circular_w2'}` (all in degrees). Each side is reduced to its angle density once, so the four distances share that work rather than recomputing it per metric.
-
-`reference` and `generated` may each be **a single `(H, W)` image**, **a batch of images**, or **a precomputed `(x, y)` angle density** (a length-2 pair of 1-D arrays) — image input is reduced to a density, a density is used as-is.
-
-:param reference: Reference sample — image, image batch, or `(x, y)` density.
-:type reference: ndarray or torch.Tensor or tuple
-:param generated: Generated sample to score — image, image batch, or `(x, y)` density.
-:type generated: ndarray or torch.Tensor or tuple
-:param step: Histogram bin width in degrees (image input only). Defaults to `5.0`. Default: `None`.
-:type step: float or None, optional
-:param reference_cache: Opt-in dict memoising the reference angle density across calls. Default: `None`.
-:type reference_cache: dict or None, optional
-:param angle_kw: Extra keyword args forwarded to `images_to_angle_density` (`border_eps`, `tol`, `min_segment_len`).
-:returns: **metrics** (*dict*) – Keys `w1`, `w2`, `circular_w1`, `circular_w2`, all in degrees.
-:rtype: dict
-
-**Example**
-
-```pycon
->>> from combra.metrics import compute_wasserstein_metrics
->>> dists = compute_wasserstein_metrics(real_batch, generated_batch)   # batches
->>> one   = compute_wasserstein_metrics(real_image, generated_image)   # single images
->>> dists['w1'], dists['circular_w2']
+   compute_wasserstein_metrics
+   compute_gauss_metrics
+   images_to_angle_density
+   images_to_pooled_angles
+   angle_density_metrics_from_pooled
 ```
 
-The density-level core (used by the parquet comparison path) lives at `combra.metrics.wasserstein.wasserstein_density_metrics` if you need to call it on `(x, y)` densities directly.
-````
+The bin width they fall back to when `step` is `None`:
 
-````{py:function} combra.metrics.images_to_angle_density(images, step=None, border_eps=5, tol=3, min_segment_len=10.0, workers=None, data_range=None) -> tuple[ndarray, ndarray]
+```{eval-rst}
+.. currentmodule:: combra.metrics.training
 
-Reduce a batch of images to a single angle density `(x, y)`. Runs `_preprocess_image → vertex_angles` on each image, pools all vertex angles, then histograms them with {py:func}`combra.stats.density_histogram` at `step` degrees.
+.. autodata:: DEFAULT_ANGLE_STEP
 
-:param images: Image batch.
-:type images: ndarray or torch.Tensor
-:param step: Histogram bin width in degrees. Defaults to `5.0`. Default: `None`.
-:type step: float or None, optional
-:param border_eps: Border margin passed to {py:func}`combra.angles.vertex_angles`. Default: `5`.
-:type border_eps: int, optional
-:param tol: Polygon-approximation tolerance passed to `vertex_angles`. Default: `3`.
-:type tol: int, optional
-:param min_segment_len: Minimum segment length passed to `vertex_angles`. Default: `10.0`.
-:type min_segment_len: float, optional
-:param workers: When `> 1`, distribute the per-image `_preprocess_image → vertex_angles` extraction over a multiprocessing pool of this many workers. `None` (or `1`) runs it serially. Default: `None`.
-:type workers: int or None, optional
-:param data_range: Declared float range of the image input, e.g. `(-1, 1)`. **Required for anything that is not already `uint8`** — the range is never inferred. See {py:func}`combra.image.to_uint8`. Default: `None`.
-:type data_range: tuple or None, optional
-:returns: **density** (*tuple[ndarray, ndarray]*) – `(x, y)` angle-bin centres and densities.
-:rtype: tuple(ndarray, ndarray)
-````
-
-````{py:function} combra.metrics.images_to_pooled_angles(images, border_eps=5, tol=3, min_segment_len=10.0, workers=None, data_range=None) -> ndarray
-
-The step-independent part of {py:func}`combra.metrics.images_to_angle_density`: run `_preprocess_image → vertex_angles` on each image and concatenate the per-image vertex angles, but **without** histogramming. Histogram the result with {py:func}`combra.stats.density_histogram` to obtain the `(x, y)` density. Because pooling is plain concatenation and `density_histogram` is a `bincount`, pooled arrays from disjoint image shards combine exactly — `density_histogram(concat(pooled_a, pooled_b))` equals the density over the full set, in any order — so this is the unit to extract per worker/rank when the per-image angle work is sharded.
-
-:param images: Image batch.
-:type images: ndarray or torch.Tensor
-:param border_eps: Border margin passed to {py:func}`combra.angles.vertex_angles`. Default: `5`.
-:type border_eps: int, optional
-:param tol: Polygon-approximation tolerance passed to `vertex_angles`. Default: `3`.
-:type tol: int, optional
-:param min_segment_len: Minimum segment length passed to `vertex_angles`. Default: `10.0`.
-:type min_segment_len: float, optional
-:param workers: When `> 1`, distribute the per-image `_preprocess_image → vertex_angles` extraction over a multiprocessing pool of this many workers. `None` (or `1`) runs it serially. Default: `None`.
-:type workers: int or None, optional
-:param data_range: Declared float range of the image input, e.g. `(-1, 1)`. **Required for anything that is not already `uint8`** — the range is never inferred. See {py:func}`combra.image.to_uint8`. Default: `None`.
-:type data_range: tuple or None, optional
-:returns: **pooled** (*ndarray*) – 1-D array of all pooled vertex angles (degrees).
-:rtype: ndarray
-````
-
-````{py:function} combra.metrics.angle_density_metrics_from_pooled(reference_angles, generated_angles, step=None) -> dict
-
-**Every** angle-density metric from two *pooled* vertex-angle arrays — the four Wasserstein distances (`w1`, `w2`, `circular_w1`, `circular_w2`) and the six bimodal-Gaussian relative errors (`mu1`, `mu2`, `sigma1`, `sigma2`, `amp1`, `amp2`), in one dict.
-
-This is the rank-0 half of a **sharded angle evaluation** and the natural partner to {py:func}`combra.metrics.images_to_pooled_angles`: each rank pools the angles of its own image shard, the 1-D arrays are gathered and concatenated, and this scores the two concatenations. Histogramming a concatenation of shards is identical to histogramming the whole set, so the sharded result is **exact** — the same numbers a single-process {py:func}`combra.metrics.compute_all_metrics` call would produce.
-
-:param reference_angles: Pooled reference vertex angles in degrees, 1-D.
-:type reference_angles: ndarray
-:param generated_angles: Pooled generated vertex angles in degrees, 1-D.
-:type generated_angles: ndarray
-:param step: Histogram bin width in degrees. Defaults to `5.0`. Default: `None`.
-:type step: float or None, optional
-:returns: **metrics** (*dict*) – The four Wasserstein keys followed by the six Gaussian relative-error keys.
-:rtype: dict
-:raises ValueError: Either pooled array yields an empty density — the angle pipeline found no vertices in that image set.
-
-**Example**
-
-```pycon
->>> from combra.metrics import angle_density_metrics_from_pooled, images_to_pooled_angles
->>> ref_angles = images_to_pooled_angles(real_batch)                       # once, cacheable
->>> gen_angles = np.concatenate([images_to_pooled_angles(s) for s in shards])
->>> angle_density_metrics_from_pooled(ref_angles, gen_angles)['w1']
+.. currentmodule:: combra.metrics
 ```
-````
-
-### Gaussian-fit metrics
-
-`compute_gauss_metrics` mirrors `compute_wasserstein_metrics`, but instead of a
-transport distance it fits a **bimodal Gaussian** to each side's angle density
-({py:func}`combra.fitting.fit_bimodal_gaussian` — two modes, each with a mean `mu`,
-width `sigma` and amplitude `amp`) and reports the **per-mode relative error**
-`(generated − reference) / reference` of every fitted parameter. These are the
-same six numbers (`mu1`, `mu2`, `sigma1`, `sigma2`, `amp1`, `amp2`) the parquet
-comparison path computes from its stored fits, made available directly from
-in-memory images.
-
-````{py:function} combra.metrics.compute_gauss_metrics(reference, generated, step=None, reference_cache=None, **angle_kw) -> dict
-
-Bimodal-Gaussian relative-error metrics between a reference and a generated sample, returned as a flat dict `{'mu1', 'mu2', 'sigma1', 'sigma2', 'amp1', 'amp2'}` — mode 1 then mode 2 for each fitted parameter. Each side is reduced to its angle density once and fitted with {py:func}`combra.fitting.fit_bimodal_gaussian`; each value is `(generated − reference) / reference` for that parameter.
-
-`reference` and `generated` may each be **a single `(H, W)` image**, **a batch of images**, or **a precomputed `(x, y)` angle density** (a length-2 pair of 1-D arrays) — image input is reduced to a density, a density is used as-is. The `reference_cache` is keyed the same way as `compute_wasserstein_metrics`, so a cache shared between the two reuses the one reference angle density.
-
-:param reference: Reference sample — image, image batch, or `(x, y)` density.
-:type reference: ndarray or torch.Tensor or tuple
-:param generated: Generated sample to score — image, image batch, or `(x, y)` density.
-:type generated: ndarray or torch.Tensor or tuple
-:param step: Histogram bin width in degrees (image input only). Defaults to `5.0`. Default: `None`.
-:type step: float or None, optional
-:param reference_cache: Opt-in dict memoising the reference angle density across calls. Default: `None`.
-:type reference_cache: dict or None, optional
-:param angle_kw: Extra keyword args forwarded to `images_to_angle_density` (`border_eps`, `tol`, `min_segment_len`).
-:returns: **metrics** (*dict*) – Keys `mu1`, `mu2`, `sigma1`, `sigma2`, `amp1`, `amp2` — the per-mode relative errors of the fitted means, widths and amplitudes.
-:rtype: dict
-
-**Example**
-
-```pycon
->>> from combra.metrics import compute_gauss_metrics
->>> errs = compute_gauss_metrics(real_batch, generated_batch)   # batches
->>> one  = compute_gauss_metrics(real_image, generated_image)   # accepted, but see below
->>> errs['mu1'], errs['sigma2']
-```
-
-The density-level core (used by the parquet comparison path) lives at `combra.metrics.gauss.gauss_density_metrics`; the raw per-mode error math, shared with `compute_angle_metrics`, is `combra.metrics.gauss.gauss_relative_errors`.
-
-```{important}
-All six keys come back as `nan` when either side's angle density is not genuinely
-bimodal — a single mode leaves the fit nothing to put in its second one, and the
-relative error would otherwise be computed by dividing by that phantom. A single
-small image is below this bar; pool ~1000 angles. See
-[Undefined rather than wrong](#undefined-rather-than-wrong).
-```
-````
 
 ### Unified entry point
 
-````{py:function} combra.metrics.compute_all_metrics(reference_images, generated_images, *, step=None, device=None, angle_kw=None, reference_cache=None, image_metrics=False, workers=None, data_range=None) -> dict
+```{eval-rst}
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
 
-Run every requested batch metric for a (reference, generated) pair and return one flat dict. The angle-density metrics — the Wasserstein distances (`w1`, `w2`, `circular_w1`, `circular_w2`) and the bimodal-Gaussian relative errors (`mu1`, `mu2`, `sigma1`, `sigma2`, `amp1`, `amp2`) — compare the two samples' angle densities and are **always** computed. The image-feature metrics — `fid` (classic InceptionV3 FID on the in-memory images), `cmmd`, and `fd_dinov2` — compare their deep features and are added **only when `image_metrics=True`**; the default is `False`, so the cheap angle-only suite needs no GPU or optional deps. When `image_metrics=True`, an image-feature metric that cannot run (missing optional dependency, no network, **or fewer than 2 images per side** for the Fréchet-distance `fid`/`fd_dinov2`) is recorded as `nan` and logged, so the angle metrics still come back — a single image therefore yields real `w*`/`cmmd` values and `nan` for `fid`/`fd_dinov2`. The `mu*`/`sigma*`/`amp*` keys are `nan` there too, for a different reason: one small image yields too few vertex angles to determine a bimodal fit (see [Undefined rather than wrong](#undefined-rather-than-wrong)).
-
-The three image-feature metrics run **sequentially**. They share one device and each streams its own image conversion, so running them concurrently only multiplied peak host memory without shortening the call.
-
-:param reference_images: Batch of reference (real) images.
-:type reference_images: ndarray or torch.Tensor
-:param generated_images: Batch of generated images.
-:type generated_images: ndarray or torch.Tensor
-:param step: Histogram bin width in degrees. Defaults to `5.0`. Default: `None`.
-:type step: float or None, optional
-:param device: Torch device for the image-feature metrics. Default: `None`.
-:type device: str or torch.device or None, optional
-:param angle_kw: Extra keyword args forwarded to `images_to_angle_density`. Default: `None`.
-:type angle_kw: dict or None, optional
-:param reference_cache: Opt-in dict reused across calls to compute the reference-side features once. Default: `None`.
-:type reference_cache: dict or None, optional
-:param image_metrics: When `True`, also compute the image-feature metrics `fid`, `cmmd`, `fd_dinov2` (they run concurrently in a thread pool). When `False` (the default) only the angle-density and Gaussian-fit metrics are returned, so no GPU or optional deps are needed. Default: `False`.
-:type image_metrics: bool, optional
-:param workers: When `> 1`, parallelise the angle-density extraction over a multiprocessing pool of this many workers. `None` (or `1`) runs it serially. Default: `None`.
-:type workers: int or None, optional
-:param data_range: Float range of `images`, e.g. `(-1, 1)`; declared rather than guessed. Default: `None`.
-:type data_range: tuple or None, optional
-:returns: **results** (*dict*) – Flat `{metric_name: value}` dict. Always contains `w1`, `w2`, `circular_w1`, `circular_w2`, `mu1`, `mu2`, `sigma1`, `sigma2`, `amp1`, `amp2`; with `image_metrics=True` it additionally contains `fid`, `cmmd`, `fd_dinov2`.
-:rtype: dict
-
-**Example**
-
-```pycon
->>> from combra.metrics import compute_all_metrics
->>> scores = compute_all_metrics(real_batch, generated_batch, image_metrics=True)
->>> scores['cmmd'], scores['w1'], scores['mu1']
+   compute_all_metrics
 ```
-````
 
 ## Distributed evaluation
 
-`combra.metrics.distributed` is the sharded eval harness the four model repos share.
-Every rank extracts features and pooled angles from its own shard; only the small
-feature rows and 1-D angle arrays cross the wire, and rank 0 takes the distances. The
-result is **exact**, not an approximation — verified against a single-process pass,
-the ten angle-density metrics come back bit-identical and the Fréchet distances agree
-to ~1e-8.
+`combra.metrics.distributed` is the sharded evaluation harness the model training
+repos share. Every rank extracts features and pooled angles from its own shard;
+only the feature rows and the 1-D angle arrays cross the wire, and rank 0 takes
+the distances. The result is exact — verified against a single-process pass, the
+ten angle-density metrics come back bit-identical and the Fréchet distances agree
+to about 1e-8. The module needs `torch` and imports nothing until called. A caller
+supplies only what is model-specific: how to produce a shard of generated images
+as `uint8`.
 
-It needs `torch`, so it lives behind the `[metrics]` extra and imports nothing until
-called. A caller supplies only what is model-specific: how to produce a shard of
-generated images as `uint8`.
+```{eval-rst}
+.. module:: combra.metrics.distributed
+.. currentmodule:: combra.metrics.distributed
 
-````{py:function} combra.metrics.distributed.precompute_reference(images_u8, device, rank, world_size, *, amp=False) -> tuple
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
 
-Extract and gather the reference side once, before the training loop. Returns
-`(reference, ok)`: `reference` is `{"angles": [M], "feat": {name: [N, D]}}` on rank 0
-and `None` elsewhere, and `ok` is a rank-uniform success flag — gate the per-tick eval
-on `ok`, not on `reference is not None`, which is also `None` on every non-zero rank.
+   precompute_reference
+   gather_generated
+   distributed_metrics
+   all_ranks_ok
+   angle_workers
 
-:param images_u8: This rank's slice of the real reference images.
-:type images_u8: ndarray
-:param device: Device for the feature backbones.
-:param rank: Rank of this process.
-:type rank: int
-:param world_size: Size of the process group.
-:type world_size: int
-:param amp: Run the backbones under fp16 autocast.
-:type amp: bool, optional
-````
-
-````{py:function} combra.metrics.distributed.gather_generated(images_u8, device, rank, world_size, *, amp=False) -> tuple
-
-Extract and gather the generated side for one eval tick. Returns `(features, angles)`
-on rank 0, with `None` values elsewhere. **Every rank must call this** — the gathers
-are collectives, so a rank that skips them hangs the ones that do not.
-
-:param images_u8: This rank's shard of generated images.
-:type images_u8: ndarray
-:param device: Device for the feature backbones.
-:param rank: Rank of this process.
-:type rank: int
-:param world_size: Size of the process group.
-:type world_size: int
-:param amp: Run the backbones under fp16 autocast.
-:type amp: bool, optional
-````
-
-````{py:function} combra.metrics.distributed.distributed_metrics(reference, generated_angles, generated_features, device=None, step=None) -> dict
-
-Rank-0 metrics from the already-gathered sides — equivalent to
-{py:func}`combra.metrics.compute_all_metrics` with `image_metrics=True`, but sharded.
-Pass `device` explicitly: left unset, the CMMD reduction resolves its own device, so a
-CPU extraction silently reduces on CUDA and the two do not agree bit-for-bit.
-
-:param reference: The cached reference from `precompute_reference`.
-:type reference: dict
-:param generated_angles: Pooled generated angles from `gather_generated`.
-:param generated_features: Gathered generated features from `gather_generated`.
-:type generated_features: dict
-:param device: Device for the CMMD reduction.
-:param step: Angle histogram bin width.
-:type step: float, optional
-````
-
-````{py:function} combra.metrics.distributed.all_ranks_ok(ok, device, world_size) -> bool
-
-Rank-uniform agreement on whether local work succeeded. Call between the purely local
-extraction and the collectives: without it a single rank's failure leaves the others
-blocked in `gather` until the NCCL watchdog fires, which surfaces as a timeout rather
-than the actual error.
-
-:param ok: Whether this rank's local work succeeded.
-:type ok: bool
-:param device: Device for the reduction tensor.
-:param world_size: Size of the process group.
-:type world_size: int
-````
-
-````{py:function} combra.metrics.distributed.angle_workers(world_size) -> int
-
-CPU processes for the angle extraction on one rank, divided by the rank count — every
-rank on an 8-GPU node asking for `min(32, cpu_count)` oversubscribes the box eightfold.
-
-:param world_size: Number of ranks sharing the machine.
-:type world_size: int
-````
+.. currentmodule:: combra.metrics
+```
 
 ## Startup check & normalization
 
-````{py:function} combra.metrics.self_test(image_metrics=False, device=None, size=128, *, strict=False, images=None, n_polygons=40) -> dict
+`self_test` is the check a training loop runs before its first tick, so a
+misconfigured install aborts the run rather than logging `nan` for every metric.
+Normalization is a separate contract every image-taking function here shares: a
+non-`uint8` batch is accepted only with its float range declared as `data_range`,
+because guessing per image lets two images in one batch be rescaled under
+different assumptions. See {py:func}`combra.image.to_uint8`.
 
-Verify combra's metric pipeline is importable and runnable **before** a training
-run — the shared implementation the model training loops call at startup. Runs the
-full {py:func}`~combra.metrics.compute_all_metrics` gather; the angle-density
-metrics must come back finite, else it raises `RuntimeError`.
+```{eval-rst}
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
 
-Pass `strict=True` together with `image_metrics=True` to require the InceptionV3 /
-CLIP / DINOv2 metrics to be finite as well. That is what a training loop wants: a
-missing CLIP download otherwise surfaces as a whole run logging `nan` for
-`combra_fid` / `combra_cmmd` / `combra_fd_dinov2`. Pass `images=` to score a real
-reference batch against itself instead of synthetic grains.
-
-`size` and `n_polygons` set the synthetic geometry and default to ~300 vertex
-angles, enough to constrain the six-parameter bimodal fit. They were raised from
-`size=64, n_polygons=10`, a sample measured to fit degenerately on 6 of 12 seeds —
-it passed only because the seed is hardcoded to a lucky one.
-
-:param image_metrics: Also exercise the FID / CMMD / FD-DINOv2 backends. Default: `False`.
-:type image_metrics: bool, optional
-:param device: Torch device for the image metrics. Default: `None` (auto).
-:type device: str or None, optional
-:param size: Side length of the synthetic probe images. Default: `64`.
-:type size: int, optional
-:param strict: Require the image-feature metrics to be finite too, instead of tolerating ``nan``. This is what a training loop wants at startup: a missing CLIP download otherwise shows up as a whole run of ``nan`` FID/CMMD/FD-DINOv2. Only meaningful together with ``image_metrics=True``. Default: `False`.
-:type strict: bool, optional
-:param images: Score this batch against itself instead of synthetic grains, so the check exercises the data the run will actually use. Default: `None`.
-:type images: array-like, optional
-:param n_polygons: Geometry of the synthetic grain images used when ``images`` is not given. The defaults yield ~300 vertex angles, which is enough to constrain the six-parameter bimodal fit. They were raised from ``size=64, n_polygons=10`` after that sample was measured to produce a degenerate fit on **6 of 12** seeds — it passed only because the seed is hardcoded to a lucky one, leaving every caller one library change away from a spurious abort. Default: `40`.
-:type n_polygons: int, optional
-:returns: **results** (*dict*) – The metrics dict, so the caller can log which backends are live.
-:rtype: dict
-
-**Example**
-
-```pycon
->>> from combra.metrics import self_test
->>> self_test()          # angle-only: raises if combra is misconfigured
->>> self_test(image_metrics=True, device='cpu')   # also probes FID/CMMD/DINOv2
+   self_test
 ```
-````
 
 ## Distribution comparison
 
-These helpers compare angle-distribution parquet files (as produced by {py:meth}`combra.data.MicrostructureDataset.generate_angles`) against an "reference" reference. The lower-level plumbing they build on — `index_by_name_step`, `find_reference`, `parquet_has_step`, and the row-pair `compute_angle_metrics` — is not part of the public surface; import it from `combra.metrics.compare` if you need it directly.
+Compare angle-distribution parquets, as produced by
+{py:meth}`combra.data.MicrostructureDataset.generate_angles`, against a reference
+parquet. `all_metrics_by_sample_size` is the image-based analogue of
+`angle_metrics_by_sample_size` and adds the image-feature metrics.
 
-````{py:function} combra.metrics.compare_folders(folder_paths, reference_path, class_map=None, steps=None, scale=1000, verbose=True, fid_by_kimg=None, real_h5=None, gen_h5_map=None, image_metrics=False, device=None, real_n=None, gen_n=None) -> list[dict]
+```{eval-rst}
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
 
-Walk every parquet under each folder in `folder_paths`, look each row up in `reference_path`, print/collect the metrics.
-
-:param folder_paths: Folders, each holding one generator's parquets. The folder name suffix after `_kimg_` becomes the `kimg` tag in records (full name used if absent). May also pass `.parquet` paths directly to process exactly one file.
-:type folder_paths: Iterable[str]
-:param reference_path: Parquet file with reference distributions.
-:type reference_path: str
-:param class_map: `{fake_class: real_class}` mapping when names don't match. Default: `None`.
-:type class_map: dict[str, str] or None, optional
-:param steps: Subset of steps to keep — others are skipped. Default: `None`.
-:type steps: Iterable[float] or None, optional
-:param scale: Scale factor applied to ``w1`` in the printed table only.
-:type scale: int, default=1000
-:param verbose: Print a per-row table. Default: `True`.
-:type verbose: bool, optional
-:param fid_by_kimg: Optional `{kimg_key: fid}` map — prints a `[kimg=… FID=…]` header above each checkpoint's rows. Default: `None`.
-:type fid_by_kimg: dict[str, float] or None, optional
-:param real_h5: Reference-image h5 (with ``class_Ultra_Co*`` groups); required when ``image_metrics`` is True. Default: `None`.
-:type real_h5: str or pathlib.Path, optional
-:param gen_h5_map: ``{str(folder): gen_h5_path}`` (gen h5s have ``class_0/1/2`` groups); required when ``image_metrics`` is True. Default: `None`.
-:type gen_h5_map: dict, optional
-:param image_metrics: When True, also compute the image-feature metrics (fid / cmmd / fd_dinov2) straight from image batches via :func:`compute_all_metrics` and merge them into each per-class record (and print them as extra columns). For each (gen_class -> real_class) in ``class_map`` the first ``gen_n`` gen images are scored against the reference's first ``real_n`` (None = all). The reference's reference-side features memoise once across every checkpoint via a per-real-class cache, so only the gen side is recomputed per folder. An image metric whose GPU / optional-dep backend is unavailable nan-fills — see :func:`compute_all_metrics`.
-:type image_metrics: bool, default=False
-:param device: Torch device for the image-feature metrics. Default: `None`.
-:type device: str, optional
-:param real_n: Number of reference images per real class to score against (None = all). Default: `None`.
-:type real_n: int, optional
-:param gen_n: Number of generated images per class to score (None = all). Default: `None`.
-:type gen_n: int, optional
-:returns: **records** (*list[dict]*) – `{'kimg', 'class', 'step', 'w1', 'w2', 'circular_w1', 'circular_w2', 'mus_m', 'sig_m', 'amp_m'}` per matched row (the `w*`/`circular_w*` keys are the angle-Wasserstein distances, as in {py:func}`combra.metrics.compute_wasserstein_metrics`).
-:rtype: list[dict]
-
-**Example**
-
-Adapted from `co_angles/2_comparison.ipynb` — compare every diffit checkpoint against a shared real reference at one step:
-
-```pycon
->>> from combra.metrics import compare_folders
->>> reference = './grid_results/o_bc_left_4x_1536_1024x1024_256x256_rgb_N360_msl5/angles_n360.parquet'
->>> folder_paths = [
-...     './grid_results/00017-diffit-256-gpus2-batch192_kimg_004435_msl5/angles_n1000.parquet',
-...     './grid_results/00017-diffit-256-gpus2-batch192_kimg_008064_msl5/angles_n1000.parquet',
-...     './grid_results/00017-diffit-256-gpus2-batch192_kimg_016128_msl5/angles_n1000.parquet',
-... ]
->>> class_map = {'class_0': 'class_Ultra_Co11',
-...              'class_1': 'class_Ultra_Co25',
-...              'class_2': 'class_Ultra_Co6_2'}
->>> recs = compare_folders(folder_paths, reference, class_map=class_map,
-...                        steps=[2], coef=1)  # coef=1 prints raw degrees
+   compare_folders
+   compare_pairs
+   angle_metrics_by_sample_size
+   all_metrics_by_sample_size
+   find_kimg_parquets
+   load_fid_by_kimg
 ```
-````
-
-````{py:function} combra.metrics.load_fid_by_kimg(stats_path) -> dict[str, float]
-
-Parse a training run's `stats.jsonl` and map each evaluated checkpoint's FID to a **6-digit zero-padded `floor(kimg)`** key (e.g. `403.2 → '000403'`) — the same token `compare_folders` derives from a `..._kimg_<key>_...` sweep-folder name, so the result drops straight into its `fid_by_kimg` argument. Only scalar eval records contribute; text/log records (and any line missing the keys) are shape-filtered out.
-
-:param stats_path: Path to a training run's `stats.jsonl`.
-:type stats_path: str or Path
-:returns: **fid_by_kimg** (*dict[str, float]*) – `{zero_padded_floor_kimg: fid}`.
-:rtype: dict[str, float]
-
-**Example**
-
-```pycon
->>> from combra.metrics import load_fid_by_kimg, compare_folders
->>> fid_by_kimg = load_fid_by_kimg('.../00017-diffit-256-gpus2-batch192/stats.jsonl')
->>> fid_by_kimg['004435']
-137.55
->>> # feeds compare_folders directly, and plot_metrics_overlay's fid_by_x
->>> recs = compare_folders(folder_paths, reference, steps=[2], fid_by_kimg=fid_by_kimg)
-```
-````
-
-````{py:function} combra.metrics.find_kimg_parquets(angles_root, run, n, msl, final_tag=None) -> list[pathlib.Path]
-
-Discover a training run's per-checkpoint angle parquets to feed {py:func}`combra.metrics.compare_folders`, instead of hand-listing checkpoints. Globs `{angles_root}/{run}_kimg_*_msl{int(msl)}` and returns the `angles_n{n}.parquet` inside each, ordered by kimg (the folder names embed a zero-padded kimg, so a plain sort is chronological). When `final_tag` is given (e.g. `'N10000'`), the fully-trained `{run}_{final_tag}_msl{int(msl)}` parquet is prepended as the reference row. Only files that exist on disk are returned, so newly-produced snapshots are picked up automatically.
-
-:param angles_root: Root holding the per-run angle folders.
-:type angles_root: str or pathlib.Path
-:param run: Training-run stem, e.g. `'00017-diffit-256-gpus2-batch192'`.
-:type run: str
-:param n: Per-class N whose `angles_n{n}.parquet` to pick in each folder.
-:type n: int
-:param msl: ``min_segment_len`` used at generation; selects the ``_msl`` suffix (see {py:func}`combra.angles.output_directory`).
-:type msl: float
-:param final_tag: Tag of the fully-trained run folder to prepend as the reference row, or ``None`` to omit. Default: ``None``.
-:type final_tag: str or None, optional
-:returns: **paths** – ordered list of existing parquet paths, ready for {py:func}`~combra.metrics.compare_folders`.
-:rtype: list[pathlib.Path]
-
-**Example**
-
-```pycon
->>> from combra.metrics import find_kimg_parquets, compare_folders, load_fid_by_kimg
->>> folder_paths = find_kimg_parquets(
-...     './data/angles', '00017-diffit-256-gpus2-batch192',
-...     n=1000, msl=5.0, final_tag='N10000')
->>> recs = compare_folders(folder_paths, reference, steps=[2], fid_by_kimg=fid_by_kimg)
-```
-````
-
-````{py:function} combra.metrics.compare_pairs(pairs, step, scale=1000, verbose=True, label_header='label') -> list[dict]
-
-Like `compare_folders` but accepts a list of explicit `(label, reference_pq, fake_pq, class_map)` tuples — one row per pair, exactly one step. Used by `4_grid_plot.ipynb` to print one row per resolution.
-
-:param pairs: Each tuple is `(label, orig_pq, gen_pq, class_map)`. `class_map` is `{orig_class: gen_class}`.
-:type pairs: list[tuple]
-:param step: The single step to compare at.
-:type step: float
-:param scale: Scale factor applied to `w1` in the printed table only. Default: `1000`.
-:type scale: int, optional
-:param verbose: Print a per-row table. Default: `True`.
-:type verbose: bool, optional
-:param label_header: Column header used in the printed table for the first column. Default: `'label'`.
-:type label_header: str, optional
-:returns: **records** (*list[dict]*) – `{'label', 'class', 'step', 'w1', 'w2', 'circular_w1', 'circular_w2', 'mus_m', 'sig_m', 'amp_m'}` (the `w*`/`circular_w*` keys are the angle-Wasserstein distances, as in {py:func}`combra.metrics.compute_wasserstein_metrics`).
-:rtype: list[dict]
-
-**Example**
-
-Adapted from `co_angles/4_grid_plot.ipynb` — one row per resolution, each row pairs its own orig + diffit:
-
-```pycon
->>> from combra.metrics import compare_pairs
->>> class_map = {'class_Ultra_Co11': 'class_0',
-...              'class_Ultra_Co25': 'class_1',
-...              'class_Ultra_Co6_2': 'class_2'}
->>> pairs = [
-...     ('256', './data/angles/orig_256/angles_n360.parquet',
-...             './data/angles/diffit_256/angles_n10000.parquet', class_map),
-...     ('512', './data/angles/orig_512/angles_n360.parquet',
-...             './data/angles/diffit_512/angles_n10000.parquet', class_map),
-... ]
->>> recs = compare_pairs(pairs, step=2, coef=1, label_header='res')
-```
-````
-
-````{py:function} combra.metrics.angle_metrics_by_sample_size(folder, reference_path, class_map=None, step=5.0, allowed_ns=None) -> list[dict]
-
-Walk every parquet under `folder` (each assumed to be the same generator at a different sample size) and emit one record per `(class, N)` with every metric: the Wasserstein distances (`w1`, `w2`, `circular_w1`, `circular_w2`) plus the Gaussian-fit relative errors `(mu1, mu2, sigma1, sigma2, amp1, amp2)`. N is read from `meta.n_images`, so the filename convention does not matter.
-
-Records are keyed by `(class, N)`, so two parquets reporting the same N — e.g. a stray `angles_n5000.parquet` capped to a 360-image dataset (stored `n_images=360`), colliding with the real `angles_n360.parquet` — do **not** produce a duplicate point (which would draw as a convergence spike). On collision the parquet whose filename N matches its actual `n_images` is kept and the other is dropped with a `[WARN] duplicate N=...` message.
-
-:param folder: Sweep folder containing one parquet per N.
-:type folder: str or Path
-:param reference_path: Reference parquet (typically `find_reference(folder)` for the same generator, or a separate "real" parquet for cross-generator comparisons).
-:type reference_path: str
-:param class_map: `{fake_class: real_class}` mapping when names don't match between folders. Default: `None`.
-:type class_map: dict[str, str] or None, optional
-:param step: Histogram step to filter rows on. Default: `5.0`.
-:type step: float, optional
-:param allowed_ns: If given, restrict N values to this set — stray parquets at other sample sizes are skipped. Default: `None`.
-:type allowed_ns: set[int] or None, optional
-:returns: **records** (*list[dict]*) – Sorted by `(class, n_images)`. Each entry: `{'n_images', 'class', 'w1', 'w2', 'circular_w1', 'circular_w2', 'mu1', 'mu2', 'sigma1', 'sigma2', 'amp1', 'amp2'}`.
-:rtype: list[dict]
-
-**Example**
-
-```pycon
->>> from combra.metrics import angle_metrics_by_sample_size
->>> from combra.metrics.compare import find_reference
->>> reference = find_reference('./sweeps/real_msl5')
->>> recs = angle_metrics_by_sample_size('./sweeps/diffit_msl5', str(reference),
-...                     class_map={'class_0': 'class_Ultra_Co11'},
-...                     step=2.0, allowed_ns={100, 250, 1000, 10000})
-```
-````
-
-````{py:function} combra.metrics.all_metrics_by_sample_size(real_h5, gen_h5, class_map, ns, real_n=None, device=None, step=None, angle_kw=None, image_metrics=True) -> list[dict]
-
-Image-based analogue of {py:func}`combra.metrics.angle_metrics_by_sample_size`. Instead of comparing stored angle densities, it loads image batches straight from two h5 files and runs {py:func}`combra.metrics.compute_all_metrics`, so the result includes the **image-feature** metrics (`fid`, `cmmd`, `fd_dinov2`) on top of the angle Wasserstein and Gaussian-fit ones. For each `(gen_class -> real_class)` in `class_map` and each `N` in `ns`, the first `N` gen images of `gen_class` are scored against the real reference batch (first `real_n`, or all when `None`). A per-real-class `reference_cache` makes each reference's reference-side work (Inception/CLIP/DINOv2 features, angle density) run once across the N sweep. Image-feature metrics nan-fill when their GPU / optional-dependency backend is unavailable.
-
-The two h5s use the layout `<class>/images` of shape `(N, H, W, 3)` (real h5 groups are `class_Ultra_Co*`, generated h5 groups are `class_0/1/2`), exactly as produced by {py:meth}`combra.data.MicrostructureDataset` sources.
-
-:param real_h5: Path to the reference (real) h5.
-:type real_h5: str or Path
-:param gen_h5: Path to the generated h5.
-:type gen_h5: str or Path
-:param class_map: `{gen_class: real_class}` mapping (e.g. `{'class_0': 'class_Ultra_Co11'}`).
-:type class_map: dict[str, str]
-:param ns: Sample sizes — the first `N` generated images per class are scored at each.
-:type ns: Iterable[int]
-:param real_n: Cap on reference images per class. `None` uses all. Default: `None`.
-:type real_n: int or None, optional
-:param device: Torch device for the image-feature metrics. Default: `None`.
-:type device: str or torch.device or None, optional
-:param step: Histogram bin width in degrees for the angle metrics. Defaults to `5.0`. Default: `None`.
-:type step: float or None, optional
-:param angle_kw: Extra keyword args forwarded to `images_to_angle_density`. Default: `None`.
-:type angle_kw: dict or None, optional
-:param image_metrics: Also compute the image-feature metrics (fid / cmmd / fd_dinov2).
-:type image_metrics: bool, default=True
-:returns: **records** (*list[dict]*) – Sorted by `(class, n_images)`. Each entry: `{'n_images', 'class', 'w1', 'w2', 'circular_w1', 'circular_w2', 'mu1', 'mu2', 'sigma1', 'sigma2', 'amp1', 'amp2', 'fid', 'cmmd', 'fd_dinov2'}`.
-:rtype: list[dict]
-
-**Example**
-
-Drive it over several `(resolution, generator)` sources and save one tidy parquet (from `co_angles/2_metric_consistensy.ipynb`):
-
-```pycon
->>> import pandas as pd
->>> from combra.metrics import all_metrics_by_sample_size
->>> recs = all_metrics_by_sample_size(
-...     './data/h5/real_256_N360.h5', './data/h5/diffit_256_N10000.h5',
-...     class_map={'class_0': 'class_Ultra_Co11',
-...                'class_1': 'class_Ultra_Co25',
-...                'class_2': 'class_Ultra_Co6_2'},
-...     ns=[100, 250, 1000, 10000], step=2.0)
->>> pd.DataFrame.from_records(recs).to_parquet('all_metrics_vs_n.parquet', index=False)
-```
-````
 
 ## Reference lookup & record indexing
 
-These are the small pure helpers `compare_folders` and
-`angle_metrics_by_sample_size` are built from. They are public so notebooks can
-drive a comparison sweep themselves rather than going through the printing
+The small pure helpers the comparison wrappers are built from, public so a
+notebook can drive a sweep itself rather than going through the printing
 wrappers.
 
-````{py:data} combra.metrics.DEFAULT_ANGLE_STEP
+```{eval-rst}
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
 
-Default angle-histogram bin width in degrees (`5.0`). Used whenever a metric
-function is called with `step=None`. Bin width is part of a metric's identity:
-two runs are only comparable when they were reduced at the same `step`.
-````
-
-````{py:function} combra.metrics.find_reference(sweep_dir) -> pathlib.Path | None
-
-Pick the reference parquet from an N-sweep directory: the one whose rows carry
-the largest `n_images`. The largest-N run is the best available estimate of the
-true distribution, so it is what smaller-N runs are scored against.
-
-:param sweep_dir: Directory of `*.parquet` files written by one sweep.
-:type sweep_dir: str or pathlib.Path
-:returns: Path to the largest-N parquet, or `None` when the directory holds no readable parquet.
-:rtype: pathlib.Path or None
-
-**Example**
-
-```pycon
->>> from combra import metrics
->>> ref = metrics.find_reference('out/angles/real_1024')
->>> records = metrics.compare_folders(['out/angles/gen_1024'], ref)
+   find_reference
+   parquet_has_step
+   index_by_name_step
+   compute_angle_metrics
 ```
-````
-
-````{py:function} combra.metrics.parquet_has_step(parquet_path, step) -> bool
-
-Report whether `parquet_path` exists and holds at least one row tagged with
-`step`. Cheap pre-flight check before adding a file to a comparison batch —
-a parquet generated at a different bin width would silently contribute nothing.
-
-:param parquet_path: Candidate parquet.
-:type parquet_path: str or pathlib.Path
-:param step: Bin width to look for.
-:type step: float
-:returns: `True` when the file exists, parses, and contains a row at `step`.
-:rtype: bool
-````
-
-````{py:function} combra.metrics.index_by_name_step(rows) -> dict[tuple, dict]
-
-Index loaded angle rows by their `(class_name, step)` pair, so a reference row
-can be found in O(1) while scoring many generated rows against it.
-
-:param rows: Rows from {py:func}`combra.io.load_rows`.
-:type rows: list[dict]
-:returns: `{(class_name, step): row}`.
-:rtype: dict[tuple, dict]
-````
-
-````{py:function} combra.metrics.compute_angle_metrics(reference, generated) -> tuple
-
-Score one `(reference, generated)` angle-row pair: the Wasserstein distances
-between the two densities plus the per-mode bimodal-Gaussian relative errors.
-The single-pair core that `compare_folders` and `compare_pairs` loop over.
-
-:param reference: Reference angle row (from {py:func}`combra.io.load_rows`).
-:type reference: dict
-:param generated: Generated angle row at the same `(class, step)`.
-:type generated: dict
-:returns: `(record, mus_error, sigmas_error, amps_error)` — the flat metric record, and the three per-mode relative-error arrays.
-:rtype: tuple[dict[str, float], ndarray, ndarray, ndarray]
-````
 
 ## Distance primitives
 
-The metric kernels underneath the batch helpers. Each takes two densities
-already reduced to `(x, y)` by {py:func}`combra.stats.density_histogram`, so
-they can be called directly on ad-hoc curves.
+The metric kernels underneath the batch helpers. Each takes densities already
+reduced to `(x, y)` by {py:func}`combra.stats.density_histogram`, or fits already
+made against them, so they can be called directly on ad-hoc curves.
 
-````{py:function} combra.metrics.wasserstein_density_metrics(x_reference, y_reference, x_generated, y_generated) -> dict[str, float]
+```{eval-rst}
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
 
-Linear and circular Wasserstein distances between two angle densities. Both
-densities are resampled onto a shared 1024-point grid first, so inputs binned
-at different steps stay comparable.
-
-For 1-D distributions the $p$-Wasserstein distance has the closed form
-
-$$W_p(u, v) = \left( \int_0^1 \left| F_u^{-1}(q) - F_v^{-1}(q) \right|^p \, dq \right)^{1/p}$$
-
-The circular variants apply the same formula on the circle, which is the
-correct geometry for angles: without it, mass at 1° and mass at 359° look
-maximally far apart instead of 2° apart.
-
-:param x_reference, y_reference: Reference density.
-:type x_reference, y_reference: array_like
-:param x_generated, y_generated: Generated density.
-:type x_generated, y_generated: array_like
-:returns: `{'w1', 'w2', 'circular_w1', 'circular_w2'}`.
-:rtype: dict[str, float]
-
-**Example**
-
-```pycon
->>> from combra import metrics, stats
->>> xr, yr = stats.density_histogram(reference_angles, step=5)
->>> xg, yg = stats.density_histogram(generated_angles, step=5)
->>> metrics.wasserstein_density_metrics(xr, yr, xg, yg)['circular_w1']
+   wasserstein_density_metrics
+   gauss_density_metrics
+   gauss_relative_errors
+   degenerate_fit_reason
+   frechet_distance
 ```
-````
 
-````{py:function} combra.metrics.gauss_density_metrics(x_reference, y_reference, x_generated, y_generated) -> dict[str, float]
-
-Fit a bimodal Gaussian to each density and return the per-mode relative errors
-of the six fitted parameters. Where the Wasserstein distances measure the whole
-distribution, these localise *where* a generator is wrong — a shifted mode
-($\mu$), a too-broad mode ($\sigma$), or a mis-weighted mode ($amp$).
-
-:param x_reference, y_reference: Reference density.
-:type x_reference, y_reference: array_like
-:param x_generated, y_generated: Generated density.
-:type x_generated, y_generated: array_like
-:returns: `{'mu1', 'mu2', 'sigma1', 'sigma2', 'amp1', 'amp2'}` relative errors, or **all six as `nan`** when either density is not genuinely bimodal — see [Undefined rather than wrong](#undefined-rather-than-wrong).
-:rtype: dict[str, float]
-````
-
-````{py:function} combra.metrics.gauss_relative_errors(reference_mus, reference_sigmas, reference_amps, generated_mus, generated_sigmas, generated_amps, reference_density=None, generated_density=None) -> tuple
-
-Per-mode relative error between two already-fitted bimodal Gaussians,
-
-$$\varepsilon_i = \frac{\theta_i^{\text{gen}} - \theta_i^{\text{ref}}}{\theta_i^{\text{ref}}}$$
-
-for each of $\mu$, $\sigma$ and $amp$. Use this when you already hold fits
-(e.g. straight off a parquet row) and want to skip refitting.
-
-:param reference_mus, reference_sigmas, reference_amps: The reference fit's per-mode parameters.
-:type reference_mus, reference_sigmas, reference_amps: array_like
-:param generated_mus, generated_sigmas, generated_amps: The generated fit's per-mode parameters.
-:type generated_mus, generated_sigmas, generated_amps: array_like
-:param reference_density: The `(x, y)` the reference fit was made against. Optional, but pass it when you have it — a spike-shaped phantom mode is only visible against the data. Default: `None`.
-:type reference_density: tuple[array_like, array_like] or None, optional
-:param generated_density: The `(x, y)` the generated fit was made against. Default: `None`.
-:type generated_density: tuple[array_like, array_like] or None, optional
-:returns: `(mus_error, sigmas_error, amps_error)`, each a length-2 array — or three all-`nan` arrays when either fit is degenerate.
-:rtype: tuple[ndarray, ndarray, ndarray]
-````
-
-````{py:function} combra.metrics.degenerate_fit_reason(mus, sigmas, amps, density=None) -> str | None
-
-Why a bimodal-Gaussian fit is not two real modes, or `None` when it is. This is
-the check `gauss_relative_errors` applies to both sides; call it directly to find
-out *why* a metric came back `nan`, or to screen a fit before trusting it.
-
-:param mus, sigmas, amps: One fit's length-2 per-mode parameters, as returned by {py:func}`combra.fitting.fit_bimodal_gaussian`.
-:type mus, sigmas, amps: array_like
-:param density: The `(x, y)` the fit was made against. When given, each mode must additionally sit on at least 5% of the density. Default: `None`.
-:type density: tuple[array_like, array_like] or None, optional
-:returns: A human-readable reason the fit is degenerate, or `None` if it is usable.
-:rtype: str or None
-
-**Example**
-
-```pycon
->>> from combra import fitting, metrics, stats
->>> x, y = stats.density_histogram(angles, step=5)
->>> _, mus, sigmas, amps = fitting.fit_bimodal_gaussian(x, y)
->>> metrics.degenerate_fit_reason(mus, sigmas, amps, density=(x, y))
-'mode 2 at 307.9 deg sits on 0.00% of the density, under the 5% floor -- ...'
-```
-````
-
-(undefined-rather-than-wrong)=
 ### Undefined rather than wrong
 
-`fit_bimodal_gaussian` always returns two modes, because the model has two. When
-an angle density has only one, the solver still has to put the second somewhere,
-and it parks a **phantom** — either a flat pedestal (a fitted $\sigma$ of
-3.3 × 10⁴ degrees has been observed) or a narrow spike at a position with no data
-under it. The relative errors above divide by the reference fit, so a phantom
-denominator produces numbers that look like measurements but are not: two
-densities differing by 2° once scored `sigma1 = 1357` and `amp2 = 3050`.
-
-Every gauss entry point therefore screens both fits with
-{py:func}`combra.metrics.degenerate_fit_reason` and returns `nan` — with the
-reason logged at warning level — when a fit is:
-
-- carrying under 5% of its mass in one mode (there is only one real mode);
-- sitting on the `[0, 360]` boundary the means are clamped to (a fit artefact,
-  and `0` is also the denominator of the $\mu$ relative error);
-- wider than 120° in one mode (a pedestal, not a peak);
-- unresolved, the two means closer together than one $\sigma$;
-- placed where the density has under 5% of its mass (checked only when the
-  density is passed — this is the one that catches a spike, whose *amplitude*
-  is an integral and therefore not small).
-
-**What this means in practice.** The metrics are reliable on realistic WC-Co
-angle densities (~23% reflex vertices): over 900 such fits none was rejected.
-They go undefined as the second mode thins — which is exactly the regime where
-they were previously returning nonsense, so a `nan` is new information, not a
-regression. Two consequences worth knowing:
-
-- **Small samples now say so.** A single 128×128 image yields ~20 vertex angles,
-  far too few to determine two modes, so it returns `nan`. Pool on the order of
-  1000 angles (roughly 48 such images) for a fit worth reporting.
-- **`nan` is a signal about the generator.** Early in training, samples whose
-  grains are near-convex have no reflex mode. Use the Wasserstein keys
-  (`w1` / `circular_w1`), which are defined unconditionally, until the Gaussian
-  keys come back.
-
-
-````{py:function} combra.metrics.frechet_distance(mu1, sigma1, mu2, sigma2) -> float
-
-Fréchet distance between two multivariate Gaussians — the kernel shared by FID,
-FD-DINOv2 and every other "Fréchet distance between feature sets" metric:
-
-$$d^2 = \lVert \mu_1 - \mu_2 \rVert^2 + \operatorname{tr}\!\left( \Sigma_1 + \Sigma_2 - 2 (\Sigma_1 \Sigma_2)^{1/2} \right)$$
-
-Exposed directly so a caller can score feature sets from a backbone combra
-does not wrap. For features rather than moments use
-{py:func}`~combra.metrics.frechet_from_features`.
-
-:param mu1, mu2: Feature means, shape `(D,)`.
-:type mu1, mu2: ndarray
-:param sigma1, sigma2: Feature covariances, shape `(D, D)`.
-:type sigma1, sigma2: ndarray
-:returns: The Fréchet distance.
-:rtype: float
-
-:::{seealso}
-Heusel et al. (2017), *GANs Trained by a Two Time-Scale Update Rule Converge to
-a Local Nash Equilibrium* — the FID formulation this implements.
-:::
-````
+The bimodal-Gaussian metrics return `nan` rather than a number when either fit is
+degenerate. The criteria, and what a `nan` says about the generator that produced
+the density, are in {ref}`undefined-rather-than-wrong`.
 
 ## Sampler comparison
 
-Answer *how many reverse-diffusion steps `k` does a sampler need for good quality?*
-For each sampler and each step count, generate a batch, score it against a fixed
-real reference batch with `compute_all_metrics`, and plot metric (Y) vs. `k` (X),
-one curve per sampler. `compare_samplers` is sampler- and codebase-agnostic — the
-caller supplies the generators — so the same function drives any diffusion model
-(see `docs/examples/sampler_comparison.md` for the EDM2-v2 wiring). They live in
-`combra.metrics.samplers` and `combra.metrics.plot`.
+Answer how many reverse-diffusion steps a sampler needs for good quality: for each
+sampler and each step count, generate a batch, score it against a fixed reference
+with `compute_all_metrics`, and plot the metric against the step count.
+`compare_samplers` is sampler- and codebase-agnostic — the caller supplies the
+generators — so the same pair drives any diffusion model.
 
-````{py:function} combra.metrics.compare_samplers(reference_images, samplers, k_values, *, step=None, device=None, image_metrics=True, metrics=None, angle_kw=None, verbose=True) -> pandas.DataFrame
+```{eval-rst}
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
 
-Sweep each sampler over `k_values`, scoring the generated batch against a fixed reference with `compute_all_metrics`. A single `reference_cache` is reused across every call, so the reference-side work (FID/CMMD/DINOv2 features, angle density) runs only once.
-
-:param reference_images: Fixed batch of real reference images (numpy array or torch tensor).
-:type reference_images: ndarray or torch.Tensor
-:param samplers: Mapping `name -> fn(k)` where `fn(k)` returns a batch of generated images produced with `k` sampling steps.
-:type samplers: dict[str, callable]
-:param k_values: Step counts to sweep (e.g. `[5, 10, 20, 50, 100, 250]`).
-:type k_values: list[int]
-:param step: Angle-histogram bin width in degrees forwarded to `compute_all_metrics`. Default: `None` (5.0°).
-:type step: float or None, optional
-:param device: Torch device for the image-feature metrics. Default: `None`.
-:type device: str or None, optional
-:param image_metrics: If `True`, also compute FID / CMMD / FD-DINOv2. Angle metrics are always computed. Default: `True`.
-:type image_metrics: bool, optional
-:param metrics: Restrict the returned metric columns to this subset. Default: every key from `compute_all_metrics`.
-:type metrics: list[str] or None, optional
-:param angle_kw: Extra keyword arguments forwarded to the angle-extraction pipeline. Default: `None`.
-:type angle_kw: dict or None, optional
-:param verbose: Print a line per `(sampler, k)`. Default: `True`.
-:type verbose: bool, optional
-:returns: **df** (*pd.DataFrame*) – One row per `(sampler, k)` with columns `sampler`, `k`, and one column per metric.
-:rtype: pandas.DataFrame
-
-**Example**
-
-```pycon
->>> from combra.metrics import compare_samplers, plot_sampler_comparison
->>> samplers = {'ddim': ddim_fn, 'dpm++': dpmpp_fn}   # fn(k) -> generated batch
->>> df = compare_samplers(real_batch, samplers, k_values=[5, 10, 20, 50, 100, 250])
->>> plot_sampler_comparison(df, save_path='sampler_comparison.png')
+   compare_samplers
+   plot_sampler_comparison
 ```
-````
-
-````{py:function} combra.metrics.plot_sampler_comparison(df, metrics=None, x_col='k', sampler_col='sampler', metric_labels=None, log_x=True, n_cols=4, title=None, save_path=None, png_meta=None, show=True, fonts=None, height_per_row=420, width_per_col=520) -> plotly.graph_objects.Figure
-
-Small-multiples of every metric vs. sampling steps: one subplot per metric, X = `k`, Y = metric value, one curve per sampler. The companion plot to `compare_samplers`.
-
-:param df: Tidy DataFrame from `compare_samplers` (columns `sampler`, `k`, and one per metric).
-:type df: pd.DataFrame
-:param metrics: Metric columns to tile. Default: every column except `sampler_col` / `x_col`.
-:type metrics: list[str] or None, optional
-:param x_col: Column holding the step count. Default: `'k'`.
-:type x_col: str, optional
-:param sampler_col: Column holding the sampler name. Default: `'sampler'`.
-:type sampler_col: str, optional
-:param metric_labels: `{metric: subplot_title}`. Default: the metric key.
-:type metric_labels: dict[str, str] or None, optional
-:param log_x: Log-scale the `k` axis. Default: `True`.
-:type log_x: bool, optional
-:param n_cols: Subplots per row. Default: `4`.
-:type n_cols: int, optional
-:param title: Figure title. Default: `'Sampler comparison'`.
-:type title: str or None, optional
-:param save_path: If given, also render the figure to this PNG path. Default: `None`.
-:type save_path: str or None, optional
-:param png_meta: PNG tEXt metadata injected when saving. Default: `None`.
-:type png_meta: dict, optional
-:param show: Display the figure. Default: `True`.
-:type show: bool, optional
-:param fonts: Font-size overrides for ``title/axis/tick/legend``. Default: `None`.
-:type fonts: dict, optional
-:param height_per_row: Figure height per row, in pixels.
-:type height_per_row: int, default=420
-:param width_per_col: Figure width per column, in pixels.
-:type width_per_col: int, default=520
-:returns: **fig** (*plotly.graph_objects.Figure*) – The metric-vs-k figure.
-:rtype: plotly.graph_objects.Figure
-
-**Example**
-
-```pycon
->>> from combra.metrics import plot_sampler_comparison
->>> fig = plot_sampler_comparison(df, metrics=['fid', 'cmmd', 'fd_dinov2', 'w1'])
->>> fig.show()
-```
-````
 
 ## Convergence analysis
 
-Tools that aggregate `angle_metrics_by_sample_size` records into per-curve statistics (Kendall trend test, endpoint relative error, plateau fit) and turn them into the tables and figures consumed by `3_metrics_convergence.ipynb`.
+Aggregate an N-sweep into per-curve statistics — a Kendall trend test, endpoint
+relative errors, a power-law exponent and a plateau fit — and render them as
+tables and figures.
 
-````{py:function} combra.metrics.convergence_stats(df_metrics, metrics, endpoints_by_kind, expected_points=None, pre_endpoints_by_kind=None) -> pandas.DataFrame
+```{eval-rst}
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
 
-Per `(kind, resolution, class)` curve, compute trend significance, endpoint relative error, a power-law decay exponent, and a plateau fit $|m|(N) = a + b \cdot N^{-1/2}$.
-
-:param df_metrics: Long-form table with columns `kind`, `resolution`, `class`, `n_images`, and one column per metric in `metrics`.
-:type df_metrics: pd.DataFrame
-:param metrics: Metric column names to analyse (e.g. `['w1', 'mu1', 'mu2', 'sigma1', 'sigma2', 'amp1', 'amp2']`).
-:type metrics: list[str]
-:param endpoints_by_kind: `{kind: (n_lo, n_hi)}` used for the `rel_err_abs_%` computation.
-:type endpoints_by_kind: dict[str, tuple[int, int]]
-:param expected_points: `{kind: expected_n_points_per_curve}`. When given, prints a warning if a curve has the wrong count. Default: `None`.
-:type expected_points: dict[str, int] or None, optional
-:param pre_endpoints_by_kind: Optional `{kind: (n_lo, n_hi)}` for an *earlier* N-range (e.g. `360 → 1000` for `san`/`diffit`), reported alongside the main range. The `pre_*` columns are `NaN` for any kind absent from this mapping. Default: `None`.
-:type pre_endpoints_by_kind: dict[str, tuple[int, int]] or None, optional
-:returns: **result** (*pd.DataFrame*) – One row per `(kind, resolution, class, metric)`. Columns: `kendall_p`, `rel_err_abs_%`, `pre_rel_err_abs_%`, `alpha`, `pre_alpha`, `m_at_nhi`, `a_hat`, `a_se`, `b_hat`, `fit_r2`, `gain_abs`, `gain_pct`, `vs_a_pct`.
-:rtype: pandas.DataFrame
-
-The returned columns mean:
-
-- `kendall_p` — one-sided Kendall τ p-value for "|metric| decreases with N".
-- `rel_err_abs_%` — `(|m|@N_lo − |m|@N_hi) / |m|@N_lo × 100` over the main endpoints. Positive = improvement between the two N endpoints. `pre_rel_err_abs_%` is the same over `pre_endpoints_by_kind` (`NaN` when no pre pair).
-- `alpha` — power-law decay exponent in `|m| ~ N^(-alpha)`, estimated from the two endpoints as `log(|m|@N_lo / |m|@N_hi) / log(N_hi / N_lo)`. `0.5` is ideal Monte-Carlo decay, `0` means no improvement, `< 0` means |metric| grew with N. `pre_alpha` is the same over the pre endpoints.
-- `m_at_nhi` — `|metric|` at `N_hi`.
-- `a_hat`, `a_se`, `b_hat` — the plateau (bias floor `a`), its standard error, and the `N^{-1/2}` slope `b` from {py:func}`combra.fitting.fit_plateau`.
-- `fit_r2` — coefficient of determination of the plateau fit against the observed `|metric|` curve.
-- `gain_pct` — sampling-only gain from `N_hi` to infinity, in percent of `|m|@N_hi`.
-- `vs_a_pct` — excess of `|m|@N_lo` over the bias floor `a_hat`, in percent.
-
-**Example**
-
-From `co_angles/3_metrics_convergence.ipynb`:
-
-```pycon
->>> from combra.metrics import convergence_stats
->>> METRICS  = ['w1', 'mu1', 'mu2', 'sigma1', 'sigma2', 'amp1', 'amp2']
->>> ENDPTS   = {'real': (100, 300), 'san': (360, 10000), 'diffit': (360, 10000)}
->>> PRE      = {'san': (360, 1000), 'diffit': (360, 1000)}
->>> result = convergence_stats(df_metrics, METRICS, ENDPTS,
-...                            expected_points={'real': 5, 'san': 8, 'diffit': 8},
-...                            pre_endpoints_by_kind=PRE)
->>> result.head(3)
+   convergence_stats
+   print_convergence_report
+   summarize_metric_distribution
+   plot_wdist_convergence_grid
+   plot_metrics_grid
+   plot_metrics_overlay
+   plot_metric_distribution
+   plot_distribution_grid
 ```
-````
-
-````{py:function} combra.metrics.print_convergence_report(result, metrics, kinds, endpoints_by_kind, alpha=0.05, step=None, kind_display=None, pre_endpoints_by_kind=None) -> None
-
-Print three human-readable tables from a `convergence_stats` result:
-
-- **T1 (kendall_byclass)** — per-class Kendall p-values + `rel_err_abs_%`, with Fisher's combined $\chi^2 = -2 \cdot \sum \log p$ across the 3 classes.
-- **T2 (kendall_fisher_byres)** — per-resolution Fisher across classes; one panel per resolution.
-- **T3 (gains+alpha)** — finite-range gain and power-law-exponent columns side by side: `gain_%_a->b = (|m|@a − |m|@b)/|m|@a × 100` (positive = error shrank) and `alpha_a->b = log(|m|@a / |m|@b) / log(b/a)` (`0.5` = ideal Monte-Carlo, `0` = no gain). When `pre_endpoints_by_kind` is given, the pre-range columns are shown next to the main-range ones.
-
-:param result: Output of `convergence_stats`.
-:type result: pd.DataFrame
-:param metrics: Metric order in the printed tables.
-:type metrics: list[str]
-:param kinds: Generators to include (e.g. `['san', 'diffit']`).
-:type kinds: list[str]
-:param endpoints_by_kind: Same mapping passed to `convergence_stats`; used to annotate each subsection with its `(N_lo, N_hi)`.
-:type endpoints_by_kind: dict[str, tuple[int, int]]
-:param alpha: Significance threshold used for the per-metric `rej/n` counts. Default: `0.05`.
-:type alpha: float, optional
-:param step: If provided, prefixed to the header line for traceability. Default: `None`.
-:type step: float or None, optional
-:param kind_display: Display names (e.g. `{'san': 'SAN', 'diffit': 'DiffiT'}`). Default: `None`.
-:type kind_display: dict[str, str] or None, optional
-:param pre_endpoints_by_kind: Optional `{kind: (n_lo, n_hi)}` earlier-N range; when given, T3 prints its `gain_%`/`alpha` columns alongside the main range. Default: `None`.
-:type pre_endpoints_by_kind: dict[str, tuple[int, int]] or None, optional
-:returns: Nothing. Output goes to stdout.
-:rtype: None
-
-**Example**
-
-```pycon
->>> from combra.metrics import print_convergence_report
->>> print_convergence_report(
-...     result, METRICS, kinds=['san', 'diffit'],
-...     endpoints_by_kind={'san': (360, 10000), 'diffit': (360, 10000)},
-...     pre_endpoints_by_kind={'san': (360, 1000), 'diffit': (360, 1000)},
-...     step=2.0, kind_display={'san': 'SAN', 'diffit': 'DiffiT'},
-... )
-```
-````
-
-````{py:function} combra.metrics.summarize_metric_distribution(result, metric, kinds, resolutions) -> dict[str, str]
-
-Per `(kind, resolution)`, summarise the distribution of one column of a `convergence_stats` result. Useful as a one-line companion to `plot_metric_distribution`.
-
-:param result: Output of `convergence_stats`.
-:type result: pd.DataFrame
-:param metric: Column to summarise (typically `'gain_pct'`).
-:type metric: str
-:param kinds: Generators to include.
-:type kinds: list[str]
-:param resolutions: Resolutions to include.
-:type resolutions: list[int]
-:returns: **summary** (*dict[str, str]*) – `{f'{kind}_{res}': 'mean=... median=... std=... n=...'}`.
-:rtype: dict[str, str]
-
-**Example**
-
-```pycon
->>> from combra.metrics import summarize_metric_distribution
->>> summary = summarize_metric_distribution(result, 'gain_pct',
-...                                         kinds=['san', 'diffit'],
-...                                         resolutions=[256, 512])
->>> for tag, line in summary.items():
-...     print(f'  {tag}: {line}')
-# san_256:  mean=11.42 median=10.30 std=4.21 n=7
-# diffit_512: mean=15.87 median=14.10 std=5.30 n=7
-```
-````
-
-````{py:function} combra.metrics.plot_wdist_convergence_grid(records_by_panel, classes, kind_labels=None, grain_labels=None, row_keys=None, col_label_fn=None, title_fn=None, save_path=None, png_meta=None, show=True, fonts=None, height_per_row=560, width_per_col=720, metric='w1', y_label='W-dist', zero_line=False, panel_annotations=None, annot_kind_labels=None, abs_values=False, log_y=False, show_fit_line=False, connect_points=True) -> plotly.graph_objects.Figure
-
-Plotly grid of metric-vs-N curves. Rows are resolutions (or arbitrary `row_keys`), columns are classes. Curves on the same axes share a kind color/legend group; the legend is shown only once. Despite the name it plots any per-record metric, not just W-dist (see `metric`). Non-finite metric values (e.g. nan-filled image-feature metrics computed without a GPU) are dropped from both the curves and the y-range.
-
-:param records_by_panel: `{(row_key, kind): [records]}` where each record carries `n_images`, `class`, and the chosen `metric` (as emitted by `angle_metrics_by_sample_size`).
-:type records_by_panel: dict[tuple, list[dict]]
-:param classes: Column ordering.
-:type classes: list[str]
-:param kind_labels: `{kind: legend_label}`. Default: `None`.
-:type kind_labels: dict[str, str] or None, optional
-:param grain_labels: `{class: column_label}`. Default: `None`.
-:type grain_labels: dict[str, str] or None, optional
-:param row_keys: Ordered row identifiers. Defaults to sorted unique keys from `records_by_panel`. Default: `None`.
-:type row_keys: list or None, optional
-:param col_label_fn: Override `class → column label`. Default: `None`.
-:type col_label_fn: callable or None, optional
-:param title_fn: Override `(row_key, class) → subplot title`. Default: `None`.
-:type title_fn: callable or None, optional
-:param save_path: PNG output path. `None` skips saving. Default: `None`.
-:type save_path: str or None, optional
-:param png_meta: `{key: value}` written as PNG tEXt chunks. Default: `None`.
-:type png_meta: dict or None, optional
-:param show: Display the figure. Default: `True`.
-:type show: bool, optional
-:param fonts: Override the `title/axis/tick/legend` font sizes. Default: `None`.
-:type fonts: dict or None, optional
-:param height_per_row: Per-cell height in pixels. Default: `560`.
-:type height_per_row: int, optional
-:param width_per_col: Per-cell width in pixels. Default: `720`.
-:type width_per_col: int, optional
-:param metric: Record key to plot on the y-axis. Default: `'w1'`.
-:type metric: str, optional
-:param y_label: Y-axis title. Default: `'W-dist'`.
-:type y_label: str, optional
-:param zero_line: Draw a horizontal reference line at `y = 0`. Default: `False`.
-:type zero_line: bool, optional
-:param panel_annotations: `{(row_key, kind): text}` annotations drawn inside the matching panel. Default: `None`.
-:type panel_annotations: dict or None, optional
-:param annot_kind_labels: Display labels used when rendering `panel_annotations`. Default: `None`.
-:type annot_kind_labels: dict[str, str] or None, optional
-:param abs_values: Plot `|metric|` instead of the signed value — required to put signed relative-error metrics (`mu/sigma/amp`) on a log y-axis. Default: `False`.
-:type abs_values: bool, optional
-:param log_y: Log-scale the y-axis (pairs with `abs_values`; x is always log). Default: `False`.
-:type log_y: bool, optional
-:param show_fit_line: Overlay the plateau fit |m|(N) = a_hat + b_hat*N^(-1/2) per kind as a dotted line, read from ``panel_annotations`` (a_hat/b_hat). No-op unless ``panel_annotations`` is given. The fit is in |m| space, so it lines up with the curve when ``abs_values`` is on.
-:type show_fit_line: bool, default=False
-:param connect_points: Connect each kind's data points with a solid line. Set `False` to draw them as a bare scatter — pairs with `fit_line` so the only line per panel is the `a + b*N^(-1/2)` fit. Default: `True`.
-:type connect_points: bool, optional
-:returns: **fig** (*plotly.graph_objects.Figure*) – The grid figure.
-:rtype: plotly.graph_objects.Figure
-
-**Example**
-
-```pycon
->>> from combra.metrics import plot_wdist_convergence_grid
->>> CLASSES = ['class_Ultra_Co11', 'class_Ultra_Co25', 'class_Ultra_Co6_2']
->>> GRAIN   = {'class_Ultra_Co11': 'small', 'class_Ultra_Co25': 'medium',
-...            'class_Ultra_Co6_2': 'large'}
->>> fig = plot_wdist_convergence_grid(
-...     records_by_panel, classes=CLASSES,
-...     kind_labels={'real': 'original', 'san': 'SAN', 'diffit': 'DiffiT'},
-...     grain_labels=GRAIN, row_keys=[256, 512, 1024],
-...     save_path='wdist_convergence.png',
-... )
->>> fig.show()
-```
-````
-
-````{py:function} combra.metrics.plot_metric_distribution(result, metric, kinds, resolutions, kind_display=None, res_style=None, bin_step=1.5, x_range=None, save_path=None, png_meta=None, show=True, fonts=None, height=900, width=900) -> plotly.graph_objects.Figure
-
-Per-kind distribution of one `convergence_stats` column (one subplot per kind, colored by resolution). Companion plot to `summarize_metric_distribution`.
-
-:param result: Output of `convergence_stats`.
-:type result: pd.DataFrame
-:param metric: Column to bin (e.g. `'gain_pct'`).
-:type metric: str
-:param kinds: Generators — one subplot each.
-:type kinds: list[str]
-:param resolutions: Resolutions to overlay.
-:type resolutions: list[int]
-:param kind_display: Subplot titles. Default: `None`.
-:type kind_display: dict[str, str] or None, optional
-:param res_style: `{res: {'color': str, 'label': str}}`. Defaults to an auto-palette. Default: `None`.
-:type res_style: dict[int, dict] or None, optional
-:param bin_step: Histogram bin width on the x-axis. Default: `1.5`.
-:type bin_step: float, optional
-:param x_range: Clamp the x-axis. `None` → data-driven. Default: `None`.
-:type x_range: tuple[float, float] or None, optional
-:param save_path: PNG output path. Default: `None`.
-:type save_path: str or None, optional
-:param png_meta: PNG tEXt metadata. Default: `None`.
-:type png_meta: dict or None, optional
-:param show: Display the figure. Default: `True`.
-:type show: bool, optional
-:param fonts: Override `title/axis/tick/legend` font sizes. Default: `None`.
-:type fonts: dict or None, optional
-:param height: Figure height in pixels. Default: `900`.
-:type height: int, optional
-:param width: Figure width in pixels. Default: `900`.
-:type width: int, optional
-:returns: **fig** (*plotly.graph_objects.Figure*) – The distribution figure.
-:rtype: plotly.graph_objects.Figure
-
-**Example**
-
-End-to-end: drive `angle_metrics_by_sample_size` over every sweep folder, run `convergence_stats`, then print + plot.
-
-```pycon
->>> from combra.metrics import (
-...     angle_metrics_by_sample_size, convergence_stats,
-...     print_convergence_report, summarize_metric_distribution,
-...     plot_wdist_convergence_grid, plot_metric_distribution,
-... )
->>> from combra.metrics.compare import find_reference
->>> # … walk SOURCES → records_by_panel and df_metrics …
->>> result = convergence_stats(df_metrics, METRICS, ENDPOINTS_BY_KIND,
-...                            expected_points={'real': 5, 'san': 8, 'diffit': 8})
->>> print_convergence_report(result, METRICS, KINDS, ENDPOINTS_BY_KIND,
-...                          step=STEP, kind_display=KIND_DISPLAY)
->>> fig = plot_wdist_convergence_grid(records_by_panel, classes=CLASSES,
-...                                   kind_labels=LABELS, save_path='wdist.png')
->>> fig = plot_metric_distribution(result, metric='gain_pct',
-...                                kinds=KINDS, resolutions=[256, 512],
-...                                save_path='gain.png')
-```
-
-A full notebook walkthrough is in `co_angles/3_metrics_convergence.ipynb`.
-````
-
-````{py:function} combra.metrics.plot_metrics_overlay(records, fid_by_x=None, x_key='kimg', title=None, save_path=None, png_meta=None, show=True, fonts=None, height=720, width=1100) -> plotly.graph_objects.Figure
-
-Single-class overlay that puts **all metrics on one figure** for one `(class, resolution)`: the six Gaussian-fit relative errors (%), W-dist, and an optional FID curve, all drawn as **`|value|` on one logarithmic left y-axis** versus the integer parsed from each record's `x_key` token (its leading underscore-split field, e.g. `'004435'` from the `'004435_msl5'` kimg tag `compare_folders` writes). A single log axis lets series spanning orders of magnitude (FID ≈ 200 vs `|μ|` ≈ 1) share one scale; the trade-off is that `|value|` hides the **sign** of each relative error and any exactly-zero point drops out (log-undefined). Used by `co_angles/2_comparison.ipynb` to chart a diffit run's metrics against training kimg.
-
-:param records: `compare_folders` output. Rows with `class != cls` are dropped; pass records already restricted to numeric-token rows (the non-checkpoint reference rows carry a non-numeric tag).
-:type records: list[dict]
-:param fid_by_x: Optional `{x_token: fid}` (e.g. from {py:func}`combra.metrics.load_fid_by_kimg`); adds a dashed FID curve on the right axis. Tokens with no entry are skipped. Default: `None`.
-:type fid_by_x: dict[str, float] or None, optional
-:param x_key: Record key whose leading underscore-split token gives the integer x. Default: `'kimg'`.
-:type x_key: str, optional
-:param title: Figure title. Defaults to `cls`. Default: `None`.
-:type title: str or None, optional
-:param save_path: PNG output path. `None` skips saving. Default: `None`.
-:type save_path: str or None, optional
-:param png_meta: `{key: value}` written as PNG tEXt chunks. Default: `None`.
-:type png_meta: dict or None, optional
-:param show: Display the figure. Default: `True`.
-:type show: bool, optional
-:param fonts: Override the `title/axis/tick/legend` font sizes. Default: `None`.
-:type fonts: dict or None, optional
-:param height: Figure height in pixels. Default: `720`.
-:type height: int, optional
-:param width: Figure width in pixels. Default: `1100`.
-:type width: int, optional
-:returns: **fig** (*plotly.graph_objects.Figure*) – The overlay figure.
-:rtype: plotly.graph_objects.Figure
-
-**Example**
-
-```pycon
->>> from combra.metrics import compare_folders, load_fid_by_kimg, plot_metrics_overlay
->>> fid_by_kimg = load_fid_by_kimg('.../stats.jsonl')
->>> recs = compare_folders(folder_paths, reference, class_map=class_map,
-...                        steps=[2], coef=1, fid_by_kimg=fid_by_kimg)
->>> ckpt = [r for r in recs if r['kimg'].split('_')[0].isdigit()]  # drop ref rows
->>> fig = plot_metrics_overlay(ckpt, 'class_Ultra_Co11', fid_by_x=fid_by_kimg,
-...                            save_path='overlay_Co11.png')
-```
-````
-
-````{py:function} combra.metrics.plot_distribution_grid(result, resolutions, cols, kinds, bin_step=1.5, x_lim=None, y_lim=None, ref_lines=None, kind_color=None, kind_display=None, row_label_fn=None, save_path=None, png_meta=None, show=True, fonts=None, height_per_row=420, width_per_col=560) -> plotly.graph_objects.Figure
-
-Grid of binned distributions: rows are `resolutions`, columns are `cols` (each an `(result_column, display_label)` pair), with one overlaid density curve per kind. Values are pooled across every `(class, metric)` row of `result` for that `(kind, resolution)`, then binned with {py:func}`combra.stats.density_histogram` at `bin_step`. Generalises {py:func}`combra.metrics.plot_metric_distribution` (single column, kinds as rows) to a resolution × column grid — used by `3_metrics_convergence.ipynb` for the gain/alpha distribution panels.
-
-:param result: Output of `convergence_stats`.
-:type result: pd.DataFrame
-:param resolutions: Row ordering.
-:type resolutions: list[int]
-:param cols: Columns as `(result_column, display_label)` pairs.
-:type cols: list[tuple[str, str]]
-:param kinds: Generators to overlay in each panel.
-:type kinds: list[str]
-:param bin_step: Histogram bin width on the x-axis. Default: `1.5`.
-:type bin_step: float, optional
-:param x_lim: Clamp the x-axis. `None` → data-driven. Default: `None`.
-:type x_lim: tuple[float, float] or None, optional
-:param y_lim: Clamp the y-axis. `None` → data-driven. Default: `None`.
-:type y_lim: tuple[float, float] or None, optional
-:param ref_lines: `[(x, dash), ...]` vertical reference lines drawn in every panel (e.g. `[(0.0, 'dash')]`). Default: `None`.
-:type ref_lines: list[tuple[float, str]] or None, optional
-:param kind_color: `{kind: css color}`. Defaults to an auto-palette. Default: `None`.
-:type kind_color: dict[str, str] or None, optional
-:param kind_display: `{kind: legend label}`. Default: `None`.
-:type kind_display: dict[str, str] or None, optional
-:param row_label_fn: `resolution → row label prefix`. Default: `str`.
-:type row_label_fn: callable or None, optional
-:param save_path: PNG output path. Default: `None`.
-:type save_path: str or None, optional
-:param png_meta: PNG tEXt metadata. Default: `None`.
-:type png_meta: dict or None, optional
-:param show: Display the figure. Default: `True`.
-:type show: bool, optional
-:param fonts: Override `title/axis/tick/legend` font sizes. Default: `None`.
-:type fonts: dict or None, optional
-:param height_per_row: Per-cell height in pixels. Default: `420`.
-:type height_per_row: int, optional
-:param width_per_col: Per-cell width in pixels. Default: `560`.
-:type width_per_col: int, optional
-:returns: **fig** (*plotly.graph_objects.Figure*) – The distribution-grid figure.
-:rtype: plotly.graph_objects.Figure
-
-**Example**
-
-```pycon
->>> from combra.metrics import plot_distribution_grid
->>> GAIN_COLS = [('pre_rel_err_abs_%', 'gain_%_360->10^3'),
-...              ('rel_err_abs_%',     'gain_%_10^3->10^4')]
->>> fig = plot_distribution_grid(
-...     result, [256, 512], GAIN_COLS, ['san', 'diffit'],
-...     bin_step=1.5, x_lim=(-20, 60), ref_lines=[(0.0, 'dash')],
-...     kind_display={'san': 'SAN', 'diffit': 'DiffiT'},
-...     row_label_fn=lambda r: f'{r}x{r}', save_path='gain_dist.png')
-```
-````
-
-````{py:function} combra.metrics.plot_metrics_grid(records_by_panel, resolution, metrics, metric_labels=None, kind_labels=None, kind_color=None, zero_line_metrics=None, n_cols=4, title=None, save_path=None, png_meta=None, show=True, fonts=None, height_per_row=420, width_per_col=520) -> plotly.graph_objects.Figure
-
-Small-multiples of **every metric for a single `(resolution, class)`**: one subplot per metric, each plotting metric-vs-N with one curve per kind present at that resolution. The transpose of {py:func}`combra.metrics.plot_wdist_convergence_grid` (which fixes a metric and tiles class × resolution) — here class and resolution are fixed and the metrics are tiled, so one figure shows how every distribution metric converges for that single panel.
-
-:param records_by_panel: `{(resolution, kind): [records]}` as emitted by `angle_metrics_by_sample_size` (each record carries `n_images`, `class`, and each metric key).
-:type records_by_panel: dict[tuple, list[dict]]
-:param resolution: Resolution key to plot.
-:type resolution: int
-:param metrics: Metric keys to tile, in order.
-:type metrics: list[str]
-:param metric_labels: `{metric: subplot title}`. Defaults to the key. Default: `None`.
-:type metric_labels: dict[str, str] or None, optional
-:param kind_labels: `{kind: legend label}`. Default: `None`.
-:type kind_labels: dict[str, str] or None, optional
-:param kind_color: `{kind: css color}`. Defaults to an auto-palette. Default: `None`.
-:type kind_color: dict[str, str] or None, optional
-:param zero_line_metrics: Metrics drawn with a `y=0` reference line (signed relative errors). Defaults to every metric except `'w1'`. Default: `None`.
-:type zero_line_metrics: set[str] or None, optional
-:param n_cols: Number of subplot columns. Default: `4`.
-:type n_cols: int, optional
-:param title: Figure title. Defaults to `f'{cls} — {resolution}×{resolution}'`. Default: `None`.
-:type title: str or None, optional
-:param save_path: PNG output path. Default: `None`.
-:type save_path: str or None, optional
-:param png_meta: PNG tEXt metadata. Default: `None`.
-:type png_meta: dict or None, optional
-:param show: Display the figure. Default: `True`.
-:type show: bool, optional
-:param fonts: Override `title/axis/tick/legend` font sizes. Default: `None`.
-:type fonts: dict or None, optional
-:param height_per_row: Per-cell height in pixels. Default: `420`.
-:type height_per_row: int, optional
-:param width_per_col: Per-cell width in pixels. Default: `520`.
-:type width_per_col: int, optional
-:returns: **fig** (*plotly.graph_objects.Figure*) – The all-metrics grid figure.
-:rtype: plotly.graph_objects.Figure
-
-**Example**
-
-```pycon
->>> from combra.metrics import plot_metrics_grid
->>> METRICS = ['w1', 'mu1', 'mu2', 'sigma1', 'sigma2', 'amp1', 'amp2']
->>> fig = plot_metrics_grid(
-...     records_by_panel, 256, 'class_Ultra_Co11', METRICS,
-...     kind_labels={'real': 'original', 'san': 'SAN', 'diffit': 'DiffiT'},
-...     save_path='metrics_grid_Co11_256.png')
-```
-````
 
 ## TensorBoard training curves
 
-Rebuild the training-progress plots straight from the `tfevents` scalar logs a run wrote — no TensorBoard UI, no pandas. {py:func}`combra.io.read_tb_scalars` pulls every scalar series out of one event file as sorted `(steps, values)` arrays; {py:func}`combra.io.progress_fraction` maps event steps onto a common `kimg / max kimg` x-axis so runs on very different step/kimg scales line up; and {py:func}`combra.metrics.plot_training_curve_grid` tiles them into a models × metric-family grid, each curve EMA-smoothed then min-max normalized to `[0, 1]` so the panels show convergence *shape*. Used by `wc_cv/2_metric_consistensy.ipynb` for the per-resolution san-vs-diffit grid.
+Rebuild a run's training-progress plots straight from its `tfevents` scalars.
+{py:func}`combra.io.read_tb_scalars` pulls every scalar series out of one event
+file, {py:func}`combra.io.progress_fraction` maps event steps onto a common
+`kimg / max kimg` axis so runs on different scales line up, and the grid builder
+tiles them into a models × metric-family layout, each curve EMA-smoothed then
+min-max normalized so the panels show convergence *shape*.
 
-````{py:function} combra.metrics.plot_training_curve_grid(models, rows, columns, kimg_tags, resolution=None, ema_alpha=0.5, overrides=None, title=None, save_path=None, png_meta=None, show=True, fonts=None, height_per_row=360, width_per_col=560) -> plotly.graph_objects.Figure
+```{eval-rst}
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
 
-Grid of min-max-normalized training curves: one column per model, one row per metric family. Within each cell every present tag is a colored curve, lightly EMA-smoothed then min-max normalized to `[0, 1]` on a shared x = training-progress fraction (via {py:func}`combra.io.progress_fraction`), so runs on different scales become directly comparable in shape. The library stays dataset-agnostic; per-run cosmetic surgery (trim a divergent tail, bridge a transient burst) is injected through `overrides`.
-
-:param models: `{model_name: scalars}` where each `scalars` is {py:func}`combra.io.read_tb_scalars` output for that run.
-:type models: dict[str, dict]
-:param rows: One `(label, tags, prefix)` per metric-family row. `tags` is a list shared by all models, or a `{model: [tags]}` dict for per-model tags (e.g. losses); `prefix` is prepended for the scalar lookup (e.g. `'Metrics/'`). Tags absent from a model are skipped.
-:type rows: list[tuple[str, list or dict, str]]
-:param columns: Model names giving the left-to-right column order (keys into `models`).
-:type columns: list[str]
-:param kimg_tags: `{model: kimg_tag}` naming each run's kimg scalar for the shared x.
-:type kimg_tags: dict[str, str]
-:param resolution: Passed through to `overrides` and used in the default title. Default: `None`.
-:type resolution: int or None, optional
-:param ema_alpha: EMA weight on the new sample; lower is smoother. Default: `0.5`.
-:type ema_alpha: float, optional
-:param overrides: `(model, resolution, tag, x, y) -> (x, y, bridge_mask) | None` hook to trim/patch one raw curve before smoothing. Return `None` to leave it untouched. `bridge_mask` (bool array over the returned `x`, or `None`) marks a span to break out of the solid line and redraw dashed. Default: `None`.
-:type overrides: callable or None, optional
-:param title: Figure title. Defaults to `'{resolution}×{resolution} — per-curve min-max normalized'`. Default: `None`.
-:type title: str or None, optional
-:param save_path: PNG output path. `None` skips saving. Default: `None`.
-:type save_path: str or None, optional
-:param png_meta: `{key: value}` written as PNG tEXt chunks. Default: `None`.
-:type png_meta: dict or None, optional
-:param show: Display the figure. Default: `True`.
-:type show: bool, optional
-:param fonts: Override the `title/axis/tick/legend` font sizes. Default: `None`.
-:type fonts: dict or None, optional
-:param height_per_row: Per-row height in pixels. Default: `360`.
-:type height_per_row: int, optional
-:param width_per_col: Per-column width in pixels. Default: `560`.
-:type width_per_col: int, optional
-:returns: **fig** (*plotly.graph_objects.Figure*) – The grid figure.
-:rtype: plotly.graph_objects.Figure
-
-**Example**
-
-```pycon
->>> from combra.io import read_tb_scalars
->>> from combra.metrics import plot_training_curve_grid
->>> models = {m: read_tb_scalars(f'tensorboards/{m}-256x256') for m in ('san', 'diffit')}
->>> rows = [
-...     ('physical metrics', ['combra_mu1', 'combra_mu2', 'combra_sigma1'], 'Metrics/'),
-...     ('training metrics', ['combra_fid10k', 'combra_cmmd10k'], 'Metrics/'),
-...     ('losses', {'san': ['Loss/G/loss'], 'diffit': ['Train/Loss/mse']}, ''),
-... ]
->>> fig = plot_training_curve_grid(
-...     models, rows, ['san', 'diffit'],
-...     {'san': 'Progress/kimg', 'diffit': 'Train/kimg'},
-...     resolution=256, save_path='tb_grid_256.png')
+   plot_training_curve_grid
 ```
-````
 
 ## See also
 
-- {py:meth}`combra.data.MicrostructureDataset.generate_angles` — produces the angles parquets these comparators consume.
-- {py:func}`combra.angles.plot_density_grid` — visualise the same comparisons as overlaid grids.
-- {py:func}`combra.fitting.fit_plateau` — the plateau fitter used inside `convergence_stats`.
-- {doc}`combra.stats <stats>` — Kendall + Fisher primitives.
+- {doc}`Comparing microstructures </user_guide/metrics>` — the three families, the
+  degenerate-fit rules, and how to read an N-sweep.
+- {py:meth}`combra.data.MicrostructureDataset.generate_angles` — produces the
+  angle parquets these comparators consume.
+- {py:func}`combra.angles.plot_density_grid` — visualizes the same comparisons as
+  overlaid density grids.
+- {py:func}`combra.fitting.fit_plateau` — the plateau fitter used inside
+  {py:func}`convergence_stats`.
+- {doc}`combra.stats <stats>` — the histogram preprocessor and the distributions
+  fitted here.
