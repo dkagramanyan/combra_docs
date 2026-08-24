@@ -147,8 +147,8 @@ at any `--gpus`). Each snapshot computes **both** the angle-density metrics (Was
 `w2`, `circular_w1`, `circular_w2` and the bimodal-Gaussian `mu/sigma/amp` errors) **and** the
 image-feature metrics `fid`, `cmmd`, `fd_dinov2` (keys `combra_fid`, `combra_cmmd`,
 `combra_fd_dinov2`; the running best is `combra_fid_best`, and `combra_num_fid_samples`
-records the count the run used — the keys previously carried a literal `10k` suffix that
-never tracked `--num-fid-samples`). All are **mirrored into
+records the count the run used, so a key never claims a count the run did not
+evaluate at). All are **mirrored into
 `stats.jsonl`** (`Metrics/combra_*`) as well as TensorBoard, so post-hoc best-snapshot selection
 survives the loss of the tfevents file; the combra row is cleared every tick, so a tick with no eval
 writes no combra columns rather than repeating the previous tick's values at a new step. `styleswin-eval` scores a checkpoint standalone.

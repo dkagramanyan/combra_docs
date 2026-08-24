@@ -26,8 +26,8 @@ The full **install → test → train → generate** guide lives in the san-v2
 
 ## Installation
 
-`pyproject.toml` is the only dependency declaration (there is no
-`requirements.txt`) and `pip install -e .` is the one install path. Create a conda
+`pyproject.toml` is the only dependency declaration and `pip install -e .` is the
+one install path. Create a conda
 env, install the latest PyTorch (CUDA wheels), the CUDA compiler (`nvcc`) and
 ninja **from conda** (both needed to build the custom CUDA ops — a pip ninja
 conflicts with conda's, and the torch wheel ships no `nvcc`), then the package.
@@ -78,7 +78,7 @@ san-prepare-data convert --source ./raw/wc_co --dest ./datasets/wc_co_256.zip \
 Models are trained **progressively** (low → high resolution). The 16² stem trains
 from scratch; every higher resolution is a super-resolution stage that
 **weights-only warm-starts** from the previous stage's inference snapshot via
-`--path-stem` (there is no resume — runs go start-to-finish):
+`--path-stem` (runs go start-to-finish):
 
 ```bash
 # Stage 0 — 16x16 stem
@@ -136,7 +136,7 @@ features (pooled angles, FID/DINOv2 `(mu, sigma)`, CLIP embedding) are extracted
 recomputes each tick. Both the image-feature metrics (`fid`, `cmmd`, `fd_dinov2`)
 and the angle-density metrics (Wasserstein `w1`/`w2`/`circular_*` + bimodal-Gaussian
 fit errors) are logged under `Metrics/combra_*` in TensorBoard **and** `stats.jsonl`;
-The metric keys are **bare** — `Metrics/combra_fid`, `combra_cmmd`, `combra_fd_dinov2`, plus `combra_fid_best` and `combra_num_fid_samples`, which records the count the run actually used. (They previously carried a literal `10k` suffix that stayed `10k` whatever `--num-fid-samples` said, so any chart built from them was mislabelled.)
+The metric keys are **bare** — `Metrics/combra_fid`, `combra_cmmd`, `combra_fd_dinov2`, plus `combra_fid_best` and `combra_num_fid_samples`, which records the count the run actually used, so a key never claims a count the run did not evaluate at.
 
 `G_ema` emits float images in `[-1, 1]`; the loop denormalizes fakes to `uint8`
 with the single normalize/denormalize pair (asserted to round-trip) so reals and

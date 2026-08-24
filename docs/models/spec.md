@@ -54,8 +54,8 @@ console-script family:
 | `<model>-download-models` | backbone / weight prefetch | all |
 | `<model>-compare-samplers` | sampler-vs-steps sweep | diffusion only |
 
-- **`pyproject.toml` is the only dependency declaration** — there is no
-  `requirements.txt`, and `pip install -e .` is the one install path.
+- **`pyproject.toml` is the only dependency declaration**, and `pip install -e .`
+  is the one install path.
   torch / ninja stay out of `pyproject.toml` (installed from the CUDA wheel
   index / conda, as now).
 - combra from **one** source everywhere: optional extra `[combra]` →
@@ -75,13 +75,13 @@ console-script family:
 <model>-train --outdir <dir> --cfg <preset> --data <zip> --gpus N --batch-gpu B
 ```
 
-- **The click CLI is the only interface** — there is no Hydra entry point and
-  no `configs/` directory.
+- **The click CLI is the only interface**: the entry points above, configured
+  entirely by flags.
 - **`--cfg` is the preset flag name everywhere.**
 - **Progress is counted in kimg and ticks** (`--kimg`, `--tick`, `--snap`) —
   never raw image counts or `Ki/Mi` suffixes.
 - **One batch formula**: `total = batch_gpu × gpus × grad_accum`, with
-  `--grad-accum` explicit (default 1). There is no total-batch flag.
+  `--grad-accum` explicit (default 1); the total follows from those three.
 - **One precision scheme**: `--precision {fp32,fp16,bf16}` (each repo's
   default documented in its presets; GradScaler used only for fp16), plus
   `--tf32 True/False` (default `True`) and `--bench True/False` (default
@@ -110,8 +110,7 @@ console-script family:
     warm start of the frozen lower-resolution stem).
   - **DiffiT-v2** gets `--init-weights <snapshot>` — a weights-only warm
     start for higher-resolution finetuning (loads EMA weights from a previous
-    stage's snapshot, fresh optimizer; replaces the removed `--resume`-based
-    flow).
+    stage's snapshot, fresh optimizer).
   - **StyleSwin-v2** and **EDM2-v2** train each resolution independently and
     have no progressive flags.
 - **Self-spawning multi-GPU**: `--gpus N` spawns one worker per GPU via
@@ -151,8 +150,8 @@ final checkpoint:
 |---|---|
 | `<model>-snapshot-<kimg:06d>-inference.pt` | EMA-only weights; written every snapshot tick **and always at the last tick**, so the newest snapshot *is* the final model; history pruned to `--snapshot-keep-last` (default 3, `0` = keep all) |
 
-- **No resume.** There is no `--resume` flag, no rolling `latest` checkpoint
-  and no auto-restart: training runs start-to-finish.
+- **Runs go start-to-finish.** A run's whole lifecycle is launch → `--kimg` →
+  stop; recovering from an interruption means launching a fresh run.
 - **Writes are atomic — MUST.** Every snapshot is written to a temp file in
   the run directory and moved into place with `os.replace`, so a snapshot
   that exists under its final name is always complete (today **no repo does
@@ -196,7 +195,7 @@ final checkpoint:
 ```{warning}
 Runs are unrecoverable by design: a crash or SLURM walltime kill cannot be
 resumed. Size `--kimg` (or split stages) so a run fits its job's time limit —
-the training sbatch scripts allow 3–4 days. Because there is no resume, the
+the training sbatch scripts allow 3–4 days. Because a run cannot be resumed, the
 two MUSTs above are load-bearing — atomic writes guarantee a kill never
 corrupts an already-written snapshot, and the last-tick snapshot guarantees a
 completed run always ends in a usable model — and both are verified by the
@@ -254,14 +253,12 @@ folder in `sorted()` (alphabetical) order. Every `dataset_tool*.py` derives
 labels this way.
 
 ```{warning}
-**Artifacts predating Rule 1 do not follow it, and combra will not guess.** The
-on-disk `imagenet_9to4_*` archives the earlier runs consumed carry a swapped
-`1, 0, 2` label order and record no class names, so class identity is simply not
-recoverable from those files. combra no longer ships a legacy index→name table:
-a generated `.h5` whose groups are bare `class_0` / `class_1` with no
-`class_names` is **rejected**, because the alternative was silently attributing
-every metric to the wrong grain class whenever the guess was wrong. Rebuild the
-dataset (Rule 2) and retrain rather than remapping.
+**Class identity comes from the artifact, never from a table.** A generated
+`.h5` whose groups are bare `class_0` / `class_1` and that records no
+`class_names` is **rejected**: guessing at an integer's grain class produces a
+plausible number rather than an error, and every metric downstream of a wrong
+guess is attributed to the wrong class. An archive carrying neither names nor a
+recoverable label order is rebuilt under Rule 2 and retrained, not remapped.
 ```
 
 **Rule 2 — names travel with every artifact.**
@@ -273,7 +270,7 @@ dataset (Rule 2) and retrain rather than remapping.
 | generated h5 | `class_names` stamped as a root attribute + per-`class_<c>` group attribute |
 | generated dir | a `classes.json` manifest next to the `class_<c>/` folders |
 | CLI | `--classes` accepts **names as well as indices** |
-| downstream | combra matches by **name**. There is no index→name fallback: a file with bare `class_<n>` groups and no names raises rather than being guessed at |
+| downstream | combra matches by **name**, resolved from the artifact itself (`class_names` → per-group `class_name` → named group suffix). The metric helpers pair an h5 against a parquet, and against another h5, on that resolved name, so the two are free to group their classes differently; a file with bare `class_<n>` groups and no names raises |
 
 ### Dataset item contract
 
@@ -323,21 +320,15 @@ What a dataset yields is part of the API, identical in all four repos:
   that drives `best_model.pt` don't even share a class distribution).
 - **Uniform keys**: `Metrics/combra_fid`, `Metrics/combra_cmmd`,
   `Metrics/combra_fd_dinov2`, the angle-density metrics, and
-  `Metrics/combra_fid_best` — all mirrored to `stats.jsonl` (san-v2 and
-  StyleSwin-v2 originally wrote `Metrics/combra_*` to TensorBoard **only**: lose the
-  tfevents file and the run's entire metric history was gone).
+  `Metrics/combra_fid_best` — all mirrored to `stats.jsonl`. Both sinks are
+  required: a run whose metrics reach TensorBoard alone loses its entire history
+  with the tfevents file.
 
-  ```{admonition} Amended 2026-08-18
-  :class: note
-
-  **The `10k` suffix is gone.** This section originally specified a *literal* `10k`
-  in the key names, so that keys stayed stable across runs whatever
-  `--num-fid-samples` said. That backfired: every run evaluated at a non-default
-  count emitted a key claiming 10 000 samples, and every chart built from it was
-  mislabelled. Keys are now bare and the count is its own scalar,
-  `Metrics/combra_num_fid_samples` — stable *and* honest.
-  {py:func}`combra.metrics.load_fid_by_kimg` reads the bare key and still accepts
-  the legacy one, so archived runs remain readable.
+  ```{note}
+  Metric keys are bare and the sample count is its own scalar,
+  `Metrics/combra_num_fid_samples`, so no key ever claims a count its run did not
+  use. {py:func}`combra.metrics.load_fid_by_kimg` reads the bare key and also
+  accepts `Metrics/combra_fid10k`, so archived runs stay readable.
   ```
 - `<model>-eval` standalone evaluator in all four.
 
@@ -434,26 +425,18 @@ sizes, GPU counts and repos:
 | `Metrics/combra_*` | the §6 combra metrics | every snapshot tick; **not** step-held |
 | `Fakes` | EMA sample grid (image) | every snapshot tick |
 
-```{admonition} Amended 2026-08-20
-:class: note
-
-**`Metrics/combra_*` are not step-held.** This table originally said the metric row was
-held between snapshot ticks. All four repos deliberately do the opposite: a tick with no
-eval writes no combra columns. Repeating the previous tick's values at a new step turns
-the metric curves into step functions and lets post-hoc snapshot selection resolve to a
-kimg that was never evaluated.
-
-**One shared `self_test` and one shared harness.** §6's "one shared implementation"
-and §7's "global step = `cur_nimg` everywhere" are now true of all four repos; they were
-not when written. DiffiT-v2 and EDM2-v2 carried private `combra_smoke_test` copies, and
-san-v2 and EDM2-v2 logged the step in kimg.
+```{note}
+**`Metrics/combra_*` are never step-held.** A tick with no eval writes no combra
+columns. Repeating the previous tick's values at a new step turns the metric
+curves into step functions and lets post-hoc snapshot selection resolve to a kimg
+that was never evaluated.
 ```
 
 `stats.jsonl` keys are part of the contract, not an implementation detail:
 the wc_cv analysis layer reads them directly (e.g.
 `combra.metrics.load_fid_by_kimg`, which reads the contract keys
-`Metrics/combra_fid` + `Progress/kimg` from the same JSON line and falls back to
-the legacy `Metrics/combra_fid10k`), so renaming a key is a breaking change for
+`Metrics/combra_fid` + `Progress/kimg` from the same JSON line, and also accepts
+`Metrics/combra_fid10k`), so renaming a key is a breaking change for
 the analysis notebooks.
 
 ### 8. Samplers (diffusion models)
@@ -527,8 +510,8 @@ Rules:
   patch) shared by the three repos that vendor it. `torch_utils/` is
   intentionally **not** unified — san-v2 genuinely needs its CUDA `ops/`
   tree and EDM2-v2 its distributed helpers.
-- **No fork leftovers**: upstream demo images, Microsoft template meta files
-  and other inherited clutter are removed (kept: the actual licenses).
+- **First-party contents only**: upstream demo images, template meta files and
+  similar inherited clutter stay out; the actual licenses stay in.
 
 ---
 

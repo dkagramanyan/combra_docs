@@ -21,8 +21,7 @@ pip install combra            # or: pip install 'diffit[combra]'
 `--init-weights`** (random initialisation). DiffiT-v2 can also be trained
 progressively (low → high resolution) — RoPE-2D lets a 256² checkpoint's EMA
 weights warm-start a higher-resolution stage via `--init-weights` (weights only,
-fresh optimizer). There is no `--resume`: runs go start-to-finish (see
-Checkpoints).
+fresh optimizer). Runs go start-to-finish (see Checkpoints).
 
 ### From scratch
 
@@ -178,7 +177,7 @@ aborting the job.
 generated each tick for both the combra and the Inception path. The combra
 reference is the **whole training set** by default; `--combra-ref-count N` caps it
 to a **seeded random subset** of `N` reals (never the first N — dataset zips are
-class-sorted, so a first-N slice would be class-biased). The metric keys are **bare** — `Metrics/combra_fid`, `combra_cmmd`, `combra_fd_dinov2`, plus `combra_fid_best` and `combra_num_fid_samples`, which records the count the run actually used. (They previously carried a literal `10k` suffix that stayed `10k` whatever `--num-fid-samples` said, so any chart built from them was mislabelled.) Set `--num-fid-samples 0` to disable eval entirely.
+class-sorted, so a first-N slice would be class-biased). The metric keys are **bare** — `Metrics/combra_fid`, `combra_cmmd`, `combra_fd_dinov2`, plus `combra_fid_best` and `combra_num_fid_samples`, which records the count the run actually used, so a key never claims a count the run did not evaluate at. Set `--num-fid-samples 0` to disable eval entirely.
 
 All per-tick scalars are written to `stats.jsonl` (one JSON line per tick,
 scalar rows only) and mirrored to TensorBoard under the `Loss/*`,
@@ -302,9 +301,9 @@ diffit-gen-images \
 ### Class index → grain class
 
 The `--classes` selector accepts class **names** directly (validated against the
-checkpoint), so the index↔grain mapping no longer has to be memorised. Under the
-alphabetical convention now written into every new dataset's `class_names` the
-indices map as:
+checkpoint), so the index↔grain mapping never has to be memorised. Under the
+alphabetical convention written into every dataset's `class_names` the indices
+map as:
 
 | index | grain class | morphology |
 |---|---|---|

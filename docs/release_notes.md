@@ -11,6 +11,25 @@ below track what changes for a *user* of the library.
 
 **Changed**
 
+- **The metric helpers pair classes by name, not by HDF5 group string.**
+  {py:func}`~combra.metrics.compare_folders` used the group string both to read
+  reference images and to key the image metrics it merges into parquet-derived
+  records — but a parquet row names its class `Ultra_Co25` where the h5 group is
+  `class_Ultra_Co25` or `class_0`. The two never matched, so `fid`, `cmmd` and
+  `fd_dinov2` were computed and then dropped from every record without an error.
+  Both helpers now resolve each file's classes the way the dataset loader does
+  (`class_names` → per-group `class_name` → named group suffix) and match on the
+  resolved name, so files that group their classes differently still pair up.
+
+  `class_map=` remains available as a deliberate override, but it is now keyed by
+  class name rather than group string — **update any mapping written as
+  `{'class_0': 'class_Ultra_Co25'}`**. On
+  {py:func}`~combra.metrics.all_metrics_by_sample_size` it is optional, and `ns`
+  became keyword-only so an old positional call raises instead of binding a
+  mapping to the sample-size sweep. An unpairable class is logged at warning
+  level; nothing pairing at all raises
+  {py:class}`combra.exceptions.SchemaError`.
+
 - **The image-feature metrics ship by default.** `torch`, `torchvision`,
   `pytorch-fid` and `open-clip-torch` moved from the `metrics` extra into the core
   dependencies, so {py:func}`~combra.metrics.compute_fid`,
@@ -24,6 +43,14 @@ below track what changes for a *user* of the library.
   Environments that install a CUDA-specific PyTorch first, as the
   {doc}`model repositories <models/spec>` do, keep that build as long as it
   satisfies `torch>=2.13`.
+
+**Fixed**
+
+- **A preprocessing cache no longer outlives the HDF5 it was built from.** The
+  reuse check accepted any cache whose shape and dtype read back — exactly what a
+  regenerated container preserves — so rebuilding an `.h5` from new images left
+  every later sweep silently measuring the previous run's pixels. A cache older
+  than its source file is now rebuilt.
 
 ### 0.10.0
 

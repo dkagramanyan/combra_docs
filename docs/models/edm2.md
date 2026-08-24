@@ -49,8 +49,8 @@ always ends in a usable model.
 
    This puts the `edm2-train`, `edm2-prepare-data`, `edm2-download-models`,
    `edm2-sample`, `edm2-gen-images`, `edm2-eval` and `edm2-compare-samplers`
-   commands on your `PATH`. `pyproject.toml` is the only dependency declaration —
-   there is no `requirements.txt` and no Hydra entry point.
+   commands on your `PATH`. `pyproject.toml` is the only dependency
+   declaration, and the click CLI above is the only entry point.
 
 2. **(Optional) prefetch model weights** — handy for offline / cluster nodes.
    Training needs the Stable-Diffusion VAE (plus InceptionV3 / CLIP / DINOv2 for the
@@ -93,8 +93,8 @@ always ends in a usable model.
    std, e.g. `edm2-snapshot-000200-0.100-inference.pt`), pruned to the newest
    `--snapshot-keep-last` (default 3). Every snapshot carries self-describing
    `{n_classes, resolution, class_names, cur_nimg}` metadata, so loading rebuilds the
-   model from current code. There is no resume checkpoint, no `best_model.pt` — the
-   newest snapshot *is* the final model.
+   model from current code. The newest snapshot *is* the final model — snapshots are
+   the only checkpoint kind the run writes.
 
 ### Quick example (single-GPU smoke test)
 
@@ -132,14 +132,14 @@ Every run directory contains exactly these artifacts:
 | `events.out.tfevents.*` | TensorBoard scalars, image grids and text (rank 0 only; run name as `filename_suffix`) |
 | `reals.png`, `fakes_init.png`, `fakes<kimg>.png` | class-sorted sample grids (reals are raw dataset pixels) |
 
-There is no `progress.csv` / `progress.json` and no per-rank log file: the console
-transcript is rank-0-only. Watch a run with `tensorboard --logdir ./runs`.
+Scalars live in the tfevents file and `stats.jsonl`; the console transcript is
+rank-0-only. Watch a run with `tensorboard --logdir ./runs`.
 
 ### Progressive training
 
 Each higher-resolution stage is trained independently with the matching preset
-(`edm2-img512-s`, `edm2-img1024-s`) and dataset zip. Because runs are not resumable,
-there is no in-place stage continuation; retrain per resolution.
+(`edm2-img512-s`, `edm2-img1024-s`) and dataset zip: each resolution is its own
+run, trained from scratch.
 
 During training, at each snapshot tick the loop generates a batch of images from
 the EMA model by running the configured reverse-diffusion sampler (DPM-Solver++(2M)
