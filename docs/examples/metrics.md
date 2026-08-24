@@ -96,8 +96,7 @@ The full set of rejection criteria is in {ref}`undefined-rather-than-wrong`.
 
 {py:func}`~combra.metrics.compute_all_metrics` runs both angle families on
 in-memory image batches, and adds the image-feature metrics (FID, CMMD,
-FD-DINOv2) when asked. Those need the optional `metrics` extra and at least two
-images per side:
+FD-DINOv2) when asked. Those need at least two images per side:
 
 ```pycon
 >>> scores = metrics.compute_all_metrics(

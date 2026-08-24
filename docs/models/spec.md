@@ -538,8 +538,9 @@ Everything above is identical across the four repos. What follows is deliberatel
 not — these are model-family details, not tooling drift:
 
 1. **combra install** is uniform: all four pull the private repo over `git+https`
-   via the `[combra]` extra — which requests `combra[metrics]`, so the FID / CMMD /
-   FD-DINOv2 backends come with it — and none ship a `requirements.txt`
+   via the `[combra]` extra — which requests `combra[metrics]`, now an empty alias
+   since the FID / CMMD / FD-DINOv2 backends are core — and none ship a
+   `requirements.txt`
    (`pip install -e .`). All four require Python 3.12+, matching combra.
 2. **CUDA toolchain**: san-v2 and StyleSwin-v2 build custom CUDA ops (san-v2 against
    conda's `nvcc` with `CUDA_HOME=$CONDA_PREFIX`; StyleSwin-v2 via the system CUDA
@@ -559,8 +560,8 @@ not — these are model-family details, not tooling drift:
    kimg, DiffiT-v2 to its per-`--cfg` values. Set `--tick`/`--snap` explicitly when
    comparing runs across repos.
 6. **The sharded eval harness is shared, not per-repo.** It lives in
-   {py:mod}`combra.metrics.distributed`, behind the `[metrics]` extra that every repo
-   already installs, so combra's dependency-light core still carries no torch. The four
+   {py:mod}`combra.metrics.distributed`, which every repo gets with combra itself
+   (the torch backends are core dependencies as of Unreleased). The four
    private copies had drifted apart — two used `all_gather` and two `gather`, two
    reported a failure flag and two could not — which is why they were merged. A 2-rank
    check pins the result: the ten angle-density metrics are bit-identical to a

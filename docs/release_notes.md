@@ -7,6 +7,24 @@ combra's changelog, and pointers to the four model repos' own.
 The authoritative copy is `CHANGELOG.md` in the combra repository; the highlights
 below track what changes for a *user* of the library.
 
+### Unreleased
+
+**Changed**
+
+- **The image-feature metrics ship by default.** `torch`, `torchvision`,
+  `pytorch-fid` and `open-clip-torch` moved from the `metrics` extra into the core
+  dependencies, so {py:func}`~combra.metrics.compute_fid`,
+  {py:func}`~combra.metrics.compute_cmmd` and
+  {py:func}`~combra.metrics.compute_fd_dinov2` work after a plain
+  `pip install combra` rather than raising `ImportError` at the point of use. A
+  default install is correspondingly larger, most of it PyTorch. The `metrics`
+  extra is kept as an empty alias, so `pip install 'combra[metrics]'` — which the
+  model repositories and the docs workflow ask for — continues to work unchanged.
+
+  Environments that install a CUDA-specific PyTorch first, as the
+  {doc}`model repositories <models/spec>` do, keep that build as long as it
+  satisfies `torch>=2.13`.
+
 ### 0.10.0
 
 **Removed (breaking)**

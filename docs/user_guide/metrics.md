@@ -37,8 +37,9 @@ feature sets,
 
 $$d^2 = \lVert \mu_1 - \mu_2 \rVert^2 + \operatorname{tr}\!\left( \Sigma_1 + \Sigma_2 - 2 (\Sigma_1 \Sigma_2)^{1/2} \right)$$
 
-as introduced by Heusel et al. [^fid]. They require the `metrics` extra and at
-least two images per side; the angle-based families need neither.
+as introduced by Heusel et al. [^fid]. They need at least two images per side,
+since each estimates a per-side covariance; the angle-based families are defined
+on a single image.
 
 {py:func}`~combra.metrics.compute_all_metrics` runs the first two families
 always, and the third when `image_metrics=True`.

@@ -34,7 +34,7 @@ cache belongs to one reference batch.
 ### Image-feature metrics
 
 Compare the deep-feature distributions of a reference and a generated image set.
-All three need the optional `metrics` extra; the DINOv2 backbone is fetched from
+All three ship with a default install; the DINOv2 backbone is fetched from
 `torch.hub` and the InceptionV3 weights by `pytorch-fid`, both on first use.
 
 ```{eval-rst}
