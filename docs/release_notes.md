@@ -22,7 +22,11 @@ below track what changes for a *user* of the library.
   generated before this change should not be mixed with new ones** in
   fine-grained distribution comparisons. The exact disk-footprint median
   remains available via `preprocess_image(..., exact_median=True)` or any
-  `disk` radius other than 3, and is itself ~32× faster than before.
+  `disk` radius other than 3, and is itself ~32× faster than before. The read
+  cache also adapts to the file's chunking: shards whose chunks exceed the
+  128 MB default (e.g. 256-image shards at 512², 192 MB per chunk) previously
+  re-decompressed a full chunk on every read (~307 ms per image) and now read
+  from cache at ~0 ms.
 
 - **The metric helpers pair classes by name, not by HDF5 group string.**
   {py:func}`~combra.metrics.compare_folders` used the group string both to read
