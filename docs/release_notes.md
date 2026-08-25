@@ -11,6 +11,19 @@ below track what changes for a *user* of the library.
 
 **Changed**
 
+- **The preprocessing median is now `cv2.medianBlur(5)`, and single-image HDF5
+  reads no longer decompress a whole chunk each.** The two together make
+  {py:meth}`~combra.data.MicrostructureDataset.generate_angles` about 2–4×
+  faster end to end (23 s → 6 s for 3×360 images at 1024² on 18 workers), with
+  the preprocessing-cache build — previously ~96% of the runtime — improved
+  ~5×. The median change is visible in results: prep maps differ on ~0.4% of
+  pixels and pooled angle densities shift slightly (L1 ≈ 0.085), so the prep
+  cache version is bumped — caches rebuild automatically, but **parquets
+  generated before this change should not be mixed with new ones** in
+  fine-grained distribution comparisons. The exact disk-footprint median
+  remains available via `preprocess_image(..., exact_median=True)` or any
+  `disk` radius other than 3, and is itself ~32× faster than before.
+
 - **The metric helpers pair classes by name, not by HDF5 group string.**
   {py:func}`~combra.metrics.compare_folders` used the group string both to read
   reference images and to key the image metrics it merges into parquet-derived
@@ -45,6 +58,12 @@ below track what changes for a *user* of the library.
   satisfies `torch>=2.13`.
 
 **Fixed**
+
+- **Corner pixels of the disk-median filter were uninitialized memory.** The
+  median rank was computed from the full 29-pixel footprint, which a corner
+  window never reaches, so those output pixels kept unwritten buffer contents
+  and prep caches were non-deterministic at image corners. Shrunk border
+  windows now take the median of the pixels they actually contain.
 
 - **A preprocessing cache no longer outlives the HDF5 it was built from.** The
   reuse check accepted any cache whose shape and dtype read back — exactly what a
