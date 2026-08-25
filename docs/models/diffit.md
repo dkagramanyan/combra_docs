@@ -277,7 +277,8 @@ them into `<desc>.h5` (the RankH5Writer layout the angle pipeline consumes, with
 in); `--save-mode dir` writes per-class PNGs plus a `classes.json`. `--gpus N`
 self-spawns one worker per GPU (no `torchrun`). Every image has its own seed
 (`base-seed + class·samples_per_class + idx`), so any subset is reproducible in
-isolation, and the merge hard-fails if any shard is incomplete:
+isolation, and the merge hard-fails if any shard is incomplete — `--no-merge`
+runs the same completeness check on the shards it leaves behind:
 
 ```bash
 diffit-gen-images \

@@ -183,7 +183,10 @@ styleswin-gen-images \
 ```
 
 Per-image seeds are deterministic (`seed = base + class·samples_per_class + idx`), so any subset
-reproduces in isolation. The `sh/generate_256.sh` (… `512`, `1024`) scripts wrap this per
+reproduces in isolation, and the merged file's per-class rows are ordered by global sample index
+regardless of `--gpus` — the same command produces the same `<desc>.h5` at any world size. A
+checkpoint carrying no `class_names` is refused before generation starts rather than producing an
+unattributable h5. The `sh/generate_256.sh` (… `512`, `1024`) scripts wrap this per
 resolution.
 
 ### Class index → grain class

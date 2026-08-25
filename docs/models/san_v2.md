@@ -202,7 +202,8 @@ layout (`class_<c>/images|seeds`, uint8 NHWC), merged by rank 0 into
 `<outdir>/<desc>.h5` — exactly what the wc_cv angle pipeline consumes. Every shard
 and the merged file carry `format="generated_images_shard"`, `schema_version=1` and
 the `class_names`, and the merge **hard-fails** if any sample slot is missing (a
-crashed run never feeds zero-filled black images downstream). `--save-mode dir`
+crashed run never feeds zero-filled black images downstream). A checkpoint with no
+`class_names` metadata is refused before generation starts in hdf5 mode. `--save-mode dir`
 writes `class_<c>/idx_<i>_seed_<s>.png` plus a `classes.json` manifest. Generation
 is deterministic: `seed = base + class·samples_per_class + idx`.
 

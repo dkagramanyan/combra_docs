@@ -235,13 +235,31 @@ conformance suite below.
 - **One h5 signature**: every shard and merged file carries the attributes
   `format = "generated_images_shard"` (one value for all four repos) and
   `schema_version = 1`, so downstream code sniffs any model's output
-  identically.
+  identically — plus the shared metadata surface: `image_shape_hwc` and
+  `samples_per_class` on the root, and `class_idx` / `class_name` /
+  `samples_per_class` / `image_shape_hwc` on every class group.
+- **`class_names` is stamped, or the writer refuses.** Every repo's writer
+  and merge raise before any image is generated when the checkpoint carries
+  no class names, instead of conditionally omitting the attr. A name-less h5
+  is rejected downstream anyway (§5), so failing at write time turns a
+  doomed multi-hour run into an immediate error. EDM2-v2's legacy `.pkl`
+  pickled-module loader — the one path that produced `class_names = None` —
+  is removed along with its `--preset` shortcuts; only `.pt` inference
+  snapshots load.
+- **The merged file is order-deterministic.** Per-class rows are ordered by
+  global sample index regardless of `--gpus` (shards carry each row's index;
+  the merge sorts by it and drops the working dataset), so the same command
+  produces the same merged file at any world size.
 - **The merge hard-fails on incomplete shards.** Every shard records a
   per-sample `written` mask and a `missing_count` attribute; rank 0 refuses
   to produce the merged `<desc>.h5` while any `missing_count` is nonzero
   (today the san-v2 and DiffiT-v2 mergers record `missing_count` but merge
   anyway — and the combra consumer never reads it, so a crashed generation
-  run's zero-filled slots are consumed downstream as black images).
+  run's zero-filled slots are consumed downstream as black images). The gate
+  does not trust the attr alone: a shard with **no** `missing_count` attr —
+  its writer never reached `close()` — is refused, missing slots are
+  recomputed from the `written` masks, and DiffiT-v2's `--no-merge` runs the
+  same completeness check on the shards it leaves behind.
 
 ### 5. Class-label & dataset contract
 
