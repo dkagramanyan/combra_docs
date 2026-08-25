@@ -220,3 +220,14 @@ still 3.11, so `pip install -e .` could not succeed and combra was absent everyw
 the sharded eval harness moved into combra; hyperparameters now reach TensorBoard; and
 thirteen divergent scalar keys were settled against the §7 contract and pinned by a
 test in each repo.
+
+Most recently, every repo's eval path was audited for what happens when one rank
+fails. The pattern found in all four — local work that can raise on a single rank,
+sitting before a collective the others are already blocked in — turned single-rank
+errors into NCCL watchdog timeouts that hid the real cause. combra's half is fixed in
+{py:func}`~combra.metrics.distributed.gather_generated` (above); the repos' halves
+were the reference-slice load in san-v2 and StyleSwin-v2, and the rank-0-only startup
+raises in DiffiT-v2 and edm2. san-v2 and StyleSwin-v2 additionally reported
+`Timing/eval_sec` from rank 0 alone, which desynchronized the training-stats
+`all_reduce` on any multi-GPU run, and edm2 refused pre-encoded latent zips the angle
+pipeline cannot read. See each repo's changelog.

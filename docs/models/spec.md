@@ -388,6 +388,30 @@ Because feature extraction is per-image and angle pooling is concatenation,
 the sharded result is **exact** — numerically identical to a single-GPU
 {py:func}`combra.metrics.compute_all_metrics` call over the full batches.
 
+**Failing safely across ranks.** Every step above puts local work that can fail on one
+rank in front of a collective the other ranks are already entering, so the rule is:
+*never let a single rank leave the sequence on its own.* Three consequences bind all
+four repos.
+
+- **Agree before every collective.** Any local work that can raise — loading this
+  rank's reference slice, generating a shard, a rank-0-only startup smoke test — must
+  be caught and reduced with {py:func}`combra.metrics.distributed.all_ranks_ok` before
+  the next collective. `precompute_reference` and `gather_generated` do this
+  internally for the work they own; anything a repo does *around* them is the repo's
+  responsibility. A rank raising past this point does not fail the run, it hangs it:
+  the survivors block in `gather` until the NCCL watchdog fires, and the actual error
+  is visible only in the log of the rank that died.
+- **Gate on the rank-uniform flag, never on rank-0 data.**
+  `precompute_reference` returns `(reference, ok)` and `gather_generated` returns
+  `(features, angles)`; `reference` and `angles` are `None` on every non-zero rank
+  *by design*, so gating a collective on them desynchronizes immediately. Gate on
+  `ok`, and on rank 0 read `angles is None` as this tick's failure signal.
+- **Report on every rank.** Failure messages printed under `if rank == 0` hide the
+  common case, which is a non-zero rank running out of memory. Tag the message with
+  its rank instead. The same applies to counters: `training_stats.report0` registers
+  the counter *name* wherever it is called, and the collector all-reduces over that
+  set, so a `report0` inside a rank-0 branch makes the reduction disagree on shape.
+
 ### 7. Logging & TensorBoard contract
 
 Every run directory contains the same five artifacts — no more, no fewer.
