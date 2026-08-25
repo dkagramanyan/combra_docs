@@ -9,6 +9,13 @@ below track what changes for a *user* of the library.
 
 ### Unreleased
 
+**Added**
+
+- {py:func}`~combra.data.sweep_angles` accepts `force=True` to regenerate every
+  parquet, overriding the skip of `N`s whose parquet already holds all requested
+  steps. Without it, `force_rebuild_cache` on a complete sweep never takes
+  effect — the up-to-date check returns before `generate_angles` runs.
+
 **Changed**
 
 - **The preprocessing median is now `cv2.medianBlur(5)`, and single-image HDF5
