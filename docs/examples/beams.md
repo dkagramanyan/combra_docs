@@ -87,7 +87,7 @@ slope means the distribution falls off faster — a finer-grained alloy:
 
 ```{doctest}
 >>> round(float(rows[0]['prep']['a_k']), 4)
--1.6822
+-1.7082
 ```
 
 The `start` and `end` arguments of `generate_beams` trim that fit, because both

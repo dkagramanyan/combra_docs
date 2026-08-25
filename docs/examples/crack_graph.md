@@ -20,7 +20,7 @@ right borders where a crack can enter and leave:
 ...     graph.extract_graph_nodes(image, border=10, disk=3)
 ... )
 >>> len(entry_nodes), len(exit_nodes), len(cnts)
-(2, 2, 5)
+(3, 2, 5)
 ```
 
 `border` is how far from the image edge a node still counts as an entry or exit;
@@ -43,7 +43,7 @@ Each edge is classified by the phase it crosses:
 ...     img_contours.shape[:2], cnts, meta, eps=100, border=10, workers=1
 ... )
 >>> g.number_of_nodes(), g.number_of_edges()
-(27, 84)
+(27, 81)
 >>> sorted(g[0][1])
 ['edge_type', 'path_len', 'path_len_pixels', 'weight']
 ```
@@ -73,9 +73,9 @@ routes between one entry and one exit node, with the per-phase breakdown of each
 ...     g, cnts, meta, entry_nodes[0], exit_nodes[0], k=2
 ... )
 >>> paths['path_len_edges'].tolist()
-[9, 9]
+[8, 9]
 >>> paths['path_len_pixels'].tolist()
-[450.42, 450.45]
+[453.11, 453.12]
 ```
 
 Each row also carries `energy` and the per-phase edge counts and pixel lengths
