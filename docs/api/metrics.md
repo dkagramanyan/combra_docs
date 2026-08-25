@@ -117,6 +117,22 @@ to about 1e-8. The module needs `torch` and imports nothing until called. A call
 supplies only what is model-specific: how to produce a shard of generated images
 as `uint8`.
 
+Both gathering functions separate the purely local extraction from the collectives
+with a rank-uniform handshake, so one rank's OOM aborts the tick everywhere instead
+of stranding the survivors in `gather` until the NCCL watchdog fires. That makes the
+failure signal part of the calling contract — **every rank must call
+`gather_generated`, and rank 0 must gate `distributed_metrics` on the result**:
+
+```python
+features, angles = gather_generated(shard_u8, device, rank, world_size)
+if rank == 0 and angles is not None:
+    scores = distributed_metrics(reference, angles, features, device=device)
+```
+
+`precompute_reference` reports the same agreement as its second return value, which
+is the flag to gate the whole per-tick eval on — it is rank-uniform, where the
+reference dict it returns is `None` on every rank but 0.
+
 ```{eval-rst}
 .. module:: combra.metrics.distributed
 .. currentmodule:: combra.metrics.distributed

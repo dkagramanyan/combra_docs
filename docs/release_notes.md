@@ -70,6 +70,24 @@ below track what changes for a *user* of the library.
 
 **Fixed**
 
+- **One rank failing during a sharded eval no longer hangs the job.**
+  {py:func}`~combra.metrics.distributed.gather_generated` interleaved local
+  extraction with the gathers, so a rank hitting a CUDA OOM or a cv2 error
+  dropped out of the collectives while the others blocked in `gather` until the
+  NCCL watchdog killed the run — a timeout, with the real error printed only on
+  the rank that raised. It now extracts everything locally first, agrees through
+  `all_ranks_ok`, and returns `(None, None)` on every rank when any rank failed.
+  **Gate the {py:func}`~combra.metrics.distributed.distributed_metrics` call on
+  `angles is not None`**: on rank 0 that is now the failure signal, and passing
+  the sentinel through raises `ValueError` naming the cause.
+
+- **An empty generated angle density no longer discards that tick's image
+  metrics.** Early in training the generator produces nothing the contour
+  pipeline finds vertices in, and the resulting exception took `fid`, `cmmd` and
+  `fd_dinov2` down with the angle metrics — after their features had already
+  been extracted at full GPU cost. The ten angle keys now come back `nan` with
+  one logged warning, and the image metrics are returned as usual.
+
 - **Corner pixels of the disk-median filter were uninitialized memory.** The
   median rank was computed from the full 29-pixel footprint, which a corner
   window never reaches, so those output pixels kept unwritten buffer contents
