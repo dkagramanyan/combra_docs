@@ -9,7 +9,19 @@ below track what changes for a *user* of the library.
 
 ### Unreleased
 
+### 0.11.0
+
 **Added**
+
+- **The image-metric readers refuse incomplete generated h5s.**
+  {py:func}`combra.metrics.compare_folders` and
+  {py:func}`combra.metrics.all_metrics_by_sample_size` now validate every file
+  they open the way the angle pipeline always has: a nonzero `missing_count` or
+  an unwritten `written` slot raises {py:class}`combra.exceptions.IncompleteShardError`,
+  a `class_*` group with no `images` dataset raises
+  {py:class}`combra.exceptions.SchemaError`, and an unknown `format` warns. A
+  crashed generation run can no longer feed zero-filled black images into
+  FID / CMMD / FD-DINOv2.
 
 - {py:func}`~combra.data.sweep_angles` accepts `force=True` to regenerate every
   parquet, overriding the skip of `N`s whose parquet already holds all requested
