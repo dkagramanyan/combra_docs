@@ -2,8 +2,8 @@
 
 The four model repos are **separate forks that deliberately converge on one
 tooling convention**. This page is that convention: the specification every one of
-them implements, section by section. All four ship it — san-v2 (v0.3.0),
-StyleSwin-v2 (v0.3.0), DiffiT-v2 (v3.1.0) and EDM2-v2 (v3.1.0).
+them implements, section by section. All four ship it — san-v2 (v0.4.0),
+StyleSwin-v2 (v0.4.0), DiffiT-v2 (v3.2.0) and EDM2-v2 (v3.2.0).
 
 | repo | family | upstream | docs |
 |---|---|---|---|
@@ -128,7 +128,13 @@ console-script family:
   generator: today san-v2 draws eval latents from torch's RNG but the
   paired class labels from numpy's global RNG, so a specific fake batch is
   not reproducible even at a fixed GPU count. Generation-side determinism
-  is the §4 seed rule.
+  is the §4 seed rule. **The in-training eval set is independent of `--gpus`**:
+  the GANs draw the whole set once at startup from `--seed`-derived generators
+  and each rank takes its stride; the diffusion repos derive eval sample *i*'s
+  noise and label from `seed + i` alone (`_eval_draw`), so sharding only decides
+  which rank computes a sample, never which sample exists. EDM2-v2 additionally
+  advances the base by `cur_nimg` each tick; the other three score the same
+  latents every tick.
 - Run directory: `<outdir>/<id:05d>-<cfg>-gpus<G>-batch<B>[-desc]`, where
   `B` is the **total** batch and the name after the id is exactly
   `<cfg>-gpus<G>-batch<B>` — no dataset name spliced in (today san-v2 and
@@ -148,7 +154,7 @@ final checkpoint:
 
 | artifact | rule |
 |---|---|
-| `<model>-snapshot-<kimg:06d>-inference.pt` | EMA-only weights; written every snapshot tick **and always at the last tick**, so the newest snapshot *is* the final model; history pruned to `--snapshot-keep-last` (default 3, `0` = keep all) |
+| `<model>-snapshot-<kimg:06d>-inference.pt` | EMA-only weights; written every snapshot tick **and always at the last tick**, so the newest snapshot *is* the final model; history pruned to `--snapshot-keep-last` (default 3, `0` = keep all). `<model>` is the literal repo name (`san`, `styleswin`, `diffit`, `edm2`). EDM2-v2 alone writes one file per PowerFunctionEMA std — `edm2-snapshot-<kimg:06d>-<std:.3f>-inference.pt` — and prunes by distinct kimg; that suffix is inherent to its per-family EMA (below), not tooling drift |
 
 - **Runs go start-to-finish.** A run's whole lifecycle is launch → `--kimg` →
   stop; recovering from an interruption means launching a fresh run.
@@ -190,7 +196,12 @@ final checkpoint:
 - **Self-describing metadata** in every checkpoint:
   `{n_classes, resolution, class_names, cur_nimg}` — downstream code reads
   grain-class *names* from the checkpoint instead of guessing integer
-  conventions (the full label contract is §5).
+  conventions (the full label contract is §5). `class_names` is stored exactly
+  as the dataset zip reports it — `None` when the zip predates the contract —
+  never fabricated: a conditional run on a name-less zip is refused at launch
+  (rebuild the zip with `<model>-prepare-data`), so the `['0', '1', …]` a
+  checkpoint would otherwise carry can never masquerade as real names
+  downstream.
 
 ```{warning}
 Runs are unrecoverable by design: a crash or SLURM walltime kill cannot be
@@ -488,7 +499,7 @@ sizes, GPU counts and repos:
 | `LearningRate/*` | effective learning rates (`G`/`D`, or `lr`) | every tick |
 | `Timing/*` | sec/tick, sec/kimg, eval time | every tick |
 | `Resources/*` | GPU / CPU memory | every tick |
-| `Metrics/combra_*` | the §6 combra metrics | every snapshot tick; **not** step-held |
+| `Metrics/combra_*` | the §6 combra metrics, at `global_step = cur_nimg` like every other tag (until 2026-08-27 EDM2-v2 stamped them at kimg, putting the metric curves on a different x-axis from its losses) | every snapshot tick; **not** step-held |
 | `Fakes` | EMA sample grid (image) | every snapshot tick |
 
 ```{note}
@@ -629,7 +640,7 @@ cluster run. The convention had already rotted silently once (`--use-ddim`,
 | **CLI + artifact contract** | The §2/§4 flags and defaults; the HDF5 shard schema (`class_<c>/images|seeds`, `format`/`schema_version`) and the merge hard-fail on gaps; §3 checkpoint metadata; the normalize/denormalize round-trip; the §5 class-label rules. | `test_conformance.py` (edm2) |
 | **Logging namespaces** | The §7 TensorBoard / `stats.jsonl` key names, asserted against the training loop. Thirteen keys had drifted across the four repos — two logged the step in kimg and two in images, one filed learning rate under `Loss/`. | `test_logging_contract.py` (all four) |
 | **`stats.jsonl` readability** | The row this repo writes is readable by `combra.metrics.load_fid_by_kimg`, which shape-filters non-scalar values away **silently**. That is how san-v2 and StyleSwin runs produced an unreadable metric history while every dashboard looked fine. | `test_stats_contract.py` (all four) |
-| **combra symbols** | Every combra symbol the repo imports exists. The eval path is deliberately fault-tolerant, and that tolerance is how combra 0.5.0 removing three functions hid for a whole release. | `test_combra_contract.py` (all four) |
+| **combra symbols** | Every combra symbol the repo imports exists, asserted as `(module, name)` pairs — including the `combra.metrics.distributed` harness (`all_ranks_ok`, `distributed_metrics`, `gather_generated`, `precompute_reference`) the loops actually call. The eval path is deliberately fault-tolerant, and that tolerance is how combra 0.5.0 removing three functions hid for a whole release — and how, until 2026-08-27, the test itself pinned eight symbols the loops no longer imported while missing the four they did. | `test_combra_contract.py` (all four) |
 
 Repo-specific suites cover the rest: dataset conversion and the `--max-images`
 class balance (`test_dataset_tool.py`, edm2 + StyleSwin), the rank-shard writer
