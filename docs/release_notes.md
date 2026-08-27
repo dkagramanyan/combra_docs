@@ -9,6 +9,8 @@ below track what changes for a *user* of the library.
 
 ### Unreleased
 
+### 0.12.0
+
 **Fixed**
 
 - **The bimodal-Gaussian angle fit no longer loses its second mode to a
