@@ -79,6 +79,7 @@ struct written on every row.
 :hidden:
 
 angles
+angle_fit
 beams
 metrics
 glossary

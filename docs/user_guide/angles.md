@@ -18,7 +18,15 @@ contributes an angle below 180°; a reflex vertex, where a grain is concave
 because a neighbour intrudes into it, contributes one above. Realistic WC-Co
 densities carry roughly 23% of their mass in the reflex mode. That second mode is
 what the bimodal-Gaussian fit in {doc}`../api/fitting` is for, and its presence or
-absence is diagnostic — see {ref}`undefined-rather-than-wrong`.
+absence is diagnostic — see {ref}`undefined-rather-than-wrong`. The whole
+scheme is stated formally in {doc}`angle_fit`.
+
+Note that the two halves are not two ends of a circle. `vertex_angles` reports
+$\theta$ for a convex vertex and $360° - \theta$ for a reflex one, so 1° is a
+needle-thin protrusion and 359° a needle-thin notch: opposite shapes that happen
+to sit at opposite ends of the axis. The angle domain is an **interval**, which
+is why the fitted model is truncated to $[0°, 360°]$ rather than wrapped around
+it.
 
 ## From contour to angle
 
@@ -71,6 +79,16 @@ Raw angles are reduced to a density by
 >>> float(y.sum())
 1.0
 ```
+
+Note that `y` sums to 1 over *bins*: these are bin probabilities, not a density
+per degree, so their scale depends on `step`. The Wasserstein distances take them
+as transport masses in exactly this form.
+
+Each bin width is then fitted independently by
+{py:func}`~combra.fitting.fit_bimodal_gaussian`, which seeds itself from the
+density it is given. Earlier versions warm-started each width from the previous
+one's solution; that made a bad fit at the finest, noisiest width propagate to
+every coarser one, so it was removed.
 
 Like `min_segment_len`, {term}`step` is part of a metric's identity: two runs are
 comparable only when reduced at the same bin width. It is stored on every parquet

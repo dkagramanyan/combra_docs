@@ -51,7 +51,7 @@ transport distances say *how far apart*, these say *which part is wrong*:
 ['amp1', 'amp2', 'mu1', 'mu2', 'sigma1', 'sigma2']
 >>> round(errors['mu1'], 3)
 0.05
->>> round(errors['mu2'], 3)
+>>> round(abs(errors['mu2']), 3)
 0.0
 ```
 
@@ -87,7 +87,7 @@ early in training:
 >>> from combra import fitting
 >>> _, mus, sigmas, amps = fitting.fit_bimodal_gaussian(*unimodal)
 >>> metrics.degenerate_fit_reason(mus, sigmas, amps, density=unimodal)
-'a mode carries 0.33% of the mass, under the 5% floor -- there is only one real mode'
+'a mode carries 0.00% of the mass, under the 5% floor -- there is only one real mode'
 ```
 
 The full set of rejection criteria is in {ref}`undefined-rather-than-wrong`.

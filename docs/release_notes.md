@@ -9,6 +9,53 @@ below track what changes for a *user* of the library.
 
 ### Unreleased
 
+**Fixed**
+
+- **The bimodal-Gaussian angle fit no longer loses its second mode to a
+  pedestal.** {py:func}`~combra.fitting.fit_bimodal_gaussian` started from a
+  fixed guess with no upper bound on `sigma`. Whenever the reflex mode was weak
+  over a heavy baseline, one very wide Gaussian was a competing least-squares
+  minimum and the solver took it — fitted widths of 355° and 1.0e5°, where the
+  real second mode sits near 240°. It now seeds itself from the density and
+  bounds `sigma` at 180°. Over 231 fits of real angle densities, degenerate
+  results went from 83 to 0, 58 improved by more than 5% in residual, and none
+  got worse.
+
+- **{py:meth}`~combra.data.MicrostructureDataset.generate_angles` fits each bin
+  width independently.** It used to warm-start each width from the previous
+  one's solution, so one bad fit at the finest, noisiest width propagated to
+  every coarser one — across the reference parquets, one bad fit became seven.
+
+- **{py:func}`~combra.data.plot_polyamide_fractal` no longer prints a phantom
+  second mode in its subplot titles.** It fitted contour fractal dimensions —
+  values in [1, 2] — with the *angle* fitter, whose means are bounded to
+  [0, 360], leaving the second mode free to settle far from any data. It now
+  bounds every parameter to the group's own data range. A group with too few
+  occupied bins to determine the six parameters is titled
+  `"(too few bins to fit)"` instead of being given invented numbers.
+
+**Changed**
+
+- **The angle density is fitted with a model truncated to [0°, 360°]**,
+  {py:func}`~combra.stats.truncated_bimodal_gaussian`. All of the fitted
+  probability mass now lies inside the interval the angles were measured on;
+  the untruncated model leaked 46.8% and 99.75% on the worst real fits. `amps`
+  is now each mode's integral over [0, 360], so `amps[i] / sum(amps)` is its
+  share of the fitted mass. Truncated rather than wrapped, because a vertex
+  angle is not a circular variable — see
+  {doc}`user_guide/angle_fit` for the full scheme.
+
+- {py:func}`~combra.fitting.fit_bimodal_gaussian`'s `mu1`…`amp2` arguments
+  default to `None`, meaning "seed this from the data". Passing a value still
+  overrides it per parameter, so existing callers are unaffected.
+
+:::{warning}
+Fits stored in angle parquets written before this release come from the
+untruncated model with the old seeding and are **not** comparable with new ones.
+Refit any parquet you intend to keep — the stored densities are enough, so no h5
+access or angle re-extraction is needed.
+:::
+
 ### 0.11.0
 
 **Added**

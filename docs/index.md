@@ -146,7 +146,8 @@ Parametric distributions, the density histogram, and inference helpers.
 :link-type: doc
 :class-card: combra-module-card
 
-Gaussian, bimodal-Gaussian, binomial, Poisson, exponential, linear and
+Gaussian, bimodal-Gaussian (plain and truncated to the angle domain),
+binomial, Poisson, exponential, linear and
 plateau fits — one `fit_*` family, one result protocol.
 :::
 

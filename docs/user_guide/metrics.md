@@ -37,7 +37,8 @@ feature sets,
 
 $$d^2 = \lVert \mu_1 - \mu_2 \rVert^2 + \operatorname{tr}\!\left( \Sigma_1 + \Sigma_2 - 2 (\Sigma_1 \Sigma_2)^{1/2} \right)$$
 
-as introduced by Heusel et al. [^fid]. They need at least two images per side,
+as introduced by Heusel et al. [^fid]. The angle families are stated formally,
+end to end, in {doc}`angle_fit`. They need at least two images per side,
 since each estimates a per-side covariance; the angle-based families are defined
 on a single image.
 
@@ -50,9 +51,17 @@ always, and the third when `image_metrics=True`.
 
 {py:func}`~combra.fitting.fit_bimodal_gaussian` always returns two modes, because
 the model has two. When an angle density has only one, the solver must still put
-the second somewhere, and it parks a **phantom** — either a flat pedestal (a
-fitted $\sigma$ of $3.3 \times 10^4$ degrees has been observed) or a narrow spike
-at a position with no data under it. The relative errors above divide by the
+the second somewhere, and it parks a **phantom** — either a flat pedestal or a
+narrow spike at a position with no data under it.
+
+A phantom used to appear even on genuinely *bimodal* densities, whenever the
+reflex mode was weak over a heavy baseline: a wide pedestal is a competing
+least-squares minimum, and unbounded widths made it a cheap one — fitted
+$\sigma$ of $3.3 \times 10^4$ degrees has been observed. Seeding each mode from
+its own side of the density and bounding $\sigma$ at 180° removed that failure
+(83 degenerate fits out of 231 real angle densities became 0), so a rejection now
+much more reliably means the data really has one mode rather than that the solver
+missed the second. The relative errors above divide by the
 reference fit, so a phantom denominator produces numbers that look like
 measurements and are not: two densities differing by 2° once scored
 $\varepsilon_{\sigma_1} = 1357$ and $\varepsilon_{\mathrm{amp}_2} = 3050$.
@@ -65,7 +74,10 @@ reason at warning level, when a fit is:
 - sitting on the $[0, 360]$ boundary the means are clamped to, which is a fit
   artefact, and where $0$ would also be the denominator of the $\mu$ relative
   error;
-- wider than 120° in one mode, which is a pedestal rather than a peak;
+- wider than 120° in one mode, which is a pedestal rather than a peak. The
+  solver is itself bounded at 180°, deliberately above this threshold: bounding
+  it at 120° would park every pedestal at exactly 120.0 and, since the test is a
+  strict `>`, switch the rejection off;
 - unresolved, with the two means closer together than one $\sigma$;
 - placed where the density carries under 5% of its mass. This is checked only
   when the density is supplied, and it is the criterion that catches a spike,

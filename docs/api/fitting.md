@@ -30,6 +30,13 @@ mode ordering are part of the model.
    fit_bimodal_gaussian
 ```
 
+{py:func}`~combra.fitting.fit_bimodal_gaussian` fits
+{py:func}`combra.stats.truncated_bimodal_gaussian`, so `amps[i]` is the integral
+of mode `i` over $[0°, 360°]$ and `amps[i] / sum(amps)` is that mode's share of
+the fitted mass. Its starting guess is read off the density rather than fixed —
+one mode seeded per side of 180°, from that side's tallest bin and its mass — and
+mode widths are bounded to 180°.
+
 ```{warning}
 {py:func}`~combra.fitting.fit_bimodal_gaussian` returns two modes whether or not
 the data has two, so a single-moded density acquires a phantom second mode whose
@@ -37,6 +44,13 @@ parameters are solver artifacts. Screen a fit with
 {py:func}`combra.metrics.degenerate_fit_reason` before reading its parameters;
 the gauss metrics do this themselves and return `nan`. See
 {ref}`undefined-rather-than-wrong`.
+```
+
+```{note}
+Fits stored in angle parquets written before the truncated model was adopted are
+not comparable with new ones, and many of them placed most of their mass outside
+$[0°, 360°]$. Refit any parquet you intend to keep; the stored densities are
+enough, so no h5 access or angle re-extraction is needed.
 ```
 
 ## Linear fits
