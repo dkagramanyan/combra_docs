@@ -3,7 +3,7 @@
 The four model repos are **separate forks that deliberately converge on one
 tooling convention**. This page is that convention: the specification every one of
 them implements, section by section. All four ship it — san-v2 (v0.4.0),
-StyleSwin-v2 (v0.4.0), DiffiT-v2 (v3.2.0) and EDM2-v2 (v3.2.0).
+StyleSwin-v2 (v0.4.0), DiffiT-v2 (v0.4.0) and EDM2-v2 (v0.4.0).
 
 | repo | family | upstream | docs |
 |---|---|---|---|

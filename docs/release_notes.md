@@ -222,10 +222,10 @@ convention all four implement.
 
 | repo | current | changelog |
 | --- | --- | --- |
-| san-v2 | 0.3.0 | `CHANGELOG.md` in [san-v2](https://github.com/dkagramanyan/san-v2) |
-| StyleSwin-v2 | 0.3.0 | `CHANGELOG.md` in [StyleSwin-v2](https://github.com/dkagramanyan/StyleSwin-v2) |
-| DiffiT-v2 | 3.1.0 | `CHANGELOG.md` in [DiffiT-v2](https://github.com/dkagramanyan/DiffiT-v2) |
-| EDM2-v2 | 3.1.0 | `CHANGELOG.md` in [edm2-v2](https://github.com/dkagramanyan/edm2-v2) |
+| san-v2 | 0.4.0 | `CHANGELOG.md` in [san-v2](https://github.com/dkagramanyan/san-v2) |
+| StyleSwin-v2 | 0.4.0 | `CHANGELOG.md` in [StyleSwin-v2](https://github.com/dkagramanyan/StyleSwin-v2) |
+| DiffiT-v2 | 0.4.0 | `CHANGELOG.md` in [DiffiT-v2](https://github.com/dkagramanyan/DiffiT-v2) |
+| EDM2-v2 | 0.4.0 | `CHANGELOG.md` in [edm2-v2](https://github.com/dkagramanyan/edm2-v2) |
 
 The current cycle in all four: the conda environments moved to Python 3.12 (they were
 still 3.11, so `pip install -e .` could not succeed and combra was absent everywhere);
