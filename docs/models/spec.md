@@ -245,21 +245,45 @@ conformance suite below.
   doomed multi-hour run into an immediate error. EDM2-v2's legacy `.pkl`
   pickled-module loader — the one path that produced `class_names = None` —
   is removed along with its `--preset` shortcuts; only `.pt` inference
-  snapshots load.
+  snapshots load. The refusal applies to the *whole* CLI path, not only the
+  writer class: a repo must never fabricate `['0', '1', …]` for a conditional
+  checkpoint upstream of the writer (StyleSwin-v2 did until 2026-08-27, which
+  made its writer's raise unreachable). A name list shorter than the selected
+  class set is refused the same way — never a silently omitted `class_name`.
+  The one legitimate fallback is an **unconditional** checkpoint
+  (`n_classes = 0`), whose single pseudo-class is stamped as `['0']`.
 - **The merged file is order-deterministic.** Per-class rows are ordered by
   global sample index regardless of `--gpus` (shards carry each row's index;
   the merge sorts by it and drops the working dataset), so the same command
   produces the same merged file at any world size.
 - **The merge hard-fails on incomplete shards.** Every shard records a
-  per-sample `written` mask and a `missing_count` attribute; rank 0 refuses
-  to produce the merged `<desc>.h5` while any `missing_count` is nonzero
+  per-sample `written` mask and a `missing_count` attribute, and rank 0
+  refuses to produce the merged `<desc>.h5` while any slot is missing
   (today the san-v2 and DiffiT-v2 mergers record `missing_count` but merge
   anyway — and the combra consumer never reads it, so a crashed generation
-  run's zero-filled slots are consumed downstream as black images). The gate
-  does not trust the attr alone: a shard with **no** `missing_count` attr —
-  its writer never reached `close()` — is refused, missing slots are
-  recomputed from the `written` masks, and DiffiT-v2's `--no-merge` runs the
-  same completeness check on the shards it leaves behind.
+  run's zero-filled slots are consumed downstream as black images). **The
+  canonical check is the recomputation from the `written` masks** — every
+  slot of every class, in every shard — because the masks are the ground
+  truth even when a crash stamped a stale `missing_count`. The attrs are
+  fast-fail signals layered on top: a shard whose `format` is not
+  `generated_images_shard`, or with **no** `missing_count` attr — its writer
+  never reached `close()` — is refused before its masks are read, so the
+  error names the cause rather than a slot count. DiffiT-v2's `--no-merge`
+  runs the same mask recomputation on the shards it leaves behind. A rank
+  whose index block is empty (`--gpus` > `--samples-per-class`) closes
+  cleanly and deletes its group-less shard; the merge tolerates that absent
+  file because the mask gate still proves every slot was written by someone.
+  Shards from an earlier run in the same `--outdir` are cleared before the
+  workers start, so a worker that dies before opening its file can never
+  leave a stale shard for the merge to read.
+- **combra re-checks the same gate on every read path.** Both consumers —
+  `MicrostructureDataset` (angles/beams) and the image-metric readers
+  (`compare_folders`, `all_metrics_by_sample_size`) — validate an h5 before
+  touching its pixels: unknown `format` / too-new `schema_version` warn, a
+  nonzero `missing_count` or an unwritten `written` slot raises
+  `IncompleteShardError`, and a `class_<c>` group with no `images` dataset
+  raises `SchemaError`. Until 2026-08-27 only the angle path had the gate,
+  so the metrics path could score a raw or partial shard's black slots.
 
 ### 5. Class-label & dataset contract
 
@@ -609,6 +633,7 @@ cluster run. The convention had already rotted silently once (`--use-ddim`,
 
 Repo-specific suites cover the rest: dataset conversion and the `--max-images`
 class balance (`test_dataset_tool.py`, edm2 + StyleSwin), the rank-shard writer
-(`test_rank_h5.py`, StyleSwin), the CUDA-op build and its `PATH` requirement
+and merge gate (`test_rank_h5.py`, StyleSwin + san-v2; `test_h5_writer.py`,
+DiffiT-v2), the CUDA-op build and its `PATH` requirement
 (`test_cuda_ops.py` / `test_custom_ops_path.py`, san-v2), and the generation-mode
 CLI (`test_gen_images_cli.py`, DiffiT-v2).
