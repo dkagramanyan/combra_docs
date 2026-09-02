@@ -105,7 +105,8 @@ standard normal CDF, and let the angle domain be $D = [0^\circ, 360^\circ]$.
 
 $$
 p(x; \boldsymbol{\theta}) =
-\sum_{i=1}^{2} \frac{a_i}{Z_i}\, \varphi(x; \mu_i, \sigma_i)\,
+T \left[ \frac{w}{Z_1}\, \varphi(x; \mu_1, \sigma_1)
+      + \frac{1 - w}{Z_2}\, \varphi(x; \mu_2, \sigma_2) \right]
 \mathbf{1}_{D}(x),
 \qquad
 Z_i = \Phi\!\left(\frac{360 - \mu_i}{\sigma_i}\right)
@@ -113,7 +114,8 @@ Z_i = \Phi\!\left(\frac{360 - \mu_i}{\sigma_i}\right)
 $$
 
 with parameter vector
-$\boldsymbol{\theta} = (\mu_1, \mu_2, \sigma_1, \sigma_2, a_1, a_2)$.
+$\boldsymbol{\theta} = (\mu_1, \mu_2, \sigma_1, \sigma_2, w)$ and a total mass
+$T$ that is set by the data rather than fitted (§4).
 
 Three consequences are the reason for the truncation.
 
@@ -121,27 +123,27 @@ Three consequences are the reason for the truncation.
 $i$-th parent normal places inside $D$,
 
 $$
-\int_D p \,\mathrm{d}x = a_1 + a_2,
+\int_D p \,\mathrm{d}x = T,
 \qquad
-\int_D \frac{a_i}{Z_i} \varphi(x; \mu_i, \sigma_i)\,\mathrm{d}x = a_i ,
+\int_D \frac{T\,w}{Z_1} \varphi(x; \mu_1, \sigma_1)\,\mathrm{d}x = T\,w ,
 $$
 
-so $a_i$ *is* the mass of mode $i$ and $a_i / (a_1 + a_2)$ its share. The
-untruncated model has $\int_{\mathbb{R}} = a_1 + a_2$ instead, and the fraction
-lost outside $D$,
+so $w$ *is* the share of the mass in mode 1 and $1 - w$ the share in mode 2,
+whatever the widths. An untruncated mixture with amplitudes $a_i$ has
+$\int_{\mathbb{R}} = a_1 + a_2$ instead, and the fraction lost outside $D$,
 
 $$
 \text{leak} = 1 - \frac{1}{a_1 + a_2}\sum_{i=1}^{2} a_i Z_i ,
 $$
 
-reached 99.75% on real reference sets before this change.
+reached 99.75% on real reference sets before truncation was adopted.
 
 **Pedestals stay bounded.** A plain Gaussian of peak height $h_\ast$ satisfies
 $a = h_\ast \sigma \sqrt{2\pi}$, so holding a wide pedestal at fixed height
 forces $a \propto \sigma$ — fitted $\sigma = 10^5$ degrees with $a = 2\times10^3$
 against an expected 5 were observed. Under truncation,
 
-$$\lim_{\sigma \to \infty} p(x) \;=\; \frac{a_1 + a_2}{360},$$
+$$\lim_{\sigma \to \infty} p(x) \;=\; \frac{T}{360},$$
 
 a uniform density of bounded amplitude. A pedestal remains *representable*, so
 §5 still has to screen for it, but it no longer diverges.
@@ -158,16 +160,23 @@ $$
 \hat{\boldsymbol{\theta}}
 = \arg\min_{\boldsymbol{\theta} \in \Theta}
 \sum_k \bigl( y_k - p(x_k; \boldsymbol{\theta}) \bigr)^2 ,
+\qquad
+T = h \sum_k y_k ,
 $$
 
 $$
-\Theta = [0, 360]^2 \times [10^{-6},\, 180]^2 \times [0, \infty)^2
+\Theta = [0, 360]^2 \times [10^{-6},\, 180]^2 \times [0, 1]
 $$
 
-by trust-region reflective least squares. Note that the objective is fitted to
-$y_k$ on the bin-probability scale of §2, so $a_1 + a_2 \approx h$ for a fit that
-reproduces the data — a cheap, independent goodness check, since least squares
-does *not* constrain the integral.
+by trust-region reflective least squares. The objective is fitted to $y_k$ on
+the bin-probability scale of §2, where the curve that reproduces the data
+integrates to $h$, so the total $T$ is fixed to that (and to the total count
+when raw counts are passed) rather than fitted. A free pair of amplitudes,
+which the fit had until 0.13.0, only ever carried this scale: replacing them
+with $w$ moves the fitted modes by under $0.7^\circ$ and the residual by under
+2% on the reference sets, and by $0.13^\circ$ in $\mu_1$, $1.5^\circ$ in
+$\mu_2$ and $0.012$ in $w$ at the 95th percentile over all 231 stored real
+densities.
 
 ### Why least squares on the histogram, and not maximum likelihood
 
@@ -181,9 +190,11 @@ reflex peak, and its histogram residual is $1.2$–$2\times$ that of least
 squares. The gain in log-likelihood comes almost entirely from the edge tails:
 1–8% of the vertices lie below $60^\circ$ or above $300^\circ$, where two
 Gaussians centred on the modes leave essentially no mass, and a likelihood cannot
-leave data uncovered. The histogram objective leaves that mass *unclaimed*
-instead ($a_1 + a_2$ runs 0.8% over to 2.4% under $h$ on the reference sets)
-and describes the peaks. Adding a uniform background component brings the
+leave data uncovered. The histogram objective is nearly indifferent to them:
+a tail's residual is its tiny absolute mass, so the fit describes the peaks
+(with free amplitudes it left 0.8–2.4% of the mass unclaimed on the reference
+sets; with the total fixed it spreads that over the modes, which move by less
+than a degree). Adding a uniform background component brings the
 likelihood's $\mu_2$ back to within $1$–$3^\circ$ of the least-squares value at
 512 and 1024 px but is not identifiable at 256 px, where the reflex mode is
 itself $47^\circ$ wide. The fitted $\mu_i, \sigma_i$ are therefore peak
@@ -200,7 +211,7 @@ of real angle densities.
 | $\mu_i \in [0, 360]$ | left free, the solver walks a mode out of the domain; $\mu = 648^\circ$ and $-167^\circ$ have both been observed |
 | $\sigma_i \ge 10^{-6}$ | excludes the sign-flipped minimum $\sigma_2 < 0$ that weakly bimodal data invites |
 | $\sigma_i \le 180$ | half the domain; wider is a pedestal, not a peak |
-| $a_i \ge 0$ | a mode cannot carry negative mass |
+| $w \in [0, 1]$ | a share; mode 2 carries $1 - w$ |
 
 The width bound is $180^\circ$ and **not** the $120^\circ$ at which §5 rejects.
 That test is a strict $\sigma_{\max} > 120$, so bounding the solver at the
@@ -218,14 +229,15 @@ $a = h_\ast \sigma \sqrt{2\pi}$ in reverse:
 $$
 \mu_i^{(0)} = \arg\max_{x_k \in S_i} y_k,
 \qquad
-a_i^{(0)} = h \sum_{x_k \in S_i} y_k,
+m_i = h \sum_{x_k \in S_i} y_k,
 \qquad
-\sigma_i^{(0)} = \frac{a_i^{(0)}}
-                      {\sqrt{2\pi} \, \max_{x_k \in S_i} y_k}
+\sigma_i^{(0)} = \frac{m_i}{\sqrt{2\pi} \, \max_{x_k \in S_i} y_k},
+\qquad
+w^{(0)} = \frac{m_1}{m_1 + m_2}
 $$
 
-with $\sigma_i^{(0)}$ clipped into $[1, 162]$ so the solver never starts on a
-bound. Measured over 231 fits of real angle densities, this replaced 83
+with $\sigma_i^{(0)}$ clipped into $[1, 162]$ and $w^{(0)}$ into $[0.01, 0.99]$
+so the solver never starts on a bound. Measured over 231 fits of real angle densities, this replaced 83
 degenerate results with 0, improved 58 fits by more than 5% in residual, and made
 none worse.
 
@@ -242,8 +254,8 @@ assignment is arbitrary. Results are canonicalized by
 
 $$\mu_1 \le \mu_2 ,$$
 
-with $\sigma$ and $a$ permuted to match, so slot 1 is always the lower-angle
-mode. §6 compares fits slot-wise and needs this.
+with $\sigma$ permuted to match and $w \mapsto 1 - w$, so slot 1 is always the
+lower-angle mode. §6 compares fits slot-wise and needs this.
 
 ## 5. When a fit is not a measurement
 
@@ -255,8 +267,8 @@ $\hat{\boldsymbol{\theta}}$ when any of the following holds, in this order:
 $$
 \begin{array}{llc}
 \textbf{criterion} & \textbf{test} & \textbf{threshold} \\[3pt]
-\text{no mass} & a_1 + a_2 \le 0 & — \\[3pt]
-\text{one real mode} & \dfrac{\min_i a_i}{a_1 + a_2} < \tau_{\text{mass}}
+\text{no mass} & w_1 + w_2 \le 0 & — \\[3pt]
+\text{one real mode} & \min(w_1, w_2) < \tau_{\text{mass}}
   & 0.05 \\[8pt]
 \text{mean on the boundary} & \min_i \mu_i < \delta \;\text{ or }\;
   \max_i \mu_i > 360 - \delta & \delta = 5^\circ \\[6pt]
@@ -290,23 +302,23 @@ $$
 \frac{\hat{\theta}_i^{\text{gen}} - \hat{\theta}_i^{\text{ref}}}
      {\hat{\theta}_i^{\text{ref}}},
 \qquad
-\theta \in \{\mu, \sigma, a\},
+\theta \in \{\mu, \sigma, w\},
 \quad i \in \{1, 2\},
+\quad w_1 = w,\; w_2 = 1 - w,
 $$
 
-six numbers keyed `mu1`, `mu2`, `sigma1`, `sigma2`, `amp1`, `amp2`. These are
+six numbers keyed `mu1`, `mu2`, `sigma1`, `sigma2`, `share1`, `share2`. These are
 errors, not distances: the sign says which way the generator is wrong, and the
 reference fit is the denominator — which is precisely why §5 must screen both
 sides first. Screening is applied to both fits and, if *either* is rejected, all
 six are returned as $\text{nan}$ with the reason logged. Undefined rather than
 wrong.
 
-Because both sides are divided by the same reference, $\varepsilon$ is invariant
-to any common rescaling of the amplitudes; the mode *share*
-$a_i / (a_1 + a_2)$ is likewise scale-free.
+The shares are scale-free by construction, so the histogram's bin width cannot
+enter the errors.
 
 :::{warning}
-$a_2 / (a_1 + a_2)$ is **not** the reflex-vertex fraction, though it is close.
+$1 - w$ is **not** the reflex-vertex fraction, though it is close.
 On the reference sets it runs about 6% low in relative terms — the two-Gaussian
 model does not reproduce all of the reflex mass. Quote
 $\sum_{x_k \ge 180} y_k$ from the data when the physical fraction is what is
@@ -351,7 +363,8 @@ $B = 0$, $A = \operatorname{mean}|m|$.
 | $h$ | histogram bin width, the {term}`step` | §2 |
 | $x_k, y_k$ | occupied bin centres and bin probabilities, $\sum_k y_k = 1$ | §2 |
 | $n, n_k$ | pooled angle count; count in bin $k$ | §2 |
-| $\mu_i, \sigma_i, a_i$ | mode mean, parent width, in-domain mass | §3 |
+| $\mu_i, \sigma_i$ | mode mean, parent width | §3 |
+| $w$, $T$ | share of the mass in mode 1; total mass of the curve, $h \sum_k y_k$ | §3, §4 |
 | $Z_i$ | mass of parent normal $i$ inside $[0, 360]$ | §3 |
 | $\Theta$ | the box the fit is constrained to | §4 |
 | $\varepsilon^{\theta}_i$ | signed relative error of parameter $\theta$, mode $i$ | §6 |

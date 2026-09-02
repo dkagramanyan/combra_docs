@@ -144,7 +144,7 @@ combra uses the **whole training set** as the reference (raw, unflipped uint8 pi
 `--num-fid-samples` (default 10 000) images generated from `G_ema` (labels sampled from the
 training-set class distribution, latents seeded from `--seed` alone so the metric set is identical
 at any `--gpus`). Each snapshot computes **both** the angle-density metrics (Wasserstein `w1`,
-`w2`, `circular_w1`, `circular_w2` and the bimodal-Gaussian `mu/sigma/amp` errors) **and** the
+`w2`, `circular_w1`, `circular_w2` and the bimodal-Gaussian `mu/sigma/share` errors) **and** the
 image-feature metrics `fid`, `cmmd`, `fd_dinov2` (keys `combra_fid`, `combra_cmmd`,
 `combra_fd_dinov2`; the running best is `combra_fid_best`, and `combra_num_fid_samples`
 records the count the run used, so a key never claims a count the run did not

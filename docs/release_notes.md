@@ -9,6 +9,34 @@ below track what changes for a *user* of the library.
 
 ### Unreleased
 
+### 0.13.0
+
+**Changed**
+
+- **The angle fit has five parameters: one mass share replaces the two
+  amplitudes (breaking).** {py:func}`~combra.stats.truncated_bimodal_gaussian`
+  takes `weight` (the share of mode 1) and `total` (the curve's integral over
+  [0°, 360°]) instead of `amp1`, `amp2`;
+  {py:func}`~combra.fitting.fit_bimodal_gaussian` fits
+  `(mu1, mu2, sigma1, sigma2, weight)` with the total fixed to the histogram's
+  bin width, and returns `BimodalGaussianFit(curve, mus, sigmas, shares, total)`.
+  On the reference sets the fixed total moves the fitted modes by under 0.7°
+  and the residual by under 2% against the six-parameter fit. Renamed with it:
+  {py:func}`~combra.metrics.degenerate_fit_reason` and
+  {py:func}`~combra.metrics.gauss_relative_errors` take shares, the metric keys
+  `amp1`/`amp2` are `share1`/`share2` everywhere, comparison records carry
+  `share_m`, and the parquet column `angles_gauss_amps` is
+  `angles_gauss_shares`. See {doc}`user_guide/angle_fit` for the scheme, and
+  its §4 for why the fit stays least squares on the histogram rather than
+  maximum likelihood.
+
+:::{warning}
+Fits stored in angle parquets written before this release hold amplitudes
+under a column that no longer exists and are not readable by the comparison
+path. Refit any parquet you intend to keep — the stored densities are enough,
+so no h5 access or angle re-extraction is needed.
+:::
+
 ### 0.12.0
 
 **Fixed**

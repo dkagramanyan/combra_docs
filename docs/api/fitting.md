@@ -31,9 +31,10 @@ mode ordering are part of the model.
 ```
 
 {py:func}`~combra.fitting.fit_bimodal_gaussian` fits
-{py:func}`combra.stats.truncated_bimodal_gaussian`, so `amps[i]` is the integral
-of mode `i` over $[0°, 360°]$ and `amps[i] / sum(amps)` is that mode's share of
-the fitted mass. Its starting guess is read off the density rather than fixed —
+{py:func}`combra.stats.truncated_bimodal_gaussian`: the two modes share one
+total mass, fixed to the histogram's bin width rather than fitted, and the fit
+returns their `shares` (summing to 1) with that `total`. Its starting guess is
+read off the density rather than fixed —
 one mode seeded per side of 180°, from that side's tallest bin and its mass — and
 mode widths are bounded to 180°.
 
@@ -47,8 +48,9 @@ the gauss metrics do this themselves and return `nan`. See
 ```
 
 ```{note}
-Fits stored in angle parquets written before the truncated model was adopted are
-not comparable with new ones, and many of them placed most of their mass outside
+Fits stored in angle parquets written before 0.13.0 hold two amplitudes under
+`angles_gauss_amps`, a column that no longer exists, and those written before
+the truncated model was adopted placed most of their mass outside
 $[0°, 360°]$. Refit any parquet you intend to keep; the stored densities are
 enough, so no h5 access or angle re-extraction is needed.
 ```
@@ -77,7 +79,7 @@ enough, so no h5 access or angle re-extraction is needed.
 
 SciPy-style named tuples (cf. `scipy.stats.linregress`): results carry attribute
 names while staying unpacking-compatible with plain tuples, so
-`(x_g, y_g), mus, sigmas, amps = fitting.fit_bimodal_gaussian(x, y)` works as
+`(x_g, y_g), mus, sigmas, shares, total = fitting.fit_bimodal_gaussian(x, y)` works as
 well as attribute access.
 
 ```{eval-rst}

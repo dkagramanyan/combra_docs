@@ -7,7 +7,7 @@ distribution metrics.
 ```{doctest}
 >>> import combra
 >>> combra.__version__
-'0.12.0'
+'0.13.0'
 ```
 
 ```{toctree}
@@ -208,7 +208,7 @@ Results
 : Anything returning more than two values returns a SciPy-style named tuple —
   {py:class}`~combra.fitting.BimodalGaussianFit`, {py:class}`~combra.ellipse.MveeResult`,
   {py:class}`~combra.graph.EnergyWeights`. They unpack positionally, so
-  `curve, mus, sigmas, amps = fit_bimodal_gaussian(x, y)` works alongside `fit.mus`.
+  `curve, mus, sigmas, shares, total = fit_bimodal_gaussian(x, y)` works alongside `fit.mus`.
 
 Plotting
 : Every `plot_*` returns its figure and takes the same tail arguments —
