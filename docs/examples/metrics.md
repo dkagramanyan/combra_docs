@@ -48,7 +48,7 @@ transport distances say *how far apart*, these say *which part is wrong*:
 ```{doctest}
 >>> errors = metrics.compute_gauss_metrics(reference, generated)
 >>> sorted(errors)
-['amp1', 'amp2', 'mu1', 'mu2', 'sigma1', 'sigma2']
+['mu1', 'mu2', 'share1', 'share2', 'sigma1', 'sigma2']
 >>> round(errors['mu1'], 3)
 0.05
 >>> round(abs(errors['mu2']), 3)
@@ -85,8 +85,8 @@ early in training:
 
 ```{doctest}
 >>> from combra import fitting
->>> _, mus, sigmas, amps = fitting.fit_bimodal_gaussian(*unimodal)
->>> metrics.degenerate_fit_reason(mus, sigmas, amps, density=unimodal)
+>>> _, mus, sigmas, shares, _ = fitting.fit_bimodal_gaussian(*unimodal)
+>>> metrics.degenerate_fit_reason(mus, sigmas, shares, density=unimodal)
 'a mode carries 0.00% of the mass, under the 5% floor -- there is only one real mode'
 ```
 
