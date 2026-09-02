@@ -42,6 +42,21 @@ alongside the linear one, because transport cost is a different question from
 shape.
 :::
 
+:::{note}
+**The angles are defined at the simplification scale.** A vertex exists only
+after Douglas–Peucker simplification at tolerance `tol` (`angles_tol` in
+{py:meth}`~combra.data.MicrostructureDataset.generate_angles`) and the pruning
+of segments shorter than `min_segment_len`, so the angle density is a property
+of the contour *at that scale*, not of the grain alone. On the 1024 px reference
+set, raising `tol` from 2 to 5 px at `min_segment_len = 5` moves the fitted
+convex mode from $117$–$119^\circ$ to $94$–$97^\circ$ and the reflex mode up by
+$15$–$17^\circ$ across the three classes, while the model-free reflex share
+$\sum_{x_k > 180} y_k$ moves by less than $0.04$; at `min_segment_len = 15` and
+`tol` $\le 3$ the reflex mode dissolves into a $65$–$95^\circ$-wide shoulder and
+the two-mode description of §3 no longer applies. Report both parameters with
+every fitted mode, and compare fits only at equal parameters.
+:::
+
 ## 2. From angles to the empirical density
 
 Pool the angles of every vertex of every contour of every image in a class into
@@ -153,6 +168,30 @@ by trust-region reflective least squares. Note that the objective is fitted to
 $y_k$ on the bin-probability scale of §2, so $a_1 + a_2 \approx h$ for a fit that
 reproduces the data — a cheap, independent goodness check, since least squares
 does *not* constrain the integral.
+
+### Why least squares on the histogram, and not maximum likelihood
+
+Maximum likelihood on the raw angles, or equivalently on the grouped counts at
+any $h \le 5^\circ$ (the two agree to $0.1^\circ$), was tried on the nine
+reference class-sets (three resolutions, three classes, $n$ from
+$7 \times 10^4$ to $2 \times 10^6$) and rejected. Both estimators converge
+from every start and neither degenerates, but with *this* model the likelihood
+moves $\mu_2$ up by $7$–$16^\circ$, widens $\sigma_2$ by 30–80% and halves the
+reflex peak, and its histogram residual is $1.2$–$2\times$ that of least
+squares. The gain in log-likelihood comes almost entirely from the edge tails:
+1–8% of the vertices lie below $60^\circ$ or above $300^\circ$, where two
+Gaussians centred on the modes leave essentially no mass, and a likelihood cannot
+leave data uncovered. The histogram objective leaves that mass *unclaimed*
+instead ($a_1 + a_2$ runs 0.8% over to 2.4% under $h$ on the reference sets)
+and describes the peaks. Adding a uniform background component brings the
+likelihood's $\mu_2$ back to within $1$–$3^\circ$ of the least-squares value at
+512 and 1024 px but is not identifiable at 256 px, where the reflex mode is
+itself $47^\circ$ wide. The fitted $\mu_i, \sigma_i$ are therefore peak
+descriptors, not the parameters of a generative model of the whole density,
+and should be read as such. The size of the model's tail deficit is visible
+without any refit as the gap between the fit's mass above $180^\circ$ and the
+density's own share: at most $0.027$ (median $0.010$) over the 231 stored fits
+of real angle densities.
 
 ### Constraints
 
