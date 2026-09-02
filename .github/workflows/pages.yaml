@@ -22,6 +22,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      # Belt-and-braces on top of the CPU-only torch install below: drop the
+      # preinstalled toolchains this repo never uses, freeing ~15 GB. Note what
+      # is NOT removed -- /opt/hostedtoolcache ($AGENT_TOOLSDIRECTORY), which
+      # the snippets floating around delete, is where actions/setup-python puts
+      # the interpreter this job runs on. `rm -rf` on an already-absent path is
+      # a no-op, so a runner-image reshuffle degrades to freeing less rather
+      # than failing the job; the `df` lines say how much was actually freed.
+      - name: Free disk space
+        run: |
+          df -h /
+          sudo rm -rf /usr/local/lib/android \
+                      /usr/share/dotnet \
+                      /opt/ghc /usr/local/.ghcup \
+                      /usr/local/share/boost
+          df -h /
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -55,6 +71,13 @@ jobs:
                  "installed for the docs to build."
             exit 1
           fi
+          # CPU-only torch first, so the resolver finds combra's `torch>=2.13`
+          # floor already satisfied. The default PyPI wheel is the CUDA build,
+          # which drags ~8 GB of nvidia-* libraries onto a runner with ~14 GB
+          # free -- combra's own test job ran out of disk exactly this way. The
+          # docs build imports combra for autodoc; it never runs a metric, let
+          # alone on a GPU.
+          pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
           # A 403 here means the token reached GitHub and was refused on
           # permissions. GitHub words that refusal "Write access to repository not
           # granted" even when all the clone needs is read, so say what it means.
