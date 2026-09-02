@@ -85,10 +85,19 @@ nitpick_ignore = [
     ("py:class", "combra.data.pobedit_dataset.BaseImageDataset"),
 ]
 
+# No ``scipy`` entry. Nothing here resolves against it -- the scipy names in
+# combra's docstrings are all inside ``literals``, and with
+# ``numpydoc_xref_param_type = False`` and ``autodoc_typehints = "none"`` no
+# cross-reference is generated from a type either. Its only effect was a fetch
+# of docs.scipy.org, and when that host went unreachable the resulting
+# "failed to reach any of the inventories" warning turned into a build failure
+# under ``-W``. That warning is logged without a type, so ``suppress_warnings``
+# cannot silence it; leaving the mapping out is what removes it. Nitpicky mode
+# makes this self-correcting: a scipy cross-reference written later fails the
+# build as an unresolvable target, which is the signal to add the entry back.
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "numpy": ("https://numpy.org/doc/stable", None),
-    "scipy": ("https://docs.scipy.org/doc/scipy", None),
     "pandas": ("https://pandas.pydata.org/docs", None),
     "networkx": ("https://networkx.org/documentation/stable", None),
 }
