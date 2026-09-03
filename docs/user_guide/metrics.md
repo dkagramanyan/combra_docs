@@ -20,15 +20,16 @@ mass at 1° and mass at 359° appear maximally far apart instead of 2° apart.
 These metrics are defined for any pair of densities, at any sample size.
 
 **Parametric errors** fit a bimodal Gaussian to each density and compare the
-fitted parameters, giving the per-mode relative error
+fitted parameters, giving the relative error
 
-$$\varepsilon_i = \frac{\theta_i^{\text{gen}} - \theta_i^{\text{ref}}}{\theta_i^{\text{ref}}}$$
+$$\varepsilon = \frac{\theta^{\text{gen}} - \theta^{\text{ref}}}{\theta^{\text{ref}}}$$
 
-for each of $\mu$, $\sigma$ and the mode share $w$. Where the Wasserstein distances
-score the whole distribution with one number, these localize *where* a generator
-is wrong: a shifted mode ($\mu$), a mode of the wrong width ($\sigma$), or one
-carrying the wrong share of the mass ($w$). They are undefined when a
-density is not genuinely bimodal — see below.
+per mode for $\mu$ and $\sigma$, and once for the mixing coefficient $\pi$.
+Where the Wasserstein distances score the whole distribution with one number,
+these localize *where* a generator is wrong: a shifted mode ($\mu$), a mode of
+the wrong width ($\sigma$), or the mass split the wrong way between them
+($\pi$). They are undefined when a density is not genuinely bimodal — see
+below.
 
 **Image-feature distances** ignore the geometry pipeline and compare deep
 features: InceptionV3 FID, CLIP-MMD, and the Fréchet distance on DINOv2 features.

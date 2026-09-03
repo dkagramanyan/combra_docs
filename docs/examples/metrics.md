@@ -48,7 +48,7 @@ transport distances say *how far apart*, these say *which part is wrong*:
 ```{doctest}
 >>> errors = metrics.compute_gauss_metrics(reference, generated)
 >>> sorted(errors)
-['mu1', 'mu2', 'share1', 'share2', 'sigma1', 'sigma2']
+['mu1', 'mu2', 'pi', 'sigma1', 'sigma2']
 >>> round(errors['mu1'], 3)
 0.05
 >>> round(abs(errors['mu2']), 3)

@@ -112,7 +112,7 @@ The bin width they fall back to when `step` is `None`:
 repos share. Every rank extracts features and pooled angles from its own shard;
 only the feature rows and the 1-D angle arrays cross the wire, and rank 0 takes
 the distances. The result is exact — verified against a single-process pass, the
-ten angle-density metrics come back bit-identical and the Fréchet distances agree
+nine angle-density metrics come back bit-identical and the Fréchet distances agree
 to about 1e-8. The module needs `torch` and imports nothing until called. A caller
 supplies only what is model-specific: how to produce a shard of generated images
 as `uint8`.

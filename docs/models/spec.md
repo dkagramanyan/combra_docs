@@ -624,7 +624,7 @@ not — these are model-family details, not tooling drift:
    (the torch backends are core dependencies as of Unreleased). The four
    private copies had drifted apart — two used `all_gather` and two `gather`, two
    reported a failure flag and two could not — which is why they were merged. A 2-rank
-   check pins the result: the ten angle-density metrics are bit-identical to a
+   check pins the result: the nine angle-density metrics are bit-identical to a
    single-process pass and the Fréchet distances agree to ~1e-8.
 
 ## Conformance

@@ -173,7 +173,7 @@ call {py:func}`combra.metrics.compute_all_metrics`:
 >>> results = compute_all_metrics(reference_images, generated_images, image_metrics=True)
 >>> results
 {'w1': ..., 'w2': ..., 'circular_w1': ..., 'circular_w2': ...,
- 'mu1': ..., 'mu2': ..., 'sigma1': ..., 'sigma2': ..., 'share1': ..., 'share2': ...,
+ 'mu1': ..., 'mu2': ..., 'sigma1': ..., 'sigma2': ..., 'pi': ...,
  'fid': ..., 'cmmd': ..., 'fd_dinov2': ...}
 ```
 

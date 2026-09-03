@@ -9,6 +9,35 @@ below track what changes for a *user* of the library.
 
 ### Unreleased
 
+### 0.14.0
+
+**Changed**
+
+- **The mixing coefficient is reported once, under the key `pi` (breaking;
+  `share1` and `share2` are gone).** The fit splits its mass between the two
+  modes in the proportion $\pi$ to $1 - \pi$, and the two keys reported the
+  relative error of each — but mode 2 carries $1 - \pi$, so its error is fixed
+  by the first at $-\varepsilon\,\pi^{\text{ref}} / (1 - \pi^{\text{ref}})$.
+  A fit whose coefficient moved from 0.70 to 0.62 reported `share1 = -0.114`
+  beside `share2 = +0.267`: one number told twice.
+  {py:func}`~combra.metrics.compute_all_metrics` and its siblings therefore
+  return nine keys rather than ten, and
+  {py:func}`~combra.metrics.gauss_relative_errors` and
+  {py:func}`~combra.metrics.compute_angle_metrics` return a float where they
+  returned a length-2 `share_m` array (records carry `pi_m`).
+
+  Why `pi` and not `w`: the coefficient was written $w$ everywhere it was
+  displayed, while `w1` and `w2` are the Wasserstein distances — the overlay
+  plot's legend read `w₁ %` beside `W-dist`, and
+  {py:func}`~combra.metrics.compare_folders` printed a `w1` column (a distance)
+  next to `share1%` (a mass share). See {doc}`user_guide/angle_fit` §6.
+
+  Stored fits are untouched: the parquet column `angles_gauss_shares`, the
+  `weight` argument of {py:func}`~combra.stats.truncated_bimodal_gaussian` and
+  the `shares` field of `BimodalGaussianFit` keep their names, so no parquet
+  needs refitting. Code that reads the metric keys does need updating — the
+  model training loops log `combra_pi` where they logged `combra_share1`.
+
 ### 0.13.0
 
 **Changed**

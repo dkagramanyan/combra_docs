@@ -56,8 +56,9 @@ vertices survive, and therefore how many angles the next stage measures.
 
 **Fitting.** {doc}`combra.fitting <../api/fitting>` fits parametric models to
 those distributions. WC-Co angle densities are bimodal, so the
-bimodal-Gaussian fit carries most of the interpretive weight: its two means,
-widths and amplitudes summarize a microstructure in six numbers.
+bimodal-Gaussian fit carries most of the interpretive weight: its two means
+and widths and the mixing coefficient summarize a microstructure in five
+numbers.
 
 **Comparison.** {doc}`metrics` scores a generated distribution against a
 reference one — Wasserstein distances on the densities, relative errors on the

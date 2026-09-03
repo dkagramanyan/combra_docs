@@ -144,7 +144,7 @@ VAE latent space, decodes them to pixels, and scores them with the combra suite
 (when combra is installed) — the sharded equivalent of
 `compute_all_metrics(reals, fakes, image_metrics=True)` (see below). All returned metrics — angle-Wasserstein `w1`, `w2`, `circular_w1`,
 `circular_w2`, the bimodal-Gaussian relative errors
-`mu1`/`mu2`/`sigma1`/`sigma2`/`share1`/`share2`, and the image-feature metrics `fid`,
+`mu1`/`mu2`/`sigma1`/`sigma2`/`pi`, and the image-feature metrics `fid`,
 `cmmd`, `fd_dinov2` — are logged to TensorBoard under `Metrics/combra_*`, written
 to `stats.jsonl`, and printed to the run log. Enabling the combra metrics (the
 default `--combra-metrics=true`) **replaces** DiffiT's own Inception suite: when
@@ -259,7 +259,7 @@ To score arbitrary real/generated image batches with the combra metrics directly
 >>> results = compute_all_metrics(reference_images, generated_images, image_metrics=True)
 >>> results
 {'w1': ..., 'w2': ..., 'circular_w1': ..., 'circular_w2': ...,
- 'mu1': ..., 'mu2': ..., 'sigma1': ..., 'sigma2': ..., 'share1': ..., 'share2': ...,
+ 'mu1': ..., 'mu2': ..., 'sigma1': ..., 'sigma2': ..., 'pi': ...,
  'fid': ..., 'cmmd': ..., 'fd_dinov2': ...}
 ```
 

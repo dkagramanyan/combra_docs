@@ -147,7 +147,7 @@ at 25 steps by default — see the Samplers section below) in VAE latent space,
 decodes them to pixels, and scores them with the combra suite (when combra is
 installed) — the sharded equivalent of `compute_all_metrics(reals, fakes)`.
 All returned metrics — angle-Wasserstein `w1`, `w2`, `circular_w1`, `circular_w2`,
-the bimodal-Gaussian relative errors `mu1`/`mu2`/`sigma1`/`sigma2`/`share1`/`share2`,
+the bimodal-Gaussian relative errors `mu1`/`mu2`/`sigma1`/`sigma2`/`pi`,
 and the image-feature metrics `fid`, `cmmd`, `fd_dinov2` — are logged to
 TensorBoard under `Metrics/combra_*`, written to `stats.jsonl`, and printed to the
 run log. Metrics whose optional backends are unavailable (e.g. no network to fetch

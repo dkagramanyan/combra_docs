@@ -105,8 +105,8 @@ standard normal CDF, and let the angle domain be $D = [0^\circ, 360^\circ]$.
 
 $$
 p(x; \boldsymbol{\theta}) =
-T \left[ \frac{w}{Z_1}\, \varphi(x; \mu_1, \sigma_1)
-      + \frac{1 - w}{Z_2}\, \varphi(x; \mu_2, \sigma_2) \right]
+T \left[ \frac{\pi}{Z_1}\, \varphi(x; \mu_1, \sigma_1)
+      + \frac{1 - \pi}{Z_2}\, \varphi(x; \mu_2, \sigma_2) \right]
 \mathbf{1}_{D}(x),
 \qquad
 Z_i = \Phi\!\left(\frac{360 - \mu_i}{\sigma_i}\right)
@@ -114,7 +114,7 @@ Z_i = \Phi\!\left(\frac{360 - \mu_i}{\sigma_i}\right)
 $$
 
 with parameter vector
-$\boldsymbol{\theta} = (\mu_1, \mu_2, \sigma_1, \sigma_2, w)$ and a total mass
+$\boldsymbol{\theta} = (\mu_1, \mu_2, \sigma_1, \sigma_2, \pi)$ and a total mass
 $T$ that is set by the data rather than fitted (§4).
 
 Three consequences are the reason for the truncation.
@@ -125,10 +125,10 @@ $i$-th parent normal places inside $D$,
 $$
 \int_D p \,\mathrm{d}x = T,
 \qquad
-\int_D \frac{T\,w}{Z_1} \varphi(x; \mu_1, \sigma_1)\,\mathrm{d}x = T\,w ,
+\int_D \frac{T\,\pi}{Z_1} \varphi(x; \mu_1, \sigma_1)\,\mathrm{d}x = T\,\pi ,
 $$
 
-so $w$ *is* the share of the mass in mode 1 and $1 - w$ the share in mode 2,
+so $\pi$ *is* the share of the mass in mode 1 and $1 - \pi$ the share in mode 2,
 whatever the widths. An untruncated mixture with amplitudes $a_i$ has
 $\int_{\mathbb{R}} = a_1 + a_2$ instead, and the fraction lost outside $D$,
 
@@ -173,9 +173,9 @@ the bin-probability scale of §2, where the curve that reproduces the data
 integrates to $h$, so the total $T$ is fixed to that (and to the total count
 when raw counts are passed) rather than fitted. A free pair of amplitudes,
 which the fit had until 0.13.0, only ever carried this scale: replacing them
-with $w$ moves the fitted modes by under $0.7^\circ$ and the residual by under
+with $\pi$ moves the fitted modes by under $0.7^\circ$ and the residual by under
 2% on the reference sets, and by $0.13^\circ$ in $\mu_1$, $1.5^\circ$ in
-$\mu_2$ and $0.012$ in $w$ at the 95th percentile over all 231 stored real
+$\mu_2$ and $0.012$ in $\pi$ at the 95th percentile over all 231 stored real
 densities.
 
 ### Why least squares on the histogram, and not maximum likelihood
@@ -211,7 +211,7 @@ of real angle densities.
 | $\mu_i \in [0, 360]$ | left free, the solver walks a mode out of the domain; $\mu = 648^\circ$ and $-167^\circ$ have both been observed |
 | $\sigma_i \ge 10^{-6}$ | excludes the sign-flipped minimum $\sigma_2 < 0$ that weakly bimodal data invites |
 | $\sigma_i \le 180$ | half the domain; wider is a pedestal, not a peak |
-| $w \in [0, 1]$ | a share; mode 2 carries $1 - w$ |
+| $\pi \in [0, 1]$ | a share; mode 2 carries $1 - \pi$ |
 
 The width bound is $180^\circ$ and **not** the $120^\circ$ at which §5 rejects.
 That test is a strict $\sigma_{\max} > 120$, so bounding the solver at the
@@ -254,7 +254,7 @@ assignment is arbitrary. Results are canonicalized by
 
 $$\mu_1 \le \mu_2 ,$$
 
-with $\sigma$ permuted to match and $w \mapsto 1 - w$, so slot 1 is always the
+with $\sigma$ permuted to match and $\pi \mapsto 1 - \pi$, so slot 1 is always the
 lower-angle mode. §6 compares fits slot-wise and needs this.
 
 ## 5. When a fit is not a measurement
@@ -302,23 +302,32 @@ $$
 \frac{\hat{\theta}_i^{\text{gen}} - \hat{\theta}_i^{\text{ref}}}
      {\hat{\theta}_i^{\text{ref}}},
 \qquad
-\theta \in \{\mu, \sigma, w\},
+\theta \in \{\mu, \sigma\},
 \quad i \in \{1, 2\},
-\quad w_1 = w,\; w_2 = 1 - w,
+\qquad
+\varepsilon^{\pi} =
+\frac{\hat{\pi}^{\text{gen}} - \hat{\pi}^{\text{ref}}}
+     {\hat{\pi}^{\text{ref}}},
 $$
 
-six numbers keyed `mu1`, `mu2`, `sigma1`, `sigma2`, `share1`, `share2`. These are
+five numbers keyed `mu1`, `mu2`, `sigma1`, `sigma2`, `pi`. These are
 errors, not distances: the sign says which way the generator is wrong, and the
 reference fit is the denominator — which is precisely why §5 must screen both
 sides first. Screening is applied to both fits and, if *either* is rejected, all
-six are returned as $\text{nan}$ with the reason logged. Undefined rather than
+five are returned as $\text{nan}$ with the reason logged. Undefined rather than
 wrong.
+
+$\mu$ and $\sigma$ are reported per mode, $\pi$ once. The second mode's share
+is $1 - \pi$, so its relative error is
+$-\varepsilon^{\pi}\,\pi^{\text{ref}} / (1 - \pi^{\text{ref}})$ — a
+restatement of $\varepsilon^{\pi}$, not a second measurement, and it was
+reported as one (the key `share2`) until 0.14.0.
 
 The shares are scale-free by construction, so the histogram's bin width cannot
 enter the errors.
 
 :::{warning}
-$1 - w$ is **not** the reflex-vertex fraction, though it is close.
+$1 - \pi$ is **not** the reflex-vertex fraction, though it is close.
 On the reference sets it runs about 6% low in relative terms — the two-Gaussian
 model does not reproduce all of the reflex mass. Quote
 $\sum_{x_k \ge 180} y_k$ from the data when the physical fraction is what is
@@ -364,7 +373,7 @@ $B = 0$, $A = \operatorname{mean}|m|$.
 | $x_k, y_k$ | occupied bin centres and bin probabilities, $\sum_k y_k = 1$ | §2 |
 | $n, n_k$ | pooled angle count; count in bin $k$ | §2 |
 | $\mu_i, \sigma_i$ | mode mean, parent width | §3 |
-| $w$, $T$ | share of the mass in mode 1; total mass of the curve, $h \sum_k y_k$ | §3, §4 |
+| $\pi$, $T$ | share of the mass in mode 1; total mass of the curve, $h \sum_k y_k$ | §3, §4 |
 | $Z_i$ | mass of parent normal $i$ inside $[0, 360]$ | §3 |
 | $\Theta$ | the box the fit is constrained to | §4 |
 | $\varepsilon^{\theta}_i$ | signed relative error of parameter $\theta$, mode $i$ | §6 |
