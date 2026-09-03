@@ -7,7 +7,7 @@ distribution metrics.
 ```{doctest}
 >>> import combra
 >>> combra.__version__
-'0.13.0'
+'0.14.0'
 ```
 
 ```{toctree}
