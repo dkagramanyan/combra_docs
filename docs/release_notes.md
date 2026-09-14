@@ -9,6 +9,60 @@ below track what changes for a *user* of the library.
 
 ### Unreleased
 
+### 0.15.0
+
+**Changed**
+
+- **The angle method is P6 (breaking; parquets extracted before 0.15 are
+  P0 and not comparable with new ones).** {py:func}`~combra.angles.vertex_angles`
+  takes the grey image, detects the cobalt pools itself
+  ({py:func}`~combra.angles.pool_mask`), locates their boundary to sub-pixel
+  precision, chooses the vertices with Douglas–Peucker at `tol=1.75` and reads
+  each angle from lines fitted to the boundary on either side of it. It returns
+  the angles and one sub-pixel polygon per pool. `min_segment_len` is gone —
+  there is no short-segment pruning — from `vertex_angles`,
+  {py:meth}`~combra.data.MicrostructureDataset.generate_angles`,
+  {py:func}`~combra.data.sweep_angles` and the training-loop metrics
+  ({py:func}`~combra.metrics.images_to_pooled_angles`,
+  {py:func}`~combra.metrics.images_to_angle_density`, `tol=1.75` by default).
+  Against the exact truth of the new synthetic set P6 recovers 37% of the true
+  corners with an RMS edge error of 0.67 px where P0 recovered 12% at 1.26 px,
+  and finds every pool where P0's Otsu mask missed 7%; the convex mode sits
+  about 15° higher than under P0, so every reference set is re-extracted. See
+  {doc}`user_guide/angles`.
+- The per-source folder suffix is `_tol{tol:g}` instead of `_msl{msl}`:
+  {py:func}`~combra.angles.output_directory`,
+  {py:func}`~combra.angles.resolve_overlay_rows`,
+  {py:func}`~combra.angles.plot_overlay_grid` and
+  {py:func}`~combra.metrics.find_kimg_parquets` take the tolerance. The
+  `run_meta.extraction_params` struct is `(method, angles_tol, keep_contours)`
+  with `method = 'p6'`; old parquets still load. The angles image cache holds
+  the grey image (cache version 4, rebuilt once); the beams cache and
+  {py:func}`~combra.ellipse.fit_mvee` keep the P0 map.
+
+**Added**
+
+- {doc}`combra.synth <api/synth>` — generated cobalt pools with an exact
+  truth, balanced to half reflex vertices in every size bin, rendered like the
+  micrographs with a renderer and a generator calibrated to the real grades;
+  {py:func}`~combra.synth.benchmark` scores any `image → (mask, polygons)`
+  method by size on the four metrics of the extraction report's results
+  (IoU per truth region, edge bias and spread, corner recovery with the angle
+  error, reflex share against the truth's) plus the boundary F-score, the
+  regions found and the false polygons; {py:func}`~combra.synth.plot_benchmark`
+  draws them for several methods at once.
+- {py:func}`~combra.angles.angle_summary` — the bimodal fit of an angle set
+  with its residual and the model-free reflex, trough and needle shares;
+  {py:func}`~combra.angles.pool_regions` and
+  {py:func}`~combra.angles.extract_polygons` expose the mask and the polygons.
+- {doc}`combra.experimental <api/experimental>` — P7, the facet-based
+  candidate method: gradient-located edge points and split-and-merge facets.
+  Best of the three against the truth (54% of corners), slower and further
+  from the two-Gaussian model on real images.
+- {doc}`combra.legacy <api/legacy>` — P0, moved verbatim: `preprocess_image`,
+  `vertex_angles(prep, border_eps, tol, min_segment_len)` and the `_msl`
+  folder naming, for reading and reproducing pre-0.15 results.
+
 ### 0.14.0
 
 **Changed**

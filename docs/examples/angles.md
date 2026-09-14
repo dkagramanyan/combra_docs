@@ -32,8 +32,7 @@ writes one parquet, named for the per-class image count.
 ...     class_types=class_types,
 ...     step=[5],                 # one or more bin widths, in degrees
 ...     workers=2,
-...     angles_tol=3,
-...     min_segment_len=5.0,
+...     angles_tol=1.75,
 ... )
 >>> out_path.name
 'angles_n2.parquet'

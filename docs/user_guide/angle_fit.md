@@ -45,16 +45,16 @@ shape.
 :::{note}
 **The angles are defined at the simplification scale.** A vertex exists only
 after Douglas–Peucker simplification at tolerance `tol` (`angles_tol` in
-{py:meth}`~combra.data.MicrostructureDataset.generate_angles`) and the pruning
-of segments shorter than `min_segment_len`, so the angle density is a property
-of the contour *at that scale*, not of the grain alone. On the 1024 px reference
-set, raising `tol` from 2 to 5 px at `min_segment_len = 5` moves the fitted
-convex mode from $117$–$119^\circ$ to $94$–$97^\circ$ and the reflex mode up by
-$15$–$17^\circ$ across the three classes, while the model-free reflex share
-$\sum_{x_k > 180} y_k$ moves by less than $0.04$; at `min_segment_len = 15` and
-`tol` $\le 3$ the reflex mode dissolves into a $65$–$95^\circ$-wide shoulder and
-the two-mode description of §3 no longer applies. Report both parameters with
-every fitted mode, and compare fits only at equal parameters.
+{py:meth}`~combra.data.MicrostructureDataset.generate_angles`), so the angle
+density is a property of the contour *at that scale*, not of the grain alone.
+With the previous method ({py:func}`combra.legacy.vertex_angles`) on the
+1024 px reference set, raising `tol` from 2 to 5 px at `min_segment_len = 5`
+moved the fitted convex mode from $117$–$119^\circ$ to $94$–$97^\circ$ and the
+reflex mode up by $15$–$17^\circ$ across the three classes, while the model-free
+reflex share $\sum_{x_k > 180} y_k$ moved by less than $0.04$. Report the
+tolerance (and the method) with every fitted mode, and compare fits only at
+equal parameters; {py:func}`combra.angles.angle_summary` reports the model-free
+share beside the fit.
 :::
 
 ## 2. From angles to the empirical density

@@ -7,7 +7,7 @@ distribution metrics.
 ```{doctest}
 >>> import combra
 >>> combra.__version__
-'0.14.0'
+'0.15.0'
 ```
 
 ```{toctree}
@@ -36,6 +36,9 @@ api/data
 api/image
 api/contours
 api/angles
+api/synth
+api/experimental
+api/legacy
 api/ellipse
 api/stats
 api/fitting
@@ -84,8 +87,9 @@ release_notes
 
 ## The pipeline
 
-SEM image → contours → per-vertex angles → a fitted distribution → a metric that
-scores a generated microstructure against a real one. The
+SEM image → cobalt pools → sub-pixel polygons → per-vertex angles → a fitted
+distribution → a metric that scores a generated microstructure against a real
+one. The
 {doc}`user guide <user_guide/index>` walks through each stage.
 
 ::::{grid} 1 2 2 3
@@ -122,7 +126,26 @@ Raw and Douglas–Peucker-simplified polygon extraction, plus drawing.
 :link-type: doc
 :class-card: combra-module-card
 
-Per-image vertex-angle extraction, density plots and overlay grids.
+Per-image vertex-angle extraction (P6), the density fit, density plots and
+overlay grids.
+:::
+
+:::{grid-item-card} combra.synth
+:link: api/synth
+:link-type: doc
+:class-card: combra-module-card
+
+Generated pools with an exact truth, rendered like the micrographs, and the
+benchmark that scores a method against them.
+:::
+
+:::{grid-item-card} combra.experimental · legacy
+:link: api/experimental
+:link-type: doc
+:class-card: combra-module-card
+
+P7, the facet-based candidate method, and P0, the method combra used before
+0.15.
 :::
 
 :::{grid-item-card} combra.ellipse

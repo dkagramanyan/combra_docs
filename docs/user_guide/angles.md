@@ -28,42 +28,65 @@ to sit at opposite ends of the axis. The angle domain is an **interval**, which
 is why the fitted model is truncated to $[0°, 360°]$ rather than wrapped around
 it.
 
-## From contour to angle
+## From image to angle
 
-{py:func}`combra.angles.vertex_angles` performs the measurement on one
-preprocessed binary image:
+{py:func}`combra.angles.vertex_angles` performs the measurement on one grey
+image, in five stages (the method called P6 in the extraction report):
 
-1. Extract closed contours.
-2. Simplify each with Douglas–Peucker at tolerance `tol`.
-3. Iteratively remove vertices whose neighbouring segments are shorter than
-   `min_segment_len`.
-4. Emit the signed angle at each surviving vertex, traversing counter-clockwise,
-   in degrees on $[0, 360)$.
-
-Contours whose bounding box lies within `border_eps` pixels of the image edge are
-dropped: a grain clipped by the frame has vertices that are artefacts of the crop.
+1. **Detect the pools.** A 3×3 median filter, then the union of Otsu's
+   threshold and a Gaussian adaptive threshold; components under 10 px are
+   removed and the mask is dilated by one pixel
+   ({py:func}`~combra.angles.pool_mask`).
+2. **Locate the boundary.** Every pixel contour of the mask, holes included,
+   is moved along its normal to the 0.5 level of the blurred mask (σ 0.7 px),
+   which places the boundary to sub-pixel precision.
+3. **Choose the vertices** with Douglas–Peucker at tolerance `tol`, 1.75 px
+   by default. Regions with fewer than four vertices or within `border_eps`
+   of the frame are dropped: a pool clipped by the frame has vertices that are
+   artefacts of the crop.
+4. **Read the angles.** A line is fitted by total least squares to the
+   boundary points of every edge, half a pixel away from both vertices where
+   the corner rounds the boundary; the angle at a vertex is the angle between
+   its two lines, reflex above 180°, and the vertex moves to their
+   intersection.
+5. **Store the polygon** inset by `1 + 10/d` px (`d` its equivalent
+   diameter), which undoes the dilation and the mask's outward offset. The
+   angles do not depend on the inset.
 
 ```pycon
->>> import cv2
 >>> from combra import data, angles
 >>> img = data.load_microstructure().images[0]
->>> _, processed = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
->>> arr, contours = angles.vertex_angles(processed, border_eps=5, tol=3, min_segment_len=10.0)
+>>> arr, polygons = angles.vertex_angles(img, border_eps=5, tol=1.75)
 >>> arr.min(), arr.max()
 ```
 
-### Choosing `min_segment_len`
+{py:func}`~combra.angles.angle_summary` then fits the density of `arr` and
+reports the two modes, the mass share, the fit residual and the model-free
+reflex share in one named tuple.
 
-This is the parameter that matters. Contour tracing on a real SEM image produces
-many one- and two-pixel segments that are digitization noise; each contributes a
-near-arbitrary vertex angle, and together they smear the distribution. Pruning
-short segments removes them, at the cost of also removing genuine fine detail.
+### Choosing `tol`
 
-Values of 5–20 px are the usable range. Higher values give smoother densities
-from fewer angles. Because the choice changes the measured distribution, it is
-**part of a result's identity**: {py:func}`combra.angles.output_directory` encodes
-it in the output folder name (`..._msl5`) so runs made at different settings
-cannot be silently compared.
+The tolerance decides which bends of the boundary become vertices, so it is
+**part of a result's identity**: {py:func}`combra.angles.output_directory`
+encodes it in the output folder name (`..._tol1.75`) so runs made at different
+settings cannot be silently compared. The default was chosen on the synthetic
+set of {doc}`combra.synth </api/synth>`, where the truth is exact: at 1.75 px
+the method recovers about 37% of the true corners with an RMS edge error of
+0.67 px and the polygon overlaps the true region with an IoU of 0.81 averaged
+over pools of 4–40 px. Below 8 px every corner reads too close to 180°, because
+the blur rounds it over the whole edge of the pool; no setting of the stage
+removes that, so small pools carry a known bias toward 180° rather than a
+tunable one.
+
+### The previous method
+
+Until combra 0.15 the angles came from P0, now {py:func}`combra.legacy.vertex_angles`:
+Otsu's threshold, Canny contours, Douglas–Peucker at 3 px and the pruning of
+segments shorter than `min_segment_len`, with the angle between the chords at
+each vertex. On the same synthetic set it recovers 12% of the true corners at an
+RMS edge error of 1.26 px and misses the faint pools Otsu alone does not see. Its
+parquets live in `..._msl5` folders and remain readable; a comparison across the
+two methods is not meaningful, so every reference set is re-extracted with P6.
 
 ## From angles to a density
 
@@ -90,7 +113,7 @@ density it is given. Earlier versions warm-started each width from the previous
 one's solution; that made a bad fit at the finest, noisiest width propagate to
 every coarser one, so it was removed.
 
-Like `min_segment_len`, {term}`step` is part of a metric's identity: two runs are
+Like `tol`, {term}`step` is part of a metric's identity: two runs are
 comparable only when reduced at the same bin width. It is stored on every parquet
 row and checked by {py:func}`combra.metrics.parquet_has_step`. The default is
 {py:data}`~combra.metrics.training.DEFAULT_ANGLE_STEP` (5.0°).

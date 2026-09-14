@@ -6,20 +6,20 @@ For what the steps mean, read {doc}`../user_guide/index`.
 
 ## A single image
 
-Load a bundled SEM image, binarize it, and extract its {term}`vertex angle`
-values:
+Load a bundled SEM image and extract its {term}`vertex angle` values:
 
 ```pycon
->>> import cv2
 >>> from combra import data, angles
 >>> img = data.load_microstructure().images[0]
->>> _, processed = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
->>> arr, contours = angles.vertex_angles(processed, border_eps=5, tol=3, min_segment_len=10.0)
+>>> arr, polygons = angles.vertex_angles(img)
 >>> print(f'{len(arr)} angles, mean={arr.mean():.2f}°')
+>>> angles.angle_summary(arr).mus
 ```
 
-{py:func}`~combra.angles.vertex_angles` returns the angles concatenated across
-contours, and the simplified contours that produced them.
+{py:func}`~combra.angles.vertex_angles` detects the cobalt pools itself, so it
+takes the grey image; it returns the angles concatenated across pools and the
+sub-pixel polygon of every pool that produced them.
+{py:func}`~combra.angles.angle_summary` fits the density of the angles.
 
 ## A dataset
 
@@ -38,7 +38,7 @@ provenance:
 ...     save_path='./smoke_test',
 ...     class_types={'Ultra_Co11': 'medium', 'Ultra_Co25': 'fine'},
 ...     step=[1, 5, 10],
-...     workers=8, min_segment_len=5.0, keep_contours=False,
+...     workers=8, angles_tol=1.75, keep_contours=False,
 ...     run_meta={'family': 'real', 'resolution': 1024, 'notes': 'smoke'},
 ... )
 ```

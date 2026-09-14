@@ -122,7 +122,7 @@ Curves are grouped by {term}`kind` — the generator being compared — and
 ## Sample size and step must match
 
 Two results are comparable only when produced the same way. Both the
-{term}`step` used to bin the angles and the `min_segment_len` used to extract
+{term}`step` used to bin the angles and the `angles_tol` used to extract
 them change the measured distribution, so both are recorded on every parquet row;
 {py:func}`~combra.metrics.parquet_has_step` checks the first before a comparison,
 and {py:func}`~combra.angles.output_directory` encodes the second in the folder
