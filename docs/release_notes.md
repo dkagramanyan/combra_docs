@@ -9,6 +9,22 @@ below track what changes for a *user* of the library.
 
 ### Unreleased
 
+### 0.15.1
+
+**Fixed**
+
+- **The overlay grid draws its reference curves again.**
+  {py:func}`~combra.angles.build_overlay_grid` named the reference class
+  `class_{key}`, the HDF5 group spelling, while the writer has resolved a
+  group to the bare grain-class name since 0.11 — so the lookup matched
+  nothing, every panel of {py:func}`~combra.angles.plot_overlay_grid` lost its
+  reference trace, and {py:func}`~combra.metrics.compare_pairs` reported
+  `MISSING in: orig` for every row. The reference class is now named exactly as
+  `meta.name` carries it, and so is the `class_map` of the returned pairs.
+  There is no fallback for the old spelling: a parquet written before 0.11 must
+  be regenerated, while anything a 0.11-or-later sweep wrote needs no
+  recomputing.
+
 ### 0.15.0
 
 **Changed**
