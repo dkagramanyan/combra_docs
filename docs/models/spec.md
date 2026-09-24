@@ -59,7 +59,10 @@ console-script family:
   torch / ninja stay out of `pyproject.toml` (installed from the CUDA wheel
   index / conda, as now).
 - combra from **one** source everywhere: optional extra `[combra]` →
-  `git+https` private repo.
+  `git+https` private repo, pinned to the **same combra tag** in all four
+  (currently `v0.15.1`). The loops forward whatever keys combra returns, so a
+  stale pin does not fail — it silently logs the old metric names and angle
+  method; bump the four pins together.
 - CUDA story per repo class: JIT-op repos (san-v2, StyleSwin-v2) need `nvcc`
   + `ninja`; pure-torch repos (DiffiT-v2, EDM2-v2) do not.
 - **`<model>-prepare-data` is a click group** with a `convert` subcommand
@@ -599,7 +602,8 @@ not — these are model-family details, not tooling drift:
 
 1. **combra install** is uniform: all four pull the private repo over `git+https`
    via the `[combra]` extra — which requests `combra[metrics]`, now an empty alias
-   since the FID / CMMD / FD-DINOv2 backends are core — and none ship a
+   since the FID / CMMD / FD-DINOv2 backends are core — at one shared tag
+   (`v0.15.1`), and none ship a
    `requirements.txt`
    (`pip install -e .`). All four require Python 3.12+, matching combra.
 2. **CUDA toolchain**: san-v2 and StyleSwin-v2 build custom CUDA ops (san-v2 against
