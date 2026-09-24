@@ -60,7 +60,7 @@ console-script family:
   index / conda, as now).
 - combra from **one** source everywhere: optional extra `[combra]` →
   `git+https` private repo, pinned to the **same combra tag** in all four
-  (currently `v0.15.1`). The loops forward whatever keys combra returns, so a
+  (currently `v0.15.3`). The loops forward whatever keys combra returns, so a
   stale pin does not fail — it silently logs the old metric names and angle
   method; bump the four pins together.
 - CUDA story per repo class: JIT-op repos (san-v2, StyleSwin-v2) need `nvcc`
@@ -458,9 +458,9 @@ One console log, one scalar stream, one TensorBoard event file:
 | file | contents |
 |---|---|
 | `training_options.json` | the resolved launch config |
-| `<id:05d>-<cfg>-gpus<G>-batch<B>[-desc].log` | rank-0 console transcript, named after the run directory; every line prefixed `[YYYY-MM-DD HH:MM:SS]` |
-| `stats.jsonl` | **the machine-readable source of truth**: one JSON line per tick holding every scalar (same keys as the TensorBoard tags) plus `wall_time` / `datetime` columns — **scalar rows only**, no text/log records (today DiffiT-v2's vendored logger interleaves `{"kind": "text", ...}` console records among the scalar rows: archived run 00018 holds 2 607 text lines among 2 395 scalar rows, so any reader must shape-filter first) |
-| `events.out.tfevents.*.<id:05d>-<cfg>-gpus<G>-batch<B>[-desc]` | TensorBoard scalars, image grids and text — written by rank 0 only; the run name is appended via `SummaryWriter(filename_suffix=...)` |
+| `<id:05d>-<cfg>-gpus<G>-batch<B>[-desc].log` | rank-0 console transcript, named after the run directory; every line prefixed exactly once `[YYYY-MM-DD HH:MM:SS]`; format below |
+| `stats.jsonl` | **the machine-readable source of truth**: exactly one JSON line per tick holding every scalar (same keys as the TensorBoard tags; an eval tick's `Metrics/*` and `Timing/eval_sec` in that same line), `Progress/kimg`, `Progress/tick` (int), and `timestamp` (epoch s) / `wall_time` (s since start) / `datetime` columns — **scalar rows only**, strict JSON: full float precision, non-finite values written as `null` (`json.dumps(row, allow_nan=False)`), a scalar not reported this tick left out rather than repeated. Archived DiffiT-v2 runs before 2026-08 interleave `{"kind": "text", ...}` records (run 00018: 2 607 text lines among 2 395 scalar rows), so a reader of old runs must still shape-filter |
+| `events.out.tfevents.*.<id:05d>-<cfg>-gpus<G>-batch<B>[-desc]` | TensorBoard scalars, image grids and the HPARAMS summary — written by rank 0 only, the only event file in the run; the run name is appended via `SummaryWriter(filename_suffix=...)` |
 | `reals.png`, `fakes_init.png`, `fakes<kimg>.png` | sample grids (see below) |
 
 The event file is written **directly in the run directory** — never in a
@@ -486,11 +486,31 @@ init crashes). Under SLURM that output lands in `slurm-<jobid>.out` — keep it
 as the debugging fallback for launches that die before the run directory
 exists.
 
+**Console / `.log` format — identical in all four.** The `.log` opens with the
+`Training options:` dump (printed once, after the rank-0 file logger exists) and one
+header line
+`[startup] torch <v> | cuda <v> | gpus <N> | device <name> | K=V ...` (the set
+ones of `CUDA_VISIBLE_DEVICES`, `TORCH_CUDA_ARCH_LIST`, `HF_HUB_OFFLINE`,
+`TRANSFORMERS_OFFLINE`). Only rank 0 prints progress; other ranks print only
+errors, rank-tagged. Then, per tick, one line:
+
+```text
+tick 12    kimg 403.2     time 1h 02m 05s   sec/tick 61.3     sec/kimg 15.33    maintenance 2.1    cpumem 5.50   gpumem 20.10  reserved 22.30
+```
+
+(model extras such as san-v2's `augment` go at the end). An eval tick adds
+`Evaluating combra metrics (<N> samples, <G> GPUs)...` and one
+`Metrics: combra_fid 12.3456  combra_cmmd 0.1234  ...` line with the logged keys
+(`{v:.4f}`, two spaces apart; a failure prints `combra metrics failed: <error>`);
+every snapshot file prints `Saved <basename>` once written; the last line is
+`Training complete.`
+
 **Sample grids follow one scheme** (san-v2's implementation is the
 reference): fixed latents seeded once at startup, class-sorted rows for
 labeled data, resolution-adaptive grid size; `reals.png` built once from raw
 dataset samples, `fakes_init.png` at start, `fakes<kimg>.png` every snapshot
-tick, and the same grid logged to TensorBoard under the `Fakes` tag.
+tick, and the same grid logged to TensorBoard under the `Fakes` tag (`Reals` at step 0,
+`Fakes` at step 0 and every snapshot tick, HWC `uint8`).
 
 TensorBoard tag schema — identical namespaces in all four, with the global
 step = `cur_nimg` everywhere, so curves are directly comparable across batch
@@ -500,10 +520,16 @@ sizes, GPU counts and repos:
 |---|---|---|
 | `Loss/*` | model-family losses (G / D / R1 for the GANs, denoiser loss for diffusion) | every tick |
 | `LearningRate/*` | effective learning rates (`G`/`D`, or `lr`) | every tick |
-| `Timing/*` | sec/tick, sec/kimg, eval time | every tick |
+| `Timing/*` | sec/tick, sec/kimg; `Timing/eval_sec` on eval ticks only | every tick |
 | `Resources/*` | GPU / CPU memory | every tick |
 | `Metrics/combra_*` | the §6 combra metrics, at `global_step = cur_nimg` like every other tag (until 2026-08-27 EDM2-v2 stamped them at kimg, putting the metric curves on a different x-axis from its losses) | every snapshot tick; **not** step-held |
 | `Fakes` | EMA sample grid (image) | every snapshot tick |
+
+TensorBoard scalars carry **no `walltime=` argument** (seconds-since-start there
+dated every run 1970), skip non-finite values, and end with the HPARAMS summary
+written by {py:func}`combra.io.write_hparams` at `step=cur_nimg` into the run's own
+event file (combra ≥ 0.15.3; earlier versions opened a second, unsuffixed file);
+the writer is then closed. There is no `add_text`.
 
 ```{note}
 **`Metrics/combra_*` are never step-held.** A tick with no eval writes no combra
@@ -603,7 +629,7 @@ not — these are model-family details, not tooling drift:
 1. **combra install** is uniform: all four pull the private repo over `git+https`
    via the `[combra]` extra — which requests `combra[metrics]`, now an empty alias
    since the FID / CMMD / FD-DINOv2 backends are core — at one shared tag
-   (`v0.15.1`), and none ship a
+   (`v0.15.3`), and none ship a
    `requirements.txt`
    (`pip install -e .`). All four require Python 3.12+, matching combra.
 2. **CUDA toolchain**: san-v2 and StyleSwin-v2 build custom CUDA ops (san-v2 against
