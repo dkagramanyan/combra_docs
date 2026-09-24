@@ -9,6 +9,15 @@ below track what changes for a *user* of the library.
 
 ### Unreleased
 
+### 0.15.2
+
+**Changed**
+
+- The reference entry of {py:func}`~combra.angles.vertex_angles` states the
+  five P6 stages with the input, output, parameters and formula of each, as
+  {doc}`user_guide/angles` does. Documentation only; nothing needs
+  regenerating.
+
 ### 0.15.1
 
 **Fixed**

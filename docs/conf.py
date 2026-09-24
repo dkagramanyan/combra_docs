@@ -25,7 +25,7 @@ import combra  # noqa: E402
 project = "combra"
 copyright = "2026, D.G.Kagramanyan"
 author = "D.G.Kagramanyan"
-release = "0.15.1"
+release = "0.15.2"
 version = "0.15"
 
 # -- General configuration ---------------------------------------------------
