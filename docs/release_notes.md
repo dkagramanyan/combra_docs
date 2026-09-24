@@ -21,6 +21,17 @@ below track what changes for a *user* of the library.
   started, Fundamentals and Extras, and the API reference is one page per module
   with its functions grouped by task, stability labels, and the conventions.
 
+### 0.15.3
+
+**Fixed**
+
+- {py:func}`~combra.io.write_hparams` writes into the run's own event file.
+  It went through `SummaryWriter.add_hparams`, which opens a second writer, so
+  every model run directory ended with an extra `events.out.tfevents.*` without
+  the run-name suffix the {doc}`models/spec` requires. A new `step` argument puts
+  the metric scalars at the run's final step instead of step 0, and a non-finite
+  metric is listed in the HPARAMS table without being plotted.
+
 ### 0.15.2
 
 **Changed**
