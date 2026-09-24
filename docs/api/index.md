@@ -38,17 +38,18 @@ Experimental
 | {doc}`combra.exceptions <exceptions>` | Error types |
 
 ```{toctree}
+:caption: Python API
 :hidden:
 
-data
-io
-angles
-ellipse
-image
-metrics
-graph
-synth
-exceptions
+combra.data <data>
+combra.io <io>
+combra.angles <angles>
+combra.ellipse <ellipse>
+combra.image <image>
+combra.metrics <metrics>
+combra.graph <graph>
+combra.synth <synth>
+combra.exceptions <exceptions>
 ```
 
 ## Conventions

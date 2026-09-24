@@ -268,7 +268,8 @@ html_theme_options = {
     "show_prev_next": True,
     "use_edit_page_button": True,
     "navigation_with_keys": False,
-    "collapse_navigation": True,
+    # Every sidebar branch keeps its expand arrow, collapsed by default.
+    "collapse_navigation": False,
     "show_nav_level": 1,
     "icon_links": [
         {
