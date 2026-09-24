@@ -85,4 +85,4 @@ path can be reported as how much of it ran through binder versus carbide.
 To sweep a range of weightings instead of scoring one,
 {py:func}`~combra.graph.build_energy_grid` builds the parameter grid and
 {py:func}`~combra.graph.optimize_path_energies` searches it. See
-{ref}`api-plotting` for the plotting functions.
+{py:mod}`combra.graph` for the plotting functions.

@@ -1,212 +1,80 @@
 # API reference
 
-The functions a user calls to get from an image, a folder or a parquet to a
-number or a figure, grouped by task. The stages these run internally, the
-helpers and the result containers are not listed; their fields are described
-in the Returns section of the function that produces them.
+This reference describes the functions, classes and modules a user of combra
+calls. Each module page groups its functions by task and links to one page per
+function.
 
-```python
-from combra import data, angles, metrics
+## Public API
+
+Only the objects listed on these pages are public. combra exports more — the
+stages its pipelines run internally, helpers, result containers and constants
+— and those can change or disappear without notice, even though their names
+carry no leading underscore.
+
+Stable
+: Every module below except `combra.experimental`. A breaking change is listed
+  in the {doc}`/release_notes`.
+
+Legacy
+: `combra.legacy`, the angle method used before 0.15, kept to reproduce results
+  extracted with it.
+
+Experimental
+: `combra.experimental`, a candidate angle method; its API and output may
+  change without a deprecation period.
+
+## Modules
+
+| Module | |
+| --- | --- |
+| {doc}`combra.data <data>` | Datasets that write angle and beam parquets; sample images |
+| {doc}`combra.io <io>` | Parquet, HDF5 and TensorBoard input and output |
+| {doc}`combra.angles <angles>` | Vertex angles, their density fit and plots; legacy and experimental methods |
+| {doc}`combra.ellipse <ellipse>` | Minimum-volume enclosing ellipses and beam-length plots |
+| {doc}`combra.image <image>` | Measures computed on an image |
+| {doc}`combra.metrics <metrics>` | Real-vs-generated metrics, convergence, training-loop evaluation |
+| {doc}`combra.graph <graph>` | Crack graph and lowest-energy crack paths |
+| {doc}`combra.synth <synth>` | Generated pools with an exact truth and the method benchmark |
+| {doc}`combra.exceptions <exceptions>` | Error types |
+
+```{toctree}
+:hidden:
+
+data
+io
+angles
+ellipse
+image
+metrics
+graph
+synth
+exceptions
 ```
 
-(api-data)=
-## Data
+## Conventions
 
-Bundled sample images, the dataset that runs the extraction over a class
-folder tree and writes parquet
-({py:meth}`~combra.data.MicrostructureDataset.generate_angles`,
-{py:meth}`~combra.data.MicrostructureDataset.generate_beams`), and the
-readers for what it writes.
+combra follows the conventions of the wider scientific-Python stack.
 
-```{eval-rst}
-.. module:: combra.data
-.. module:: combra.io
-.. currentmodule:: combra
+Functions
+: `verb_noun`, never `get_*` — `load_crack`, `build_crack_graph`,
+  `plot_density`.
 
-.. autosummary::
-   :toctree: generated/
-   :nosignatures:
+Results
+: Anything returning more than two values returns a SciPy-style named tuple.
+  It unpacks positionally, so
+  `a, b, angle_rad, centroid, contour = fit_mvee(image)` works alongside
+  `result.a`.
 
-   data.MicrostructureDataset
-   data.load_microstructure
-   data.load_crack
-   data.sweep_angles
-   io.convert_folder_to_hdf5
-   io.load_rows
-```
+Plotting
+: Every `plot_*` returns its figure and takes the same tail arguments —
+  `save_path=None` (write a PNG) and `show=True` (render it).
 
-(api-measure)=
-## Measure an image
+Reference vs. generated
+: Every comparison names its two sides `reference` and `generated`, reference
+  first. Sample counts are `n`; figure geometry is `width`/`height` or
+  `n_rows`/`n_cols`.
 
-Vertex angles of the cobalt pools and the bimodal fit of their density,
-minimum-volume enclosing ellipses (beams), and the box-counting fractal
-dimension.
-
-```{eval-rst}
-.. module:: combra.angles
-.. module:: combra.ellipse
-.. module:: combra.image
-.. currentmodule:: combra
-
-.. autosummary::
-   :toctree: generated/
-   :nosignatures:
-
-   angles.vertex_angles
-   angles.angle_summary
-   ellipse.fit_mvee
-   image.image_fractal_dimension
-```
-
-(api-compare)=
-## Compare real and generated
-
-Score generated microstructures against a real reference: angle-Wasserstein
-and bimodal-Gaussian errors from parquets, FID / CMMD / FD-DINOv2 from images,
-sampler sweeps, and how the metrics converge with sample size.
-
-```{eval-rst}
-.. module:: combra.metrics
-.. currentmodule:: combra
-
-.. autosummary::
-   :toctree: generated/
-   :nosignatures:
-
-   metrics.compare_folders
-   metrics.compute_all_metrics
-   metrics.compare_samplers
-   metrics.convergence_stats
-   metrics.print_convergence_report
-```
-
-(api-plotting)=
-## Plotting
-
-Every `plot_*` returns its figure and takes `save_path=None` (write a PNG) and
-`show=True` (render it).
-
-```{eval-rst}
-.. autosummary::
-   :toctree: generated/
-   :nosignatures:
-
-   angles.plot_density
-   angles.plot_overlay_grid
-   ellipse.plot_beam_lengths
-   ellipse.plot_beam_compare
-   metrics.plot_wdist_convergence_grid
-   metrics.plot_metrics_overlay
-   metrics.plot_sampler_comparison
-   graph.plot_graph
-   graph.plot_paths
-   synth.plot_benchmark
-```
-
-(api-crack-graph)=
-## Crack graph
-
-Crack image → directed graph → lowest-energy crack paths, for one set of
-phase energies or a grid of them.
-
-```{eval-rst}
-.. module:: combra.graph
-.. currentmodule:: combra
-
-.. autosummary::
-   :toctree: generated/
-   :nosignatures:
-
-   graph.extract_graph_nodes
-   graph.build_crack_graph
-   graph.EnergyWeights
-   graph.find_shortest_energy_paths
-   graph.build_energy_grid
-   graph.optimize_path_energies
-```
-
-(api-benchmark)=
-## Method benchmark
-
-Generated pools with an exact truth, and the score of an angle method against
-them.
-
-```{eval-rst}
-.. module:: combra.synth
-.. currentmodule:: combra
-
-.. autosummary::
-   :toctree: generated/
-   :nosignatures:
-
-   synth.make_canvas
-   synth.benchmark
-```
-
-(api-training)=
-## Training-loop integration
-
-What the model repositories call during training: a startup check, the
-sharded evaluation harness, and the TensorBoard hyperparameter record. Every
-rank calls `gather_generated`; rank 0 gates `distributed_metrics` on its
-result:
-
-```python
-features, angles = gather_generated(shard_u8, device, rank, world_size)
-if rank == 0 and angles is not None:
-    scores = distributed_metrics(reference, angles, features, device=device)
-```
-
-```{eval-rst}
-.. module:: combra.metrics.distributed
-.. currentmodule:: combra
-
-.. autosummary::
-   :toctree: generated/
-   :nosignatures:
-
-   metrics.self_test
-   metrics.distributed.precompute_reference
-   metrics.distributed.gather_generated
-   metrics.distributed.distributed_metrics
-   io.write_hparams
-```
-
-(api-alternative)=
-## Alternative angle methods
-
-The method combra used before 0.15 and the candidate that may replace the
-current one. Both take the same image and return the same
-`(angles, polygons)` pair as {py:func}`combra.angles.vertex_angles`.
-
-```{eval-rst}
-.. module:: combra.legacy
-.. module:: combra.experimental
-.. currentmodule:: combra
-
-.. autosummary::
-   :toctree: generated/
-   :nosignatures:
-
-   legacy.vertex_angles
-   experimental.vertex_angles
-```
-
-(api-errors)=
-## Errors
-
-Every error combra raises derives from `CombraError`, and each also derives
-from the built-in exception it logically is, so an existing
-`except ValueError` keeps working.
-
-```{eval-rst}
-.. module:: combra.exceptions
-.. currentmodule:: combra
-
-.. autosummary::
-   :toctree: generated/
-   :nosignatures:
-
-   exceptions.CombraError
-   exceptions.SchemaError
-```
+:::{seealso}
+{doc}`/user_guide/glossary` defines the domain terms — angle density, beam,
+MVEE, `step`, `kind`, N-sweep.
+:::

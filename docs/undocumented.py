@@ -1,6 +1,6 @@
 """combra names that are exported but deliberately have no page.
 
-The API reference lists only the high-level entry points (docs/api/index.md).
+The API reference lists only the high-level entry points (docs/api/*.md).
 Everything else combra exports -- pipeline stages, helpers, result containers,
 constants -- is named here instead. ``check_api_coverage.py`` requires every
 exported name to be on exactly one of the two, so a new export must be triaged;

@@ -16,6 +16,10 @@ below track what changes for a *user* of the library.
   benchmark, training loop, alternative methods, errors). Pipeline stages,
   helpers, result containers and constants no longer have pages; they are still
   importable and unchanged. Nothing in combra changed.
+- The site follows the NumPy and SciPy layout: the top-level sections are header
+  links, the landing page is four cards, the user guide is grouped into Getting
+  started, Fundamentals and Extras, and the API reference is one page per module
+  with its functions grouped by task, stability labels, and the conventions.
 
 ### 0.15.2
 

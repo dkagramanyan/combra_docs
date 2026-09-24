@@ -253,4 +253,4 @@ distinguished from real bias.
 {py:meth}`combra.data.MicrostructureDataset.generate_angles` runs the extraction
 over a whole dataset in parallel and writes the densities, fits and provenance to
 parquet. See {doc}`../examples/angles` for a worked run, and
-{ref}`api-plotting` for the plotting functions.
+{py:mod}`combra.angles` for the plotting functions.

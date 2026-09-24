@@ -221,6 +221,8 @@ myst_enable_extensions = [
     "substitution",
 ]
 myst_heading_anchors = 3
+# ``{{ release }}`` on the landing page, so the version is written only here.
+myst_substitutions = {"release": release}
 
 templates_path = ["_templates"]
 exclude_patterns = [
@@ -256,20 +258,18 @@ html_context = {
 html_theme_options = {
     # Wrench-emoji wordmark stands in for any project logo, in the header…
     "logo": {"text": "🔧 combra"},
-    # Header keeps only the wordmark + version dropdown (left) and the
-    # search / theme-toggle / GitHub controls (right). The section
-    # navigation lives in the left sidebar as a structured tree, not in
-    # the header.
+    # As in the NumPy and SciPy docs: the top-level sections are header links,
+    # and the left sidebar shows only the pages of the section being read.
     "navbar_start": ["navbar-logo", "version-switcher"],
-    "navbar_center": [],
+    "navbar_center": ["navbar-nav"],
+    "header_links_before_dropdown": 6,
     "navbar_end": ["theme-switcher", "navbar-icon-links"],
     "navbar_persistent": ["search-button"],
     "show_prev_next": True,
     "use_edit_page_button": True,
     "navigation_with_keys": False,
-    "collapse_navigation": False,
-    # Expand the left-sidebar tree down to the per-module API pages.
-    "show_nav_level": 2,
+    "collapse_navigation": True,
+    "show_nav_level": 1,
     "icon_links": [
         {
             "name": "GitHub",
@@ -289,10 +289,9 @@ html_theme_options = {
     "footer_end": ["copyright"],
 }
 
-# Show the structured navigation tree in the left sidebar on every page —
-# including the landing page, where PyData hides it by default.
 html_sidebars = {
-    "**": ["sidebar-tree"],
+    # The landing page is the four cards alone.
+    "index": [],
 }
 
 # Sphinx domain settings.

@@ -81,7 +81,7 @@ a few counts set the slope. The defaults drop the first two and last three bins.
 ... )
 ```
 
-See {ref}`api-plotting` for the plotting functions and
+See {py:mod}`combra.ellipse` for the plotting functions and
 {py:meth}`~combra.data.MicrostructureDataset.generate_beams` for the batch writer.
 
 [^khachiyan]: L. G. Khachiyan, *Rounding of polytopes in the real number model of

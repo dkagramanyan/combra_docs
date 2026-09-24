@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fail if a public ``combra`` name is neither on the API page nor named undocumented.
 
-The reference lists only the high-level entry points, on ``docs/api/index.md``;
+The reference lists only the high-level entry points, on ``docs/api/*.md``;
 every other export is named in ``docs/undocumented.py``. An object no
 ``autosummary`` table names simply never gets a page, and nothing else forces a
 *newly added* public name to be triaged into one list or the other. This script
@@ -26,7 +26,7 @@ import re
 import sys
 
 DOCS = pathlib.Path(__file__).parent
-API_PAGE = DOCS / "api" / "index.md"
+API_PAGES = sorted((DOCS / "api").glob("*.md"))
 
 sys.path.insert(0, str(DOCS))
 from undocumented import UNDOCUMENTED, UNDOCUMENTED_MODULES  # noqa: E402
@@ -98,11 +98,11 @@ def main() -> int:
         module = importlib.import_module(f"combra.{sub}")
         exported |= {f"combra.{sub}.{n}" for n in getattr(module, "__all__", ()) or ()}
 
-    documented = names_on_page(API_PAGE)
+    documented = set().union(*(names_on_page(p) for p in API_PAGES))
     problems = []
-    problems += [f"{n}: exported, but neither on the API page nor in undocumented.py"
+    problems += [f"{n}: exported, but neither on an API page nor in undocumented.py"
                  for n in sorted(exported - documented - UNDOCUMENTED)]
-    problems += [f"{n}: on the API page and in undocumented.py"
+    problems += [f"{n}: on an API page and in undocumented.py"
                  for n in sorted(documented & UNDOCUMENTED)]
     for name in sorted(documented | UNDOCUMENTED):
         if name in exported:

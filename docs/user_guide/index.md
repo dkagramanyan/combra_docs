@@ -88,11 +88,28 @@ struct written on every row.
 
 ```{toctree}
 :maxdepth: 1
+:caption: Getting started
+:hidden:
+
+../getting_started/installation
+../getting_started/quickstart
+```
+
+```{toctree}
+:maxdepth: 1
+:caption: Fundamentals
 :hidden:
 
 angles
 angle_fit
 beams
 metrics
+```
+
+```{toctree}
+:maxdepth: 1
+:caption: Extras
+:hidden:
+
 glossary
 ```

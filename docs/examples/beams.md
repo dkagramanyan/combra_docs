@@ -95,5 +95,5 @@ extremes of a binned beam distribution are poorly sampled: the smallest bins hol
 tracing noise and the largest hold a handful of grains. The defaults drop the
 first two and last three bins.
 
-See {ref}`api-plotting` for the plotting functions and
+See {py:mod}`combra.ellipse` for the plotting functions and
 {py:meth}`~combra.data.MicrostructureDataset.generate_beams` for the batch writer.
