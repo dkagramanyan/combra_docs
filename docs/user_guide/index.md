@@ -82,6 +82,10 @@ binarized crack image into a directed graph whose edges are classified by the
 phase they cross (Co, WC-Co, WC, WC-WC), then searches for minimum-energy
 propagation paths.
 
+{py:class}`combra.data.PolyamideFractureDataset` applies the fractal-dimension
+and contour-size measures to a different material, frames of a polyamide
+fracture surface, grouped by frame index; see {doc}`../examples/polyamide`.
+
 {py:mod}`combra.io` owns the on-disk formats — the angle and beam
 parquet schemas, HDF5 image containers, and the {term}`run_meta` provenance
 struct written on every row.

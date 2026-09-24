@@ -10,4 +10,5 @@ beams
 crack_graph
 metrics
 sampler_comparison
+polyamide
 ```

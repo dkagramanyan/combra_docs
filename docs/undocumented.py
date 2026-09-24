@@ -40,9 +40,6 @@ UNDOCUMENTED = frozenset({
     "combra.data.load_crack_annotations",
     "combra.data.load_crack_contours",
     "combra.data.microstructure_data_dir",
-    "combra.data.plot_polyamide_contour",
-    "combra.data.plot_polyamide_fractal",
-    "combra.data.PolyamideFractureDataset",
     # combra.ellipse
     "combra.ellipse.BeamComparison",
     "combra.ellipse.MveeResult",

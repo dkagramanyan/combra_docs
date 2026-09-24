@@ -20,6 +20,16 @@ below track what changes for a *user* of the library.
   links, the landing page is four cards, the user guide is grouped into Getting
   started, Fundamentals and Extras, and the API reference is one page per module
   with its functions grouped by task, stability labels, and the conventions.
+- The polyamide fracture dataset and its two plotters are back in the
+  reference, on the {py:mod}`combra.data` page, with a worked example,
+  {doc}`examples/polyamide`.
+
+**Known issues**
+
+- {py:meth}`combra.data.PolyamideFractureDataset.generate` hangs when a frame
+  has a contour of at least `N` points: PyTorch runs in the main process
+  (the constructor's fractal self-check) before the worker pool forks, and
+  the workers deadlock in the PyTorch box counting. Not fixed yet.
 
 ### 0.15.3
 
