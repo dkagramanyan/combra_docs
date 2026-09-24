@@ -8,28 +8,43 @@ every formula the implementation actually uses.
 
 ## 1. From vertex to angle
 
-Let a simplified contour be the closed polygon $P_1, \dots, P_M$. At vertex
-$P_j$ with neighbours $P_{j-1}, P_{j+1}$, write the two edge vectors
+Let a simplified contour be the closed polygon $V_1, \dots, V_M$, cut from a
+sub-pixel boundary curve $C$ (stages 2–3 of {doc}`angles`). Edge $k$ runs from
+$V_k$ to $V_{k+1}$ and owns the arc of $C$ between them. Its points, less those
+within $\varepsilon$ (`fit_exclusion`) of arclength from either vertex, have
+mean $\mathbf{m}_k$ and covariance $\Sigma_k$; the total-least-squares line
+through them is $\mathbf{m}_k + s\,\mathbf{d}_k$, with $\mathbf{d}_k$ the unit
+leading eigenvector of $\Sigma_k$, oriented so that
+$\langle \mathbf{d}_k, V_{k+1} - V_k \rangle > 0$. At vertex $V_k$, between
+edges $k-1$ and $k$, write the two directions leaving the vertex
 
-$$\mathbf{v}_1 = P_{j-1} - P_j, \qquad \mathbf{v}_2 = P_{j+1} - P_j .$$
+$$\mathbf{u}_1 = -\mathbf{d}_{k-1}, \qquad \mathbf{u}_2 = \mathbf{d}_k .$$
 
 {py:func}`combra.angles.vertex_angles` reports
 
 $$
-\alpha_j =
+\alpha_k =
 \begin{cases}
-\theta_j, & \det(\mathbf{v}_1, \mathbf{v}_2) < 0 \quad \text{(convex)} \\[4pt]
-360^\circ - \theta_j, & \det(\mathbf{v}_1, \mathbf{v}_2) \ge 0 \quad \text{(reflex)}
+\theta_k, & \det(\mathbf{u}_1, \mathbf{u}_2) > 0 \quad \text{(convex)} \\[4pt]
+360^\circ - \theta_k, & \det(\mathbf{u}_1, \mathbf{u}_2) \le 0 \quad \text{(reflex)}
 \end{cases}
 \qquad
-\theta_j = \arccos \frac{\langle \mathbf{v}_1, \mathbf{v}_2 \rangle}
-                       {\lVert \mathbf{v}_1 \rVert \, \lVert \mathbf{v}_2 \rVert}
+\theta_k = \arccos \langle \mathbf{u}_1, \mathbf{u}_2 \rangle
 \in [0^\circ, 180^\circ]
 $$
 
-with $\det(\mathbf{v}_1, \mathbf{v}_2) = v_1^x v_2^y - v_1^y v_2^x$, the signed
-area of the pair. So $\alpha_j \in [0^\circ, 360^\circ)$, convex vertices occupy
-the lower half and reflex vertices the upper half.
+with $\det(\mathbf{u}_1, \mathbf{u}_2) = u_1^x u_2^y - u_1^y u_2^x$, the signed
+area of the pair, in image coordinates on a contour oriented with the cobalt on
+a fixed side (holes are reversed to keep it so). So
+$\alpha_k \in [0^\circ, 360^\circ)$, convex vertices occupy the lower half and
+reflex vertices the upper half. The angle depends on which two edges meet at
+the vertex, not on where along $C$ the vertex was placed.
+
+The previous method, {py:func}`combra.legacy.vertex_angles`, used the chords
+$\mathbf{v}_1 = V_{k-1} - V_k$, $\mathbf{v}_2 = V_{k+1} - V_k$ in place of
+$\mathbf{u}_1, \mathbf{u}_2$, with the convex test
+$\det(\mathbf{v}_1, \mathbf{v}_2) < 0$ for the orientation its contours are
+traced in.
 
 :::{important}
 **The angle domain is an interval, not a circle.** $\alpha = 1^\circ$ is a
@@ -369,6 +384,7 @@ $B = 0$, $A = \operatorname{mean}|m|$.
 | symbol | meaning | where |
 |---|---|---|
 | $\alpha_j$ | vertex angle, degrees on $[0, 360)$ | §1 |
+| $\mathbf{d}_k$ | unit direction of the line fitted to edge $k$ | §1 |
 | $h$ | histogram bin width, the {term}`step` | §2 |
 | $x_k, y_k$ | occupied bin centres and bin probabilities, $\sum_k y_k = 1$ | §2 |
 | $n, n_k$ | pooled angle count; count in bin $k$ | §2 |

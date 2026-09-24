@@ -31,27 +31,95 @@ it.
 ## From image to angle
 
 {py:func}`combra.angles.vertex_angles` performs the measurement on one grey
-image, in five stages (the method called P6 in the extraction report):
+image $I$ in five stages (the method called P6 in the extraction report). Each
+stage is stated with its input, its output and its own parameters.
 
-1. **Detect the pools.** A 3×3 median filter, then the union of Otsu's
-   threshold and a Gaussian adaptive threshold; components under 10 px are
-   removed and the mask is dilated by one pixel
-   ({py:func}`~combra.angles.pool_mask`).
-2. **Locate the boundary.** Every pixel contour of the mask, holes included,
-   is moved along its normal to the 0.5 level of the blurred mask (σ 0.7 px),
-   which places the boundary to sub-pixel precision.
-3. **Choose the vertices** with Douglas–Peucker at tolerance `tol`, 1.75 px
-   by default. Regions with fewer than four vertices or within `border_eps`
-   of the frame are dropped: a pool clipped by the frame has vertices that are
-   artefacts of the crop.
-4. **Read the angles.** A line is fitted by total least squares to the
-   boundary points of every edge, half a pixel away from both vertices where
-   the corner rounds the boundary; the angle at a vertex is the angle between
-   its two lines, reflex above 180°, and the vertex moves to their
-   intersection.
-5. **Store the polygon** inset by `1 + 10/d` px (`d` its equivalent
-   diameter), which undoes the dilation and the mask's outward offset. The
-   angles do not depend on the inset.
+**Stage 1 — detection mask.** $I \mapsto M$, a boolean image, true on the
+cobalt ({py:func}`~combra.angles.pool_mask`). With $\tilde I$ the image after a
+$3 \times 3$ median filter (`median`),
+
+$$
+M_0 = \{\tilde I \le t_{\mathrm{Otsu}}\} \;\cup\;
+      \{\tilde I \le G_b * \tilde I - c\},
+$$
+
+where $t_{\mathrm{Otsu}}$ is Otsu's global threshold, $G_b * \tilde I$ the
+Gaussian-weighted local mean over an odd window $b \approx 0.1 W$ of the image
+width $W$, and $c = 8$ grey levels. The global term finds the interiors of large
+pools, the local one the faint pools under an illumination gradient. The
+8-connected components of $M_0$ smaller than `min_area` (10 px) are removed and
+the result is dilated once by the 4-connected cross, giving $M$.
+
+**Stage 2 — sub-pixel boundary.** $M \mapsto \{C_r\}$, one closed curve per
+region boundary, holes included. The pixel contours of $M$ are traced, a hole's
+reversed so that every curve has the cobalt on the same side. With the blurred
+mask $F = G_\sigma * M$ ($\sigma$ = `sigma`, 0.7 px), each contour point
+$\mathbf{p}$ with unit normal $\mathbf{n}$ is moved to
+
+$$
+\mathbf{p}' = \mathbf{p} + t^\ast \mathbf{n},
+\qquad
+t^\ast = \arg\min_{|t| \le \rho} \{\, |t| : F(\mathbf{p} + t\mathbf{n}) = \tfrac12 \,\},
+$$
+
+the crossing of the $\tfrac12$ level nearest the point within the reach
+$\rho$ (`reach`, 1.5 px), located by linear interpolation between samples
+0.5 px apart. A point with no crossing stays where it is.
+
+**Stage 3 — vertices.** $\{C_r\} \mapsto \{(V_1, \dots, V_m)_r\}$. A curve whose
+bounding box comes within `border_eps` px of the frame is dropped: a pool
+clipped by the frame has vertices that are artefacts of the crop.
+Douglas–Peucker at tolerance `tol` (1.75 px) selects the vertices $V_k$ from the
+points of $C_r$, and a region left with fewer than four is dropped. The vertices
+lie on the curve, so each edge $V_k V_{k+1}$ owns the arc of $C_r$ between them.
+
+**Stage 4 — angles.** $\{(V_k), C_r\} \mapsto \{\alpha_k\}$. Every edge $k$
+gets a line fitted by total least squares to the points of its arc, leaving
+out those within $\varepsilon$ (`fit_exclusion`, 0.5 px) of arclength from
+either vertex, where the corner rounds the boundary (all points are used when
+fewer than three remain). With $\mathbf{m}_k$ and $\Sigma_k$ the mean and
+covariance of those points, the line is $\mathbf{m}_k + s\,\mathbf{d}_k$, where
+$\mathbf{d}_k$ is the leading eigenvector of $\Sigma_k$, oriented along the chord
+$V_{k+1} - V_k$. At vertex $k$, between edges $k-1$ and $k$,
+
+$$
+\mathbf{u}_1 = -\mathbf{d}_{k-1}, \quad \mathbf{u}_2 = \mathbf{d}_k,
+\qquad
+\theta_k = \arccos \langle \mathbf{u}_1, \mathbf{u}_2 \rangle,
+\qquad
+\alpha_k =
+\begin{cases}
+\theta_k, & \det(\mathbf{u}_1, \mathbf{u}_2) > 0 \;\text{(convex)}, \\
+360^\circ - \theta_k, & \text{otherwise (reflex)},
+\end{cases}
+$$
+
+so $\alpha_k \in [0^\circ, 360^\circ)$. The vertex is then moved to the
+intersection of the two lines, when they are not near-parallel
+($|\mathbf{d}_{k-1} \times \mathbf{d}_k| > 0.05$) and the intersection lies
+within 3 px of $V_k$. The angle does not depend on where along the curve
+Douglas–Peucker placed the vertex, only on which edges it separates.
+
+**Stage 5 — stored polygon.** $(V_k) \mapsto (V_k')$. The polygon is inset by
+
+$$
+\delta = \min\!\left(\delta_0 + \frac{\kappa}{d},\; \delta_{\max}\right),
+\qquad
+d = \sqrt{4A/\pi},
+$$
+
+with $A$ the polygon's area, $\delta_0$ = `inset` (1 px), $\kappa$ =
+`inset_per_diameter` (10 px²) and $\delta_{\max}$ = `inset_cap` (3.5 px). Each
+vertex moves along its corner bisector by the offset that shifts both adjacent
+edges inward by exactly $\delta$ (along the outgoing edge's normal at a very
+sharp corner). This undoes the dilation of stage 1 and the mask's outward
+offset, which is larger for small pools. The angles are those of stage 4 and do
+not depend on the inset.
+
+The output is the concatenation of the $\alpha_k$ over all kept regions and
+the list of the stored polygons, one row per angle.
+{py:func}`~combra.angles.pool_regions` returns the same result with the mask of
+stage 1 and the curve of stage 2 attached to every region.
 
 ```pycon
 >>> from combra import data, angles
@@ -117,6 +185,59 @@ Like `tol`, {term}`step` is part of a metric's identity: two runs are
 comparable only when reduced at the same bin width. It is stored on every parquet
 row and checked by {py:func}`combra.metrics.parquet_has_step`. The default is
 {py:data}`~combra.metrics.training.DEFAULT_ANGLE_STEP` (5.0°).
+
+## The bimodal model
+
+The density is described by a mixture of two normal modes, each truncated to
+the angle domain $D = [0^\circ, 360^\circ]$
+({py:func}`combra.stats.truncated_bimodal_gaussian`):
+
+$$
+p(x; \boldsymbol{\theta}) =
+T \left[ \frac{\pi}{Z_1}\, \varphi(x; \mu_1, \sigma_1)
+      + \frac{1 - \pi}{Z_2}\, \varphi(x; \mu_2, \sigma_2) \right]
+\mathbf{1}_{D}(x),
+\qquad
+Z_i = \Phi\!\left(\frac{360 - \mu_i}{\sigma_i}\right)
+    - \Phi\!\left(\frac{-\mu_i}{\sigma_i}\right),
+$$
+
+where $\varphi(x; \mu, \sigma)$ is the normal density, $\Phi$ the standard
+normal CDF, $\mu_i$ and $\sigma_i$ the position and width of mode $i$, and
+$\boldsymbol{\theta} = (\mu_1, \mu_2, \sigma_1, \sigma_2, \pi)$. $Z_i$ is the
+mass the $i$-th normal places inside $D$, so $\int_D p \,\mathrm{d}x = T$ and
+$\pi$ is exactly the share of the mass in mode 1, $1 - \pi$ that in mode 2. Mode
+1 is normally the convex mode and mode 2 the reflex one.
+
+Given the histogram $(x_k, y_k)$ of bin width $h$,
+{py:func}`~combra.fitting.fit_bimodal_gaussian` fixes the total mass to that of
+the data, $T = h \sum_k y_k$, and solves
+
+$$
+\hat{\boldsymbol{\theta}}
+= \arg\min_{\boldsymbol{\theta} \in \Theta}
+\sum_k \bigl( y_k - p(x_k; \boldsymbol{\theta}) \bigr)^2,
+\qquad
+\Theta = [0, 360]^2 \times [10^{-6},\, 180]^2 \times [0, 1],
+$$
+
+by trust-region reflective least squares. The starting point is read off the
+data, one mode per side of $180^\circ$: $\mu_i^{(0)}$ at the tallest bin of
+that side, $\sigma_i^{(0)} = m_i / (\sqrt{2\pi}\, \max y_k)$ from the side's
+mass $m_i$ and peak, and $\pi^{(0)} = m_1 / (m_1 + m_2)$. The result is ordered
+so that $\mu_1 \le \mu_2$.
+
+The fit always returns two modes, whether or not the data has two, so
+$\hat{\boldsymbol{\theta}}$ is screened by
+{py:func}`combra.metrics.degenerate_fit_reason` before it is read as a
+measurement. {py:func}`~combra.angles.angle_summary` reports it together with
+the relative residual
+$\sum_k (p(x_k; \hat{\boldsymbol{\theta}}) - y_k)^2 / \sum_k y_k^2$ and the
+model-free reflex share $\#\{\alpha_j > 180^\circ\} / n$, which is the one to
+quote for the physical fraction of reflex vertices: on the reference sets
+$1 - \hat\pi$ runs about 6% (relative) below it. Why least squares and not
+maximum likelihood, why the modes are truncated rather than wrapped, and the
+screening criteria are derived in {doc}`angle_fit`, §3–§5.
 
 ## Sample size
 
