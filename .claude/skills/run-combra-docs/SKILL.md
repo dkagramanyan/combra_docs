@@ -52,7 +52,7 @@ export SPHINX_PY=/path/to/venv/bin/python
 Build + serve + screenshot in one shot. Screenshots land in `_shots/`:
 ```bash
 ./.claude/skills/run-combra-docs/driver.sh shot                         # index.html
-./.claude/skills/run-combra-docs/driver.sh shot api/angles.html getting_started/installation.html
+./.claude/skills/run-combra-docs/driver.sh shot api/index.html getting_started/installation.html
 ```
 Output:
 ```
@@ -64,8 +64,8 @@ Then **look at the PNG** in `_shots/` — a correct landing page shows the
 User guide / API reference / Examples / Generative models / Development), and a
 right-hand "On this page" TOC with "Edit on GitHub" / "Show Source" links.
 
-A module page such as `api/angles.html` is a short intro plus `autosummary`
-tables; the per-object pages it links to live under `api/generated/` (e.g.
+The API page `api/index.html` is one page of task sections, each a short intro
+plus an `autosummary` table; the per-object pages it links to live under `api/generated/` (e.g.
 `api/generated/combra.angles.vertex_angles.html`) and show the signature, a
 teal `[source]` link, and Parameters / Returns / See Also / Notes / Examples
 sections.
@@ -113,8 +113,9 @@ after touching any example or docstring.
 - **`sphinx_design` powers the module grid** on the landing page
   (`::::{grid}` / `:::{grid-item-card}`), so the build hard-fails if it isn't
   installed. Install the full `docs/requirements.txt`; don't drop it.
-- **The API reference is generated, not written.** `docs/api/*.md` are short
-  intro pages holding `autosummary` tables; the per-object pages under
+- **The API reference is generated, not written.** `docs/api/index.md` is the one
+  page holding the `autosummary` tables, and `docs/undocumented.py` names every
+  export deliberately left off it; the per-object pages under
   `docs/api/generated/` are written at build time and are **not** checked in
   (`rm -rf docs/api/generated` is safe and often the right first move when a
   stale stub lingers). To change what an API page says, edit the **docstring in

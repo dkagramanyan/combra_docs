@@ -85,6 +85,80 @@ nitpick_ignore = [
     ("py:class", "combra.data.pobedit_dataset.BaseImageDataset"),
 ]
 
+# The reference lists only the high-level entry points; every other export is
+# named in ``undocumented.py`` and has no page. Docstrings and guide pages still
+# cross-reference those objects, so a reference that resolves to one of them is
+# rendered as plain code instead of failing the build. A reference to something
+# that does not exist at all still fails, which keeps nitpicky mode's guard.
+sys.path.insert(0, os.path.dirname(__file__))
+from undocumented import UNDOCUMENTED, UNDOCUMENTED_MODULES  # noqa: E402
+
+import importlib  # noqa: E402
+
+from sphinx.util.nodes import make_refnode  # noqa: E402
+
+_MISSING = object()
+
+
+def _import_chain(path):
+    """Return the objects along a dotted path, or ``None`` if it does not import."""
+    parts = path.split(".")
+    for i in range(len(parts), 0, -1):
+        try:
+            obj = importlib.import_module(".".join(parts[:i]))
+        except ImportError:
+            continue
+        chain = [obj]
+        for attr in parts[i:]:
+            obj = getattr(obj, attr, _MISSING)
+            if obj is _MISSING:
+                return None
+            chain.append(obj)
+        return chain
+    return None
+
+
+def _undocumented_ids():
+    ids = set()
+    for name in UNDOCUMENTED | UNDOCUMENTED_MODULES:
+        chain = _import_chain(name)
+        if chain is None:
+            raise RuntimeError(f"undocumented.py names {name}, which does not import")
+        ids.add(id(chain[-1]))
+    return ids
+
+
+def _plain_undocumented_reference(app, env, node, contnode):
+    if node.get("refdomain") != "py":
+        return None
+    target = node["reftarget"].lstrip(".~")
+    module, cls = node.get("py:module"), node.get("py:class")
+    candidates = [target]
+    if module:
+        candidates += [f"{module}.{target}"] + ([f"{module}.{cls}.{target}"] if cls else [])
+    for candidate in candidates:
+        chain = _import_chain(candidate)
+        # A method of an undocumented class counts as undocumented too.
+        if chain and any(id(obj) in app.config._undocumented_ids for obj in chain[1:]):
+            return contnode
+    # The API page's tables show each summary line outside its module, so a bare
+    # name in one (``:func:`optimize_path_energies```) no longer resolves. Link
+    # it when exactly one documented object carries that name.
+    if "." not in target:
+        py = env.get_domain("py")
+        hits = [(name, entry) for name, entry in py.objects.items()
+                if name.endswith("." + target) and not entry.aliased]
+        if len(hits) == 1:
+            name, entry = hits[0]
+            return make_refnode(app.builder, node["refdoc"], entry.docname,
+                                entry.node_id, contnode, name)
+    return None
+
+
+def setup(app):
+    app.config._undocumented_ids = _undocumented_ids()
+    app.connect("missing-reference", _plain_undocumented_reference)
+
 # No ``scipy`` entry. Nothing here resolves against it -- the scipy names in
 # combra's docstrings are all inside ``literals``, and with
 # ``numpydoc_xref_param_type = False`` and ``autodoc_typehints = "none"`` no

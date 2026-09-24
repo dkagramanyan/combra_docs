@@ -6,8 +6,8 @@ states what a function computes, names its parameters, gives the mathematics in 
 *Notes* section, cites the literature, and ends with an example that runs. It does
 not narrate.
 
-This page is the contract. Everything under {doc}`../api/data` is expected to
-follow it; the user guide and the model pages follow the looser rules in
+This page is the contract. Everything the {doc}`API reference <../api/index>` shows is
+expected to follow it; the user guide and the model pages follow the looser rules in
 [Registers](#registers).
 
 ## Registers

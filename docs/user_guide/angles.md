@@ -17,7 +17,7 @@ The resulting distribution is characteristically **bimodal**. A convex vertex
 contributes an angle below 180°; a reflex vertex, where a grain is concave
 because a neighbour intrudes into it, contributes one above. Realistic WC-Co
 densities carry roughly 23% of their mass in the reflex mode. That second mode is
-what the bimodal-Gaussian fit in {doc}`../api/fitting` is for, and its presence or
+what the bimodal-Gaussian fit in `combra.fitting` is for, and its presence or
 absence is diagnostic — see {ref}`undefined-rather-than-wrong`. The whole
 scheme is stated formally in {doc}`angle_fit`.
 
@@ -138,7 +138,7 @@ The tolerance decides which bends of the boundary become vertices, so it is
 **part of a result's identity**: {py:func}`combra.angles.output_directory`
 encodes it in the output folder name (`..._tol1.75`) so runs made at different
 settings cannot be silently compared. The default was chosen on the synthetic
-set of {doc}`combra.synth </api/synth>`, where the truth is exact: at 1.75 px
+set of {py:mod}`combra.synth`, where the truth is exact: at 1.75 px
 the method recovers about 37% of the true corners with an RMS edge error of
 0.67 px and the polygon overlaps the true region with an IoU of 0.81 averaged
 over pools of 4–40 px. Below 8 px every corner reads too close to 180°, because
@@ -253,4 +253,4 @@ distinguished from real bias.
 {py:meth}`combra.data.MicrostructureDataset.generate_angles` runs the extraction
 over a whole dataset in parallel and writes the densities, fits and provenance to
 parquet. See {doc}`../examples/angles` for a worked run, and
-{doc}`../api/angles` for the plotting helpers.
+{ref}`api-plotting` for the plotting functions.

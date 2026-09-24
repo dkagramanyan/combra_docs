@@ -117,7 +117,7 @@ $|m| \sim N^{-\alpha}$. An $\alpha$ near $0.5$ is ideal Monte-Carlo decay, near
 $0$ means no improvement, and negative means the metric grew with $N$.
 
 Curves are grouped by {term}`kind` — the generator being compared — and
-{term}`resolution`. See {doc}`../api/metrics` for the full column list.
+{term}`resolution`. See {py:func}`~combra.metrics.convergence_stats` for the full column list.
 
 ## Sample size and step must match
 

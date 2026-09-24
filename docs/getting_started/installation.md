@@ -43,7 +43,7 @@ available, falling back to CPU. {py:func}`~combra.metrics.compute_fid` uses the
 [pytorch-fid](https://github.com/mseitzer/pytorch-fid) InceptionV3 backbone,
 which downloads and caches its own weights on first use; the DINOv2 backbone for
 {py:func}`~combra.metrics.compute_fd_dinov2` is fetched from `torch.hub` on first
-use. Neither needs manual setup. See {doc}`combra.metrics <../api/metrics>`.
+use. Neither needs manual setup. See {py:mod}`combra.metrics`.
 
 The angle-Wasserstein metrics use [POT](https://pythonot.github.io/) (`pot`),
 which is a core dependency rather than an extra.

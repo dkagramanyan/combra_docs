@@ -42,11 +42,11 @@ Otsu's threshold and a Gaussian adaptive threshold (Otsu alone misses the faint
 pools, the adaptive threshold alone the interior of the large ones), specks
 removed, one pixel of dilation.
 
-**Polygons.** {doc}`combra.angles <../api/angles>` moves the mask's contours to
+**Polygons.** {py:mod}`combra.angles` moves the mask's contours to
 the 0.5 level of the blurred mask, chooses the vertices with Douglas–Peucker
 and fits a line to the boundary of every edge. Simplification is not cosmetic:
 the tolerance sets how many vertices survive, and therefore how many angles the
-next stage measures. {doc}`combra.contours <../api/contours>` still provides
+next stage measures. `combra.contours` still provides
 the Canny-and-Suzuki contour extraction the beam fit and the crack graph use.
 
 **Descriptors.** Two independent reductions of the same image:
@@ -57,7 +57,7 @@ the Canny-and-Suzuki contour extraction the beam fit and the crack graph use.
   ({py:func}`combra.legacy.preprocess_image`), giving each grain a size and an
   orientation, pooled into a beam-length distribution.
 
-**Fitting.** {doc}`combra.fitting <../api/fitting>` fits parametric models to
+**Fitting.** `combra.fitting` fits parametric models to
 those distributions. WC-Co angle densities are bimodal, so the
 bimodal-Gaussian fit carries most of the interpretive weight: its two means
 and widths and the mixing coefficient summarize a microstructure in five
@@ -67,22 +67,22 @@ numbers.
 reference one — Wasserstein distances on the densities, relative errors on the
 fitted parameters, and Fréchet distances on deep image features.
 
-**Ground truth.** {doc}`combra.synth <../api/synth>` generates pools whose
+**Ground truth.** {py:mod}`combra.synth` generates pools whose
 vertices are known, renders them like the micrographs and scores a method
 against that truth by size: the overlap of the polygon with the true region,
 where its edge sits, the angle error at the corners it found and the share of
 reflex vertices it sees. It is how P6 was chosen over P0
-({doc}`combra.legacy <../api/legacy>`) and how P7
-({doc}`combra.experimental <../api/experimental>`) is kept in view.
+({py:mod}`combra.legacy`) and how P7
+({py:mod}`combra.experimental`) is kept in view.
 
 ## Other tooling
 
-{doc}`combra.graph <../api/graph>` is a separate analysis: it converts a
+{py:mod}`combra.graph` is a separate analysis: it converts a
 binarized crack image into a directed graph whose edges are classified by the
 phase they cross (Co, WC-Co, WC, WC-WC), then searches for minimum-energy
 propagation paths.
 
-{doc}`combra.io <../api/io>` owns the on-disk formats — the angle and beam
+{py:mod}`combra.io` owns the on-disk formats — the angle and beam
 parquet schemas, HDF5 image containers, and the {term}`run_meta` provenance
 struct written on every row.
 

@@ -106,5 +106,5 @@ FD-DINOv2) when asked. Those need at least two images per side:
 ```
 
 Pass a shared `reference_cache` dict across calls to compute the reference side
-once. See {doc}`/api/metrics` for the sharded evaluation harness and the
-convergence tools.
+once. See {ref}`api-training` for the sharded evaluation harness and
+{ref}`api-compare` for the convergence tools.

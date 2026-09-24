@@ -32,23 +32,7 @@ user_guide/index
 :caption: API reference
 :hidden:
 
-api/data
-api/image
-api/contours
-api/angles
-api/synth
-api/experimental
-api/legacy
-api/ellipse
-api/stats
-api/fitting
-api/metrics
-api/graph
-api/io
-api/viz
-api/exceptions
-api/utils
-api/validation
+api/index
 ```
 
 ```{toctree}
@@ -95,125 +79,76 @@ one. The
 ::::{grid} 1 2 2 3
 :gutter: 3
 
-:::{grid-item-card} combra.data
-:link: api/data
-:link-type: doc
+:::{grid-item-card} Data
+:link: api-data
+:link-type: ref
 :class-card: combra-module-card
 
-Datasets, bundled sample images, and the parquet writers
-(`generate_angles`, `generate_beams`).
+Bundled sample images, the dataset that writes angle and beam parquets, and the readers for them.
 :::
 
-:::{grid-item-card} combra.image
-:link: api/image
-:link-type: doc
+:::{grid-item-card} Measure an image
+:link: api-measure
+:link-type: ref
 :class-card: combra-module-card
 
-Pixel preprocessing, box-counting fractal dimension, and the numba
-geometry kernels.
+Vertex angles and their bimodal fit, enclosing ellipses (beams), fractal dimension.
 :::
 
-:::{grid-item-card} combra.contours
-:link: api/contours
-:link-type: doc
+:::{grid-item-card} Compare real and generated
+:link: api-compare
+:link-type: ref
 :class-card: combra-module-card
 
-Raw and Douglas–Peucker-simplified polygon extraction, plus drawing.
+Angle and image-feature metrics, sampler sweeps, convergence with sample size.
 :::
 
-:::{grid-item-card} combra.angles
-:link: api/angles
-:link-type: doc
+:::{grid-item-card} Plotting
+:link: api-plotting
+:link-type: ref
 :class-card: combra-module-card
 
-Per-image vertex-angle extraction (P6), the density fit, density plots and
-overlay grids.
+Angle densities, overlay grids, beam lengths, metric curves, crack paths.
 :::
 
-:::{grid-item-card} combra.synth
-:link: api/synth
-:link-type: doc
+:::{grid-item-card} Crack graph
+:link: api-crack-graph
+:link-type: ref
 :class-card: combra-module-card
 
-Generated pools with an exact truth, rendered like the micrographs, and the
-benchmark that scores a method against them.
+Crack image → directed graph → lowest-energy crack paths.
 :::
 
-:::{grid-item-card} combra.experimental · legacy
-:link: api/experimental
-:link-type: doc
+:::{grid-item-card} Method benchmark
+:link: api-benchmark
+:link-type: ref
 :class-card: combra-module-card
 
-P7, the facet-based candidate method, and P0, the method combra used before
-0.15.
+Generated pools with an exact truth, and the score of an angle method against them.
 :::
 
-:::{grid-item-card} combra.ellipse
-:link: api/ellipse
-:link-type: doc
+:::{grid-item-card} Training-loop integration
+:link: api-training
+:link-type: ref
 :class-card: combra-module-card
 
-Minimum-volume enclosing ellipses (MVEE) and beam-length distributions.
+The startup check and the sharded evaluation the model repositories call.
 :::
 
-:::{grid-item-card} combra.stats
-:link: api/stats
-:link-type: doc
+:::{grid-item-card} Alternative angle methods
+:link: api-alternative
+:link-type: ref
 :class-card: combra-module-card
 
-Parametric distributions, the density histogram, and inference helpers.
+The method used before 0.15, and the candidate that may replace the current one.
 :::
 
-:::{grid-item-card} combra.fitting
-:link: api/fitting
-:link-type: doc
+:::{grid-item-card} Errors
+:link: api-errors
+:link-type: ref
 :class-card: combra-module-card
 
-Gaussian, bimodal-Gaussian (plain and truncated to the angle domain),
-binomial, Poisson, exponential, linear and
-plateau fits — one `fit_*` family, one result protocol.
-:::
-
-:::{grid-item-card} combra.metrics
-:link: api/metrics
-:link-type: doc
-:class-card: combra-module-card
-
-Angle-Wasserstein and bimodal-Gaussian comparison, image-feature metrics
-(FID / CMMD / FD-DINOv2), sampler sweeps, and convergence-vs-N analysis.
-:::
-
-:::{grid-item-card} combra.graph
-:link: api/graph
-:link-type: doc
-:class-card: combra-module-card
-
-Crack image → directed graph → shortest-energy-path search.
-:::
-
-:::{grid-item-card} combra.io
-:link: api/io
-:link-type: doc
-:class-card: combra-module-card
-
-One parquet loader, the angle/beam schemas, HDF5 conversion, and
-TensorBoard scalar reading.
-:::
-
-:::{grid-item-card} combra.viz
-:link: api/viz
-:link-type: doc
-:class-card: combra-module-card
-
-The shared plotting theme: palettes, axis style, PNG export.
-:::
-
-:::{grid-item-card} combra.utils · validation · exceptions
-:link: api/utils
-:link-type: doc
-:class-card: combra-module-card
-
-`Bunch` container, the fractal self-check, and the typed error hierarchy.
+The typed error hierarchy.
 :::
 
 ::::

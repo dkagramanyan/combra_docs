@@ -18,7 +18,7 @@ vertex angle
   {py:func}`combra.angles.vertex_angles` fits a line to the boundary on either
   side of each vertex and reads the angle between the two lines, reflex above
   180°. WC-Co angle densities are characteristically **bimodal** —
-  hence the bimodal-Gaussian fit everywhere in {doc}`combra.fitting </api/fitting>`.
+  hence the bimodal-Gaussian fit everywhere in `combra.fitting`.
 
 step
   The bin width, in degrees, used to reduce raw angles to an
@@ -99,7 +99,7 @@ pool
   {py:func}`combra.synth.pool_polygon` generates one with an exact truth.
 
 labelled set
-  The synthetic canvases of {doc}`combra.synth </api/synth>`: generated pools
+  The synthetic canvases of {py:mod}`combra.synth`: generated pools
   with known vertices, rendered like the micrographs. The truth every angle
   method is scored against, since real images have no labels.
 ```

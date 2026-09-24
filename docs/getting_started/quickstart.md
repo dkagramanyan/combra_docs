@@ -57,8 +57,8 @@ the parquet describes exactly how it was produced.
 : The domain vocabulary (`step`, beam, MVEE, N-sweep) used throughout the
   reference.
 
-{doc}`../api/data`
-: The API reference, one page per module.
+{doc}`../api/index`
+: The API reference: the high-level functions, grouped by task.
 
 {doc}`../examples/angles`
 : Worked examples.

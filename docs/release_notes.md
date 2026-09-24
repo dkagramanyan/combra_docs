@@ -9,6 +9,14 @@ below track what changes for a *user* of the library.
 
 ### Unreleased
 
+**Documentation**
+
+- The API reference is one page, {doc}`api/index`, listing the 42 high-level
+  functions by task (data, measurement, comparison, plotting, crack graph,
+  benchmark, training loop, alternative methods, errors). Pipeline stages,
+  helpers, result containers and constants no longer have pages; they are still
+  importable and unchanged. Nothing in combra changed.
+
 ### 0.15.2
 
 **Changed**
@@ -67,7 +75,7 @@ below track what changes for a *user* of the library.
 
 **Added**
 
-- {doc}`combra.synth <api/synth>` — generated cobalt pools with an exact
+- {py:mod}`combra.synth` — generated cobalt pools with an exact
   truth, balanced to half reflex vertices in every size bin, rendered like the
   micrographs with a renderer and a generator calibrated to the real grades;
   {py:func}`~combra.synth.benchmark` scores any `image → (mask, polygons)`
@@ -80,11 +88,11 @@ below track what changes for a *user* of the library.
   with its residual and the model-free reflex, trough and needle shares;
   {py:func}`~combra.angles.pool_regions` and
   {py:func}`~combra.angles.extract_polygons` expose the mask and the polygons.
-- {doc}`combra.experimental <api/experimental>` — P7, the facet-based
+- {py:mod}`combra.experimental` — P7, the facet-based
   candidate method: gradient-located edge points and split-and-merge facets.
   Best of the three against the truth (54% of corners), slower and further
   from the two-Gaussian model on real images.
-- {doc}`combra.legacy <api/legacy>` — P0, moved verbatim: `preprocess_image`,
+- {py:mod}`combra.legacy` — P0, moved verbatim: `preprocess_image`,
   `vertex_angles(prep, border_eps, tol, min_segment_len)` and the `_msl`
   folder naming, for reading and reproducing pre-0.15 results.
 
@@ -395,8 +403,8 @@ can be negative, and they are `nan` when either fit is not two real modes — se
 ## Migrating from 0.5 or earlier
 
 0.6 was an API-convention release. Functions were renamed to `verb_noun` form, two
-modules moved (`combra.approx` → {doc}`combra.fitting <api/fitting>`,
-`combra.mvee` → {doc}`combra.ellipse <api/ellipse>`), and every plotter now returns
+modules moved (`combra.approx` → `combra.fitting`,
+`combra.mvee` → {py:mod}`combra.ellipse`), and every plotter now returns
 its figure and takes `save_path=` and `show=`. There are no compatibility aliases;
 the repository `CHANGELOG.md` carries the full rename table.
 
