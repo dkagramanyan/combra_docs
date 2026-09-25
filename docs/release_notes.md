@@ -34,15 +34,21 @@ below track what changes for a *user* of the library.
   a function.
 - New pages: {doc}`development/api_policy` (what stable, legacy and experimental
   mean, versioning and the deprecation cycle) and {doc}`getting_started/citing`.
-  {doc}`getting_started/installation` documents the `graph` extra, and
+  {doc}`getting_started/installation` documents the extras, and
   {doc}`development/testing` the asv benchmarks.
 
-**Known issues**
+### 0.17.1
 
-- {py:meth}`combra.data.PolyamideFractureDataset.generate` hangs when a frame
-  has a contour of at least `N` points: PyTorch runs in the main process
-  (the constructor's fractal self-check) before the worker pool forks, and
-  the workers deadlock in the PyTorch box counting. Not fixed yet.
+**Fixed**
+
+- {py:meth}`combra.data.PolyamideFractureDataset.generate` no longer hangs. The
+  fractal box counting always uses its numba kernel now, so the constructor's
+  self-check no longer starts PyTorch before the worker pool forks. The values
+  are unchanged.
+
+**Removed**
+
+- The empty `graph` extra; its dependencies have been core since 0.17.0.
 
 ### 0.17.0
 

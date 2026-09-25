@@ -40,14 +40,6 @@ Every contour of at least ``N`` points contributes its box-counting fractal
 dimension, its point count, its arc length and its area; the frame contributes
 the fractal dimension of its whole binary image.
 
-.. warning::
-
-   **Known bug in combra 0.15.2:** ``generate()`` hangs when any frame has a
-   contour of at least ``N`` points. The constructor runs the fractal-dimension
-   self-check with PyTorch in the main process; ``generate()`` then forks its
-   workers, and a worker that computes a fractal dimension with PyTorch
-   deadlocks. The run never finishes and raises nothing.
-
 ``N`` decides which contours count, so it is worth sweeping:
 
 .. code-block:: pycon

@@ -50,12 +50,9 @@ documented on the class page, writes one parquet row per group with the
 fractal dimension and the size of every contour; the two plotters read that
 parquet. See {doc}`/examples/polyamide`.
 
-```{warning}
-**Known bug in combra 0.15.2:** {py:meth}`~combra.data.PolyamideFractureDataset.generate` hangs when any frame has a contour
-of at least `N` points. The constructor runs the fractal-dimension self-check
-with PyTorch in the main process; `generate()` then forks its workers, and a
-worker that computes a fractal dimension with PyTorch deadlocks. The run never
-finishes and raises nothing.
+```{versionchanged} 0.17.1
+{py:meth}`~combra.data.PolyamideFractureDataset.generate` no longer hangs when a
+frame has a contour of at least `N` points.
 ```
 
 ```{eval-rst}

@@ -37,12 +37,11 @@ Python 3.12 or newer is required.
 | `docs`    | `pip install ".[docs]"`    | the Sphinx docs toolchain                                     |
 | `dev`     | `pip install -e ".[dev]"`  | the `tests` extra + ruff + mypy                               |
 | `metrics` | `pip install ".[metrics]"` | nothing — an empty alias kept so existing installs still work |
-| `graph`   | `pip install ".[graph]"`   | nothing — an empty alias kept so existing installs still work |
 
 ```{versionchanged} 0.17.0
 `networkx` is a core dependency again (scikit-image requires it anyway), and
-`mpire`, `matplotlib` and `scikit-learn` are no longer dependencies; the `graph`
-extra is an empty alias. In 0.16.0 `bresenham` and `radio-beam` were dropped.
+`mpire`, `matplotlib` and `scikit-learn` are no longer dependencies. In 0.16.0
+`bresenham` and `radio-beam` were dropped, and in 0.17.1 the empty `graph` extra.
 ```
 
 The image-feature metrics score in-memory image batches and use CUDA when
