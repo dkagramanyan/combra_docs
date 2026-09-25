@@ -17,7 +17,7 @@ crack paths — and scores generated microstructures against real ones.
 
 >>> import combra
 >>> combra.__version__
-'0.18.0'
+'0.19.0'
 ```
 
 ::::{grid} 1 2 2 2

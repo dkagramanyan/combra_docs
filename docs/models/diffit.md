@@ -69,6 +69,16 @@ fresh optimizer). Runs go start-to-finish (see Checkpoints).
    immediate parent folder name (alphabetical). A dataset with any unlabeled image
    is rejected rather than silently demoted to unconditional.
 
+   The WC-Co training zips (`sh/train_<r>.sh` default `DATA`) are
+   `./datasets/imagenet_9to4_orig_<r>x<r>.zip` (r = 256 / 512 / 1024): the **1080
+   original crops**, 360 per class, `class_names`
+   `['Ultra_Co25', 'Ultra_Co11', 'Ultra_Co6_2']`. They replace
+   `imagenet_9to4_1024x1024_<r>x<r>.zip`, which stored each crop in all 8 dihedral
+   orientations (8640 images); `--augment` now draws those orientations on the fly.
+   One epoch is 1080 images; at the default global batch 256 (256²) each rank drops
+   its incomplete last batch, so an epoch trains on 1024 images, a different 56 left
+   out each epoch.
+
 4. **Launch training.** The required flags are `--outdir`, `--cfg`, `--data`,
    `--gpus`, `--batch-gpu`; the presets are `diffit-256`, `diffit-512`,
    `diffit-1024`:
@@ -86,8 +96,16 @@ fresh optimizer). Runs go start-to-finish (see Checkpoints).
    256² batch; `sh/train_256.sh` defaults to `BATCH_GPU=128`). Precision is chosen with
    `--precision {fp32,fp16,bf16}` (default `bf16`); eval / snapshot sampling and the
    VAE decode follow it too (fp32 runs without autocast). Boolean flags take an explicit
-   value (`--tf32 True`, `--bench True`, `--cache-in-ram True`). There is no
-   horizontal-flip augmentation (`--mirror` was removed in v0.6.0).
+   value (`--tf32 True`, `--bench True`, `--cache-in-ram True`).
+
+   **`--augment`** (default `True`) gives each training item one of the 8
+   symmetries of the square, uniformly — `rot90` by k ∈ {0,1,2,3} and a horizontal
+   flip with p = 0.5 — applied to the uint8 image in the training loader, before VAE
+   encoding. Draws come from torch's RNG, seeded per DataLoader worker from
+   `--seed`; it runs after `--cache-in-ram`, so every epoch draws afresh. Square
+   images only. The combra reference, the reals grid and eval never augment.
+   `sh/train_*.sh` pass `--augment "${AUGMENT:-True}"`; `--mirror` was removed in
+   v0.6.0.
 
 ### Quick example (single-GPU smoke test)
 
@@ -187,7 +205,12 @@ aborting the job.
 generated each tick for both the combra and the Inception path. The combra
 reference is the **whole training set** by default; `--combra-ref-count N` caps it
 to a **seeded random subset** of `N` reals (never the first N — dataset zips are
-class-sorted, so a first-N slice would be class-biased). The metric keys are **bare** — `Metrics/combra_fid`, `combra_cmmd`, `combra_fd_dinov2`, plus `combra_fid_best` and `combra_num_fid_samples`, which records the count the run actually used, so a key never claims a count the run did not evaluate at. Set `--num-fid-samples 0` to disable eval entirely.
+class-sorted, so a first-N slice would be class-biased). With `--augment` the
+reference is precomputed with `precompute_reference(..., dihedral=True)`: combra
+expands each original to its 8 dihedral transforms (8N images for a cap of N), so it
+matches the augmented training distribution. The legacy Inception reference
+(combra off) is expanded the same way; `--augment False` keeps the reference as
+stored. The metric keys are **bare** — `Metrics/combra_fid`, `combra_cmmd`, `combra_fd_dinov2`, plus `combra_fid_best` and `combra_num_fid_samples`, which records the count the run actually used, so a key never claims a count the run did not evaluate at. Set `--num-fid-samples 0` to disable eval entirely.
 
 All per-tick scalars are written to `stats.jsonl` (one JSON line per tick,
 scalar rows only) and mirrored to TensorBoard under the `Loss/*`,
@@ -356,7 +379,9 @@ Because the source `dataset.json` lists `Co25` before `Co11` while the folder so
 `Ultra_Co6_2` is last under both rules, so it stays `2`. **Which rule a legacy
 checkpoint follows depends on which zip it trained on** — the shipped
 `imagenet_9to4_*` archives carry the SAN-order labels, whichever tool nominally built
-them. Those artifacts recorded neither `class_names` nor original filenames, so the
+them (the current `imagenet_9to4_orig_*` zips keep that order but are stamped with
+`class_names` `['Ultra_Co25', 'Ultra_Co11', 'Ultra_Co6_2']`). The legacy artifacts
+recorded neither `class_names` nor original filenames, so the
 correspondence is not recoverable from the file at all — it has to come from the run's
 `training_options.json`, and combra will not accept a guess in its place. New
 DiffiT-v2 runs avoid the problem entirely: `class_names` is written into the zip, the

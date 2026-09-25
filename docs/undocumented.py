@@ -120,6 +120,7 @@ UNDOCUMENTED = frozenset({
     "combra.metrics.compute_wasserstein_metrics",
     "combra.metrics.DEFAULT_ANGLE_STEP",
     "combra.metrics.degenerate_fit_reason",
+    "combra.metrics.dihedral_expand",
     "combra.metrics.fd_dinov2_features",
     "combra.metrics.fid_features",
     "combra.metrics.find_kimg_parquets",

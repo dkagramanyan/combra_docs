@@ -91,11 +91,17 @@ console-script family:
   `True`, cuDNN autotune).
 - **Boolean flags are `--flag True/False`** (click `type=bool`) — no
   `--x/--no-x` pairs.
-- **No horizontal-flip augmentation.** No repo flips training data, and none
-  has a `--mirror` option (removed in v0.6.0 of all four repos). Eval and
-  combra-reference loaders never flip, and datasets are never flip-doubled.
-  Flips inside a model's own regularizer (san-v2's DiffAugment / ADA,
-  StyleSwin-v2's bCR) are part of that loss, not data augmentation.
+- **One data augmentation: `--augment True/False` (default `True`), dihedral,
+  training only.** Each training item gets a uniformly random element of the
+  dihedral group of the square (`rot90` by k ∈ {0,1,2,3} and a horizontal flip
+  with p = 0.5; 8 transforms), applied to the raw uint8 training image (EDM2-v2
+  in the training step before VAE encoding, the other three in the training
+  loader). Square images only. Eval, grid and combra-reference loaders never
+  augment, and datasets are never stored augmented: the training zips hold the
+  1080 original crops. There is no `--mirror` option (removed in v0.6.0 of all
+  four repos; `--augment` arrived in v0.7.0). Flips inside a model's own
+  regularizer (san-v2's DiffAugment / ADA, StyleSwin-v2's bCR) are part of that
+  loss, not data augmentation.
 - Shared optional flags — identical names *and semantics* in all four:
 
   | group | flags |
@@ -350,8 +356,9 @@ What a dataset yields is part of the API, identical in all four repos:
   grayscale sources are converted **once, at dataset build time**
   (`<model>-prepare-data`); dataset classes and generation writers *assert*
   3 channels instead of silently converting at runtime.
-- No horizontal flip anywhere (§2) — datasets are never flip-doubled and
-  loaders never flip.
+- No augmentation in the dataset (§2) — zips hold the original crops, never
+  stored augmented copies, and dataset classes never transform; the dihedral
+  `--augment` transform is applied by the training step only.
 
 ### Normalization contract
 
@@ -374,13 +381,16 @@ What a dataset yields is part of the API, identical in all four repos:
 ### 6. Evaluation contract
 
 - **In-training combra eval** (all four): every snapshot tick, fakes generated
-  **sharded across all ranks**; reference = whole training set — **raw,
-  unflipped uint8 dataset pixels, never VAE round-trips** — with features
+  **sharded across all ranks**; reference = whole training set — **raw
+  uint8 dataset pixels, never VAE round-trips**, expanded by combra to the 8
+  dihedral transforms of each original when `--augment` is on
+  (`precompute_reference(..., dihedral=<augment>)`) — with features
   precomputed once before the loop; `self_test` at startup (one
   shared implementation in `combra.metrics` — today only DiffiT-v2 and
   EDM2-v2 carry private copies, the GANs have none).
 - **Uniform knobs**: `--num-fid-samples` (default 10000, `0` disables eval)
-  and `--combra-ref-count` (cap the reference side). A capped reference is a
+  and `--combra-ref-count` (cap the reference side; it counts originals, so
+  with `--augment` a cap of N gives 8N reference images). A capped reference is a
   **seeded random subset** — never the first N: dataset zips are
   class-sorted, so a first-N slice is class-biased (today EDM2-v2 takes the
   first N while its fakes draw classes uniformly — the two sides of the FID
@@ -405,7 +415,13 @@ One eval pass per snapshot tick, identical in all four repos:
 
 1. **Reference (once, before the loop).** Every rank extracts features from
    its deterministic slice of the real training set — **raw dataset pixels
-   as uint8, never flip-augmented and never VAE round-trips** (today EDM2-v2
+   as uint8, never VAE round-trips**; with `--augment` combra expands each
+   original to its 8 dihedral transforms (`combra.metrics.dihedral_expand`),
+   so the reference is the distribution the model trains on. The image
+   backbones are not rotation-invariant: against the 8640 stored orientations
+   of the old archives, the expanded 1080 originals score FID 0.006,
+   FD-DINOv2 0.05, CMMD < 1e-4 and angle W1 0.01°, while the unexpanded
+   originals would add about 4 FID and 13 FD-DINOv2 of orientation bias (today EDM2-v2
    scores against encoder-decoded reals, which hides the VAE quality gap and
    breaks cross-repo comparability, and StyleSwin-v2
    flip-doubles the reference) — InceptionV3 features

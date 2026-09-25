@@ -63,19 +63,25 @@ one-hot at read time. Following the label contract, the integer label is the cla
 in **alphabetical** order, and the class **names travel with the artifact** (`class_names` in
 `dataset.json`, copied into every checkpoint and every generated h5). The dataset class also
 **asserts 3-channel RGB** — grayscale is converted once at build time, never silently at runtime.
-The WC-Co archives are 3-class (2880 images each):
+The WC-Co training sets are `imagenet_9to4_orig_<r>x<r>.zip`: **1080 unique crops**, 360 per
+class (`class_names` `['Ultra_Co25', 'Ultra_Co11', 'Ultra_Co6_2']`):
 
 ```text
-datasets/imagenet_9to4_1024x1024_256x256.zip     # 256px
-datasets/imagenet_9to4_1024x1024_512x512.zip     # 512px
-datasets/imagenet_9to4_1024x1024_1024x1024.zip   # 1024px
+datasets/imagenet_9to4_orig_256x256.zip     # 256px
+datasets/imagenet_9to4_orig_512x512.zip     # 512px
+datasets/imagenet_9to4_orig_1024x1024.zip   # 1024px
 ```
+
+They replace the earlier `imagenet_9to4_1024x1024_<r>x<r>.zip` archives (8640 images), which
+stored each crop in all 8 dihedral orientations; those orientations now come from `--augment`
+at train time. One epoch is 1080 images: with the default 2 GPUs and `drop_last`, 8 / 16 / 67
+steps per epoch at 256 / 512 / 1024, the few dropped images differing every epoch.
 
 Build one from a labelled folder (class = top-level subfolder) with the click group:
 
 ```bash
 styleswin-prepare-data convert --source /path/to/wc_co_source \
-    --dest ./datasets/imagenet_9to4_256x256.zip --transform center-crop --resolution 256x256
+    --dest ./datasets/imagenet_9to4_orig_256x256.zip --transform center-crop --resolution 256x256
 ```
 
 ## Training
@@ -84,15 +90,20 @@ styleswin-prepare-data convert --source /path/to/wc_co_source \
 (`--outdir/--data/--gpus/--batch-gpu/--cfg/--cond/--kimg/--tick/--snap`, the
 `--precision/--tf32/--bench` scheme, `--grad-accum`,
 `--combra-metrics/--num-fid-samples/--combra-ref-count/--snapshot-keep-last`) plus StyleSwin's own
-model flags. There is no horizontal-flip augmentation (`--mirror` was removed; bCR's own flips
-are unrelated). StyleSwin builds all layers at the target resolution at once, so **each resolution is
+model flags. `--augment True` (default) applies a uniformly random element of the dihedral group
+(rot90 by k ∈ {0,1,2,3} and a horizontal flip with p = 0.5) to every training image, on the raw
+uint8 image in the training loader, before ImageNet normalization; the draws come from the per-rank
+torch RNG seeded from `--seed`. Images must be square, and `--augment` is refused with `--lmdb`.
+Only the training loader augments: the combra reference, `reals.png`, the eval labels and
+`styleswin-eval` never do. `--augment False` feeds the reals as stored. `--mirror` was removed in
+v0.6.0, and bCR's own augmentations are part of its loss, unchanged. StyleSwin builds all layers at the target resolution at once, so **each resolution is
 trained independently** (no stage-to-stage resume chain). Pick the resolution with a `--cfg`
 preset:
 
 ```bash
 styleswin-train --outdir=./runs/wc-cv \
         --cfg styleswin-256 \
-        --data=./datasets/imagenet_9to4_1024x1024_256x256.zip \
+        --data=./datasets/imagenet_9to4_orig_256x256.zip \
         --gpus=2 --cond True --combra-metrics True --snapshot-keep-last 1 \
         --kimg 25000 --snap 50
 ```
@@ -151,8 +162,11 @@ timing (`Timing/*`), CPU/GPU memory (`Resources/*`) and the effective learning r
 `G_ema` sample grid to TensorBoard (tag `Fakes`) alongside the on-disk `fakes<kimg>.png`, and the
 run writes `reals.png` + `fakes_init.png` once at startup.
 
-combra uses the **whole training set** as the reference (raw, unflipped uint8 pixels; a
-`--combra-ref-count` cap takes a **seeded random** subset, never the first N), scored against
+combra uses the **whole training set** as the reference (raw uint8 pixels; a
+`--combra-ref-count` cap takes a **seeded random** subset of originals, never the first N). With
+`--augment` the reference is precomputed with `dihedral=True`, so combra expands each original to
+its 8 dihedral transforms (8 × 1080 images) and the metrics compare against the augmented
+distribution the generator learns. It is scored against
 `--num-fid-samples` (default 10 000) images generated from `G_ema` (labels sampled from the
 training-set class distribution, latents seeded from `--seed` alone so the metric set is identical
 at any `--gpus`). Each snapshot computes **both** the angle-density metrics (Wasserstein `w1`,
@@ -163,7 +177,9 @@ records the count the run used, so a key never claims a count the run did not
 evaluate at). All are **mirrored into
 `stats.jsonl`** (`Metrics/combra_*`) as well as TensorBoard, so post-hoc best-snapshot selection
 survives the loss of the tfevents file; the combra row is cleared every tick, so a tick with no eval
-writes no combra columns rather than repeating the previous tick's values at a new step. `styleswin-eval` scores a checkpoint standalone.
+writes no combra columns rather than repeating the previous tick's values at a new step. `styleswin-eval` scores a checkpoint standalone and reproduces the training metrics: snapshots
+record `augment`, and `styleswin-eval` builds the reference with the same `dihedral` setting
+(snapshots without the key predate `--augment` and evaluate with `dihedral=False`).
 
 On a **multi-GPU** run all per-image extraction is **sharded across ranks** — each rank generates
 its own shard of the fakes, extracts the CLIP / DINOv2 / InceptionV3 features and pools the vertex
@@ -215,7 +231,7 @@ nominal **alphabetical** convention the indices map as:
 
 ```{warning}
 **The trained checkpoints most likely do NOT follow this table.** The on-disk
-`imagenet_9to4_*` archives carry labels in **SAN's swapped order**
+`imagenet_9to4_*` archives (the current `imagenet_9to4_orig_*` zips included) carry labels in **SAN's swapped order**
 (`0 → Ultra_Co25`, `1 → Ultra_Co11`, `2 → Ultra_Co6_2` — see {doc}`san_v2`), not the
 alphabetical order the build tool nominally produces — and StyleSwin trains on the zip
 labels verbatim. Classify each checkpoint by the dataset path in its
@@ -225,5 +241,6 @@ index→name fallback: a generated `.h5` with bare `class_<n>` groups and no
 has to be rebuilt, not remapped.
 Newly built zips (via `styleswin-prepare-data`) record `class_names`, which travel into
 every checkpoint and generated h5, so new artifacts are self-describing and this ambiguity
-does not recur.
+does not recur. The `imagenet_9to4_orig_*` zips are stamped with `class_names`
+`['Ultra_Co25', 'Ultra_Co11', 'Ultra_Co6_2']`, so checkpoints trained on them are matched by name.
 ```

@@ -11,7 +11,7 @@ samples with combra's sharded split-API metrics, computed across all GPU ranks
 **EDM2-v2 implements the v2 model-API convention** specified in
 {doc}`spec` (unified CLI, EMA-only `.pt` inference snapshots, HDF5
 class-batch generation, raw-pixel combra reference). The pages below describe the
-**current** EDM2-v2 CLI; the other three repos have not yet adopted the convention.
+**current** EDM2-v2 CLI, which san-v2, DiffiT-v2 and StyleSwin-v2 share.
 ```
 
 The combra integration is **optional** — EDM2 does not depend on combra. The
@@ -68,6 +68,13 @@ always ends in a usable model.
 
    Class labels come from the top-level directory names (alphabetical → integer);
    grayscale SEM images are converted to RGB at build time.
+
+   The WC-Co zips the `sh/` scripts train on are
+   `imagenet_9to4_orig_<r>x<r>.zip` (r = 256 / 512 / 1024): the **1080 original
+   crops**, 360 per class, `class_names` `['Ultra_Co25', 'Ultra_Co11', 'Ultra_Co6_2']`.
+   They replace the `imagenet_9to4_1024x1024_<r>x<r>.zip` zips, which stored each
+   crop in all 8 dihedral orientations (8640 images); the orientations are now drawn
+   on the fly by `--augment` (see [Data augmentation](#data-augmentation)).
 
 4. **Launch training.** The required flags are `--outdir` and `--data`; select the
    architecture with `--cfg` (`edm2-img256-s`, `edm2-img512-s`, `edm2-img1024-s`).
@@ -134,7 +141,21 @@ paper's, not rescaled with the batch. The paper has no 1024 px models, so the
 
 `--precision {fp32,fp16,bf16}` selects the training precision (default `fp16`);
 `--tf32 True/False` (default `True`) controls the cuDNN / matmul TF32 paths.
-There is no horizontal-flip augmentation (`--mirror` was removed in v0.6.0).
+
+### Data augmentation
+
+`--augment True` (default) applies a uniformly random element of the dihedral group
+to each training item: rot90 by k ∈ {0, 1, 2, 3} and a horizontal flip with
+probability 0.5. It acts on the raw uint8 batch in the training step, before the VAE
+encode, so it needs square images and is refused with a pre-encoded latent zip. The
+draw comes from the per-iteration seed (`seed, rank, cur_nimg`), so a run is
+reproducible. Only training batches are augmented: the combra eval fakes, the
+`reals.png` / `fakes*.png` grids and generation never are. `--augment False` trains on
+the images as stored (the v0.6.0 behaviour). There is no `--mirror` option.
+
+An epoch is **1080 images** with the `orig` zips (8640 with the old
+8-orientation zips). kimg counts training images seen, so `--kimg`, `--tick` and the
+snapshot cadence mean the same amount of training as before.
 
 ### Logging
 
@@ -174,7 +195,10 @@ rank. Each rank generates its own shard of the fakes and, from that shard, extra
 the CLIP / DINOv2 / InceptionV3 features and pools the vertex angles; the feature
 rows and the pooled-angle arrays are gathered to rank 0, where the Fréchet / MMD
 distances and the angle metrics are computed once against the reference. The
-reference side is the **raw dataset pixels** (never VAE round-tripped), extracted
+reference side is the **raw dataset pixels** (never VAE round-tripped); with
+`--augment True` combra expands each reference image to its 8 dihedral transforms
+(`precompute_reference(..., dihedral=True)`, combra ≥ 0.19.0), so the reference
+matches the distribution training sees. It is extracted
 **once before training** (each rank processes its deterministic slice of the reals),
 then cached on rank 0. This uses combra's split APIs
 ({py:func}`combra.metrics.fid_features` + {py:func}`combra.metrics.frechet_from_features`
@@ -183,9 +207,9 @@ and the `cmmd_*` / `fd_dinov2_*` analogues, plus
 `compute_all_metrics` path.
 
 **Sample count.** Each combra eval scores `--num-fid-samples` generated images
-(default 10000) against the training set as the real reference (`--combra-ref-count`
-caps the reference to a **seeded random** subset, or `--num-fid-samples 0` disables
-eval entirely).
+(default 10000) against the training set as the real reference (`--combra-ref-count N`
+caps the reference to a **seeded random** subset of N originals, 8N images after the
+dihedral expansion, or `--num-fid-samples 0` disables eval entirely).
 
 ### Samplers
 
@@ -262,7 +286,9 @@ combra matches generated images to grain classes by **name**:
 Training takes zip labels **verbatim**, and the shared `imagenet_9to4_*`
 archives (consumed by the real DiffiT and StyleSwin runs) carry labels in
 **SAN's swapped order** (`0 → Ultra_Co25`, `1 → Ultra_Co11`) — a zip's
-provenance, not the repo, decides the convention. Classify each checkpoint
+provenance, not the repo, decides the convention. The current
+`imagenet_9to4_orig_*` training zips keep that order and are stamped with
+`class_names` `['Ultra_Co25', 'Ultra_Co11', 'Ultra_Co6_2']`. Classify each checkpoint
 by the dataset path in its `training_options.json` before comparing across
 models. combra ships no index→name fallback, so an artifact without
 `class_names` is rejected rather than guessed at. New zips built with the current

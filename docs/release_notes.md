@@ -9,6 +9,33 @@ below track what changes for a *user* of the library.
 
 ### Unreleased
 
+### 0.19.0
+
+**Added**
+
+- {py:func}`combra.metrics.distributed.precompute_reference` takes
+  `dihedral=True`, which expands each rank's shard to its 8 dihedral transforms
+  (`combra.metrics.dihedral_expand`: rotations by multiples of 90 degrees, with
+  and without a horizontal flip) before extraction. Use it when a model trains on
+  the original images with a random dihedral augmentation: the reference is then
+  the augmented distribution the generator learns.
+
+**Documentation**
+
+- The model pages and {doc}`models/spec` follow the four model repos' v0.7.0.
+  The training zips are now `imagenet_9to4_orig_<r>x<r>.zip`: the 1080 unique
+  WC-Co crops (360 per class, stamped `class_names`
+  `['Ultra_Co25', 'Ultra_Co11', 'Ultra_Co6_2']`) instead of the 8640 images that
+  stored each crop in all 8 dihedral orientations, so an epoch is 1080 images.
+  All four repos take a training-only `--augment True/False` (default `True`): a
+  uniformly random dihedral transform (rot90 × horizontal flip) per training
+  item. Eval, grid and reference loaders never augment; instead the combra
+  reference is built with `dihedral=<augment>`, so it is the 8 × 1080 transforms
+  the generator trains on (`--combra-ref-count N` caps originals, giving 8N).
+  Against the stored 8640 images this reference scores FID 0.006 and
+  FD-DINOv2 0.05, where the unexpanded originals would add about 4 FID and 13
+  FD-DINOv2 of orientation bias. All four pin combra v0.19.0.
+
 ### 0.18.0
 
 **Documentation**

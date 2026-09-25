@@ -73,6 +73,15 @@ san-prepare-data convert --source ./raw/wc_co --dest ./datasets/wc_co_256.zip \
     --transform center-crop --resolution 256x256
 ```
 
+The WC-Co training zips are `imagenet_9to4_orig_<r>x<r>.zip` (r = 16 … 1024): the
+**1080 original crops**, 360 per class, with `class_names`
+`['Ultra_Co25', 'Ultra_Co11', 'Ultra_Co6_2']` in `dataset.json`; `sh/train_*.sh`
+default `DATA` to them. One epoch is 1080 images. They replace the
+`imagenet_9to4_1024x1024_<r>x<r>.zip` sets, which stored every crop in all 8
+dihedral orientations (8640 images); the orig zips were derived from them (the
+first entry of each block of 8, verified pixel-wise), and the orientations now come
+from `--augment` at train time.
+
 ## Training
 
 Models are trained **progressively** (low → high resolution). The 16² stem trains
@@ -135,15 +144,28 @@ This is a **breaking change** from pre-0.2.0 san-v2: `.pkl` artifacts,
 `--resume`, `best_model.pkl`, `--save-inference-only`/`--save-weights-only`,
 `--fp32`/`--nobench`, the `--metrics` registry and the Hydra entry point are all
 gone. Precision is now `--precision {fp32,fp16}` (bf16 is refused) with
-`--tf32`/`--bench`. Since v0.6.0 there is no horizontal-flip augmentation and no
-`--mirror` option.
+`--tf32`/`--bench`. Since v0.6.0 there is no `--mirror` option.
 ```
+
+### Data augmentation
+
+`--augment` (default `True`) applies one uniformly random element of the dihedral
+group to each real image in the training loader: `rot90` by k ∈ {0, 1, 2, 3} and a
+horizontal flip with probability 0.5, on the raw uint8 image, drawn from a per-rank
+generator seeded by `--seed`. Square images are required. The snapshot grid
+(`reals.png`), the combra reference and the eval loaders never augment.
+`--augment False` trains and scores on the originals only. DiffAugment / ADA inside
+the discriminator are separate and unchanged.
 
 ### combra metrics during training
 
 Each snapshot tick scores `--num-fid-samples` fakes (default 10 000, `0` disables
 eval) generated from `G_ema` against the training set as the fixed reference
-(cap it to a seeded random subset with `--combra-ref-count`). The reference
+(cap it to a seeded random subset with `--combra-ref-count`). With `--augment` the
+reference is expanded by combra to all 8 dihedral transforms of every original
+(`precompute_reference(..., dihedral=True)`), so the metrics compare against the
+distribution G is trained on; `--combra-ref-count` selects originals before that ×8
+expansion. The reference
 features (pooled angles, FID/DINOv2 `(mu, sigma)`, CLIP embedding) are extracted
 **once before the loop**, sharded across ranks and cached; only the generated side
 recomputes each tick. Both the image-feature metrics (`fid`, `cmmd`, `fd_dinov2`)
@@ -233,7 +255,7 @@ is self-describing:
 | `2` | `Ultra_Co6_2` | large grain (крупные зёрна) |
 
 ```{warning}
-**Legacy artifacts (pre-0.2.0) use a different, swapped order.** The on-disk
+**Legacy artifacts (pre-0.2.0) use a different, swapped order.** The older on-disk
 `imagenet_9to4_*` archives that the existing checkpoints trained on carry the
 non-alphabetical order `Ultra_Co25 → 0`, `Ultra_Co11 → 1`, `Ultra_Co6_2 → 2`
 (the `Co11`↔`Co25` swap), and they record no `class_names`. combra ships no
@@ -241,6 +263,9 @@ index→name fallback for them: a generated `.h5` with bare `class_<n>` groups a
 no names is rejected rather than guessed at, so those runs have to be retrained on
 rebuilt zips — classify each by the dataset path in its `training_options.json`. Once san-v2 is retrained on
 `san-prepare-data`-built zips, all artifacts are self-describing by name and the
-class-map warning becomes a historical note. See the {doc}`label contract
+class-map warning becomes a historical note. The current
+`imagenet_9to4_orig_*` training zips keep the swapped order but are stamped with
+`class_names` `['Ultra_Co25', 'Ultra_Co11', 'Ultra_Co6_2']`, so artifacts trained on
+them are matched by name. See the {doc}`label contract
 <spec>` (§5).
 ```

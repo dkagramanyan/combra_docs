@@ -61,6 +61,11 @@ if rank == 0 and angles is not None:
     scores = distributed_metrics(reference, angles, features, device=device)
 ```
 
+A model that trains on the original images with a random dihedral augmentation
+(a 90-degree rotation times an optional horizontal flip) builds its reference
+with `precompute_reference(..., dihedral=True)`, which scores against the 8
+dihedral transforms of every real image.
+
 {py:func}`combra.io.write_hparams` records the run's configuration in
 TensorBoard.
 
