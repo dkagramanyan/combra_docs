@@ -22,6 +22,18 @@ below track what changes for a *user* of the library.
   hub cache, where open_clip reads them, and edm2 no longer overrides `HF_HOME` when
   it loads the VAE, which had hidden that cache from an offline CMMD.
 
+### 0.19.1
+
+**Fixed**
+
+- {py:func}`combra.metrics.distributed.distributed_metrics` returns the nine
+  angle keys as `nan` (and still the image metrics) when the *reference* angle
+  density is empty, as it already did for an empty generated side. A reference
+  too small to resolve grain contours (san-v2's 16 px stage) used to discard
+  `fid` / `cmmd` / `fd_dinov2` at every evaluation.
+- `combra.metrics.distributed.angle_workers` divides the CPUs the process may
+  use (its affinity, i.e. a SLURM allocation) instead of every core of the node.
+
 ### 0.19.0
 
 **Added**
