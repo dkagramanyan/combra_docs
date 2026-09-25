@@ -8,3 +8,7 @@ numpydoc>=1.7
 # kaleido (driving the runner's Chrome) exports each plotly figure's PNG thumbnail.
 sphinx-gallery>=0.22
 kaleido>=1.3
+# sphinx-gallery imports matplotlib while it sets up the gallery, even though every
+# figure here is plotly. combra stopped depending on matplotlib in 0.17.0, so the
+# docs build has to install it itself.
+matplotlib>=3.11
