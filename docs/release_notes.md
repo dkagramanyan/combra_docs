@@ -9,6 +9,27 @@ below track what changes for a *user* of the library.
 
 ### Unreleased
 
+**Fixed**
+
+- CMMD now L2-normalizes each CLIP embedding before the kernel, as Google's CMMD
+  does, in {py:func}`combra.metrics.compute_all_metrics`,
+  {py:func}`combra.metrics.distributed.distributed_metrics` and
+  `cmmd_from_features` alike (the last also normalizes already-saved raw
+  features). **CMMD values change scale: values from 0.17.1 and earlier are not
+  comparable** with new ones.
+- The five bimodal-Gaussian keys are `nan` when a density has fewer than 5
+  occupied bins, the fit's parameter count, instead of finite but meaningless
+  numbers (three generated angles used to give a finite `mu1`, `sigma1` and
+  `pi`). Real angle densities have far more bins and are unaffected.
+- {py:func}`combra.metrics.distributed.distributed_metrics` returns `nan` for
+  `fid` and `fd_dinov2` when either side has fewer than two images, as
+  {py:func}`combra.metrics.compute_all_metrics` does, instead of raising.
+- An empty rank shard now yields CLIP and DINOv2 features of shape `[0, D]`
+  rather than `[0, 0]`, so it gathers cleanly with the other ranks' rows.
+- FID features with `dims` below 2048 are average-pooled over the Inception
+  block's spatial map, as pytorch-fid does, instead of making `compute_fid`
+  raise. The default 2048 is unchanged.
+
 **Documentation**
 
 - The API reference is one page, {doc}`api/index`, listing the 42 high-level
