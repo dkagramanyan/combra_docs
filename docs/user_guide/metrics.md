@@ -33,13 +33,16 @@ below.
 
 **Image-feature distances** ignore the geometry pipeline and compare deep
 features: InceptionV3 FID, CLIP-MMD, and the Fréchet distance on DINOv2 features.
-All three reduce to the Fréchet distance between two Gaussians fitted to the
+FID and FD-DINOv2 are the Fréchet distance between two Gaussians fitted to the
 feature sets,
 
 $$d^2 = \lVert \mu_1 - \mu_2 \rVert^2 + \operatorname{tr}\!\left( \Sigma_1 + \Sigma_2 - 2 (\Sigma_1 \Sigma_2)^{1/2} \right)$$
 
-as introduced by Heusel et al. [^fid]. The angle families are stated formally,
-end to end, in {doc}`angle_fit`. They need at least two images per side,
+as introduced by Heusel et al. [^fid]. CLIP-MMD (CMMD) is instead the squared
+maximum mean discrepancy between L2-normalized CLIP embeddings under a Gaussian
+RBF kernel ($\sigma = 10$, scaled by 1000), as in Google's CMMD. The angle
+families are stated formally, end to end, in {doc}`angle_fit`. The two Fréchet
+distances need at least two images per side,
 since each estimates a per-side covariance; the angle-based families are defined
 on a single image.
 

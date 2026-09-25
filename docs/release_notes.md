@@ -9,6 +9,21 @@ below track what changes for a *user* of the library.
 
 ### Unreleased
 
+### 0.18.0
+
+**Changed**
+
+- FD-DINOv2 now matches the dgm-eval reference implementation (Stein et al.,
+  2023), which NVlabs EDM2 also follows: the default backbone of
+  {py:func}`combra.metrics.compute_fd_dinov2` (and of
+  {py:func}`combra.metrics.compute_all_metrics` and
+  {py:func}`combra.metrics.distributed.distributed_metrics`) is `dinov2_vitl14`
+  instead of `dinov2_vitb14`, and images are PIL-bicubic resized to 224 x 224
+  instead of bilinear-resized as float tensors. **FD-DINOv2 values change: values
+  from 0.17.1 and earlier are not comparable** with new ones. The ViT-L/14
+  weights (1.2 GB) download from `torch.hub` on first use, so offline machines
+  must prefetch `dinov2_vitl14_pretrain.pth`.
+
 **Fixed**
 
 - CMMD now L2-normalizes each CLIP embedding before the kernel, as Google's CMMD

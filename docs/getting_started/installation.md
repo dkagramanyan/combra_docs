@@ -47,9 +47,9 @@ Python 3.12 or newer is required.
 The image-feature metrics score in-memory image batches and use CUDA when
 available, falling back to CPU. {py:func}`~combra.metrics.compute_fid` uses the
 [pytorch-fid](https://github.com/mseitzer/pytorch-fid) InceptionV3 backbone,
-which downloads and caches its own weights on first use; the DINOv2 backbone for
-{py:func}`~combra.metrics.compute_fd_dinov2` is fetched from `torch.hub` on first
-use. Neither needs manual setup. See {py:mod}`combra.metrics`.
+which downloads and caches its own weights on first use; the DINOv2 ViT-L/14
+backbone for {py:func}`~combra.metrics.compute_fd_dinov2` (about 1.2 GB) is
+fetched from `torch.hub` on first use. Neither needs manual setup. See {py:mod}`combra.metrics`.
 
 The angle-Wasserstein metrics use [POT](https://pythonot.github.io/) (`pot`),
 which is a core dependency rather than an extra.
