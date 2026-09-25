@@ -9,6 +9,12 @@ below track what changes for a *user* of the library.
 
 ### Unreleased
 
+**Documentation**
+
+- The model pages name the WC-Co training zips `imagenet_9to4_1024x1024_<r>x<r>.zip`
+  again (the model repos' v0.7.1): the 1080-original-crop sets took over those
+  names and the old 8640-image zips are gone.
+
 ### 0.19.0
 
 **Added**

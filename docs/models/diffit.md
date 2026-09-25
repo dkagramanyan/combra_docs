@@ -70,7 +70,7 @@ fresh optimizer). Runs go start-to-finish (see Checkpoints).
    is rejected rather than silently demoted to unconditional.
 
    The WC-Co training zips (`sh/train_<r>.sh` default `DATA`) are
-   `./datasets/imagenet_9to4_orig_<r>x<r>.zip` (r = 256 / 512 / 1024): the **1080
+   `./datasets/imagenet_9to4_1024x1024_<r>x<r>.zip` (r = 256 / 512 / 1024): the **1080
    original crops**, 360 per class, `class_names`
    `['Ultra_Co25', 'Ultra_Co11', 'Ultra_Co6_2']`. They replace
    `imagenet_9to4_1024x1024_<r>x<r>.zip`, which stored each crop in all 8 dihedral
@@ -379,7 +379,7 @@ Because the source `dataset.json` lists `Co25` before `Co11` while the folder so
 `Ultra_Co6_2` is last under both rules, so it stays `2`. **Which rule a legacy
 checkpoint follows depends on which zip it trained on** — the shipped
 `imagenet_9to4_*` archives carry the SAN-order labels, whichever tool nominally built
-them (the current `imagenet_9to4_orig_*` zips keep that order but are stamped with
+them (the current `imagenet_9to4_1024x1024_*` zips keep that order but are stamped with
 `class_names` `['Ultra_Co25', 'Ultra_Co11', 'Ultra_Co6_2']`). The legacy artifacts
 recorded neither `class_names` nor original filenames, so the
 correspondence is not recoverable from the file at all — it has to come from the run's

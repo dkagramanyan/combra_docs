@@ -73,12 +73,12 @@ san-prepare-data convert --source ./raw/wc_co --dest ./datasets/wc_co_256.zip \
     --transform center-crop --resolution 256x256
 ```
 
-The WC-Co training zips are `imagenet_9to4_orig_<r>x<r>.zip` (r = 16 … 1024): the
+The WC-Co training zips are `imagenet_9to4_1024x1024_<r>x<r>.zip` (r = 16 … 1024): the
 **1080 original crops**, 360 per class, with `class_names`
 `['Ultra_Co25', 'Ultra_Co11', 'Ultra_Co6_2']` in `dataset.json`; `sh/train_*.sh`
 default `DATA` to them. One epoch is 1080 images. They replace the
 `imagenet_9to4_1024x1024_<r>x<r>.zip` sets, which stored every crop in all 8
-dihedral orientations (8640 images); the orig zips were derived from them (the
+dihedral orientations (8640 images); the current zips were derived from them (the
 first entry of each block of 8, verified pixel-wise), and the orientations now come
 from `--augment` at train time.
 
@@ -264,7 +264,7 @@ no names is rejected rather than guessed at, so those runs have to be retrained 
 rebuilt zips — classify each by the dataset path in its `training_options.json`. Once san-v2 is retrained on
 `san-prepare-data`-built zips, all artifacts are self-describing by name and the
 class-map warning becomes a historical note. The current
-`imagenet_9to4_orig_*` training zips keep the swapped order but are stamped with
+`imagenet_9to4_1024x1024_*` training zips keep the swapped order but are stamped with
 `class_names` `['Ultra_Co25', 'Ultra_Co11', 'Ultra_Co6_2']`, so artifacts trained on
 them are matched by name. See the {doc}`label contract
 <spec>` (§5).

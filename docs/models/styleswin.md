@@ -63,16 +63,16 @@ one-hot at read time. Following the label contract, the integer label is the cla
 in **alphabetical** order, and the class **names travel with the artifact** (`class_names` in
 `dataset.json`, copied into every checkpoint and every generated h5). The dataset class also
 **asserts 3-channel RGB** — grayscale is converted once at build time, never silently at runtime.
-The WC-Co training sets are `imagenet_9to4_orig_<r>x<r>.zip`: **1080 unique crops**, 360 per
+The WC-Co training sets are `imagenet_9to4_1024x1024_<r>x<r>.zip`: **1080 unique crops**, 360 per
 class (`class_names` `['Ultra_Co25', 'Ultra_Co11', 'Ultra_Co6_2']`):
 
 ```text
-datasets/imagenet_9to4_orig_256x256.zip     # 256px
-datasets/imagenet_9to4_orig_512x512.zip     # 512px
-datasets/imagenet_9to4_orig_1024x1024.zip   # 1024px
+datasets/imagenet_9to4_1024x1024_256x256.zip     # 256px
+datasets/imagenet_9to4_1024x1024_512x512.zip     # 512px
+datasets/imagenet_9to4_1024x1024_1024x1024.zip   # 1024px
 ```
 
-They replace the earlier `imagenet_9to4_1024x1024_<r>x<r>.zip` archives (8640 images), which
+They replace the earlier 8640-image archives of the same name, which
 stored each crop in all 8 dihedral orientations; those orientations now come from `--augment`
 at train time. One epoch is 1080 images: with the default 2 GPUs and `drop_last`, 8 / 16 / 67
 steps per epoch at 256 / 512 / 1024, the few dropped images differing every epoch.
@@ -81,7 +81,7 @@ Build one from a labelled folder (class = top-level subfolder) with the click gr
 
 ```bash
 styleswin-prepare-data convert --source /path/to/wc_co_source \
-    --dest ./datasets/imagenet_9to4_orig_256x256.zip --transform center-crop --resolution 256x256
+    --dest ./datasets/imagenet_9to4_1024x1024_256x256.zip --transform center-crop --resolution 256x256
 ```
 
 ## Training
@@ -103,7 +103,7 @@ preset:
 ```bash
 styleswin-train --outdir=./runs/wc-cv \
         --cfg styleswin-256 \
-        --data=./datasets/imagenet_9to4_orig_256x256.zip \
+        --data=./datasets/imagenet_9to4_1024x1024_256x256.zip \
         --gpus=2 --cond True --combra-metrics True --snapshot-keep-last 1 \
         --kimg 25000 --snap 50
 ```
@@ -231,7 +231,7 @@ nominal **alphabetical** convention the indices map as:
 
 ```{warning}
 **The trained checkpoints most likely do NOT follow this table.** The on-disk
-`imagenet_9to4_*` archives (the current `imagenet_9to4_orig_*` zips included) carry labels in **SAN's swapped order**
+`imagenet_9to4_*` archives (the current `imagenet_9to4_1024x1024_*` zips included) carry labels in **SAN's swapped order**
 (`0 → Ultra_Co25`, `1 → Ultra_Co11`, `2 → Ultra_Co6_2` — see {doc}`san_v2`), not the
 alphabetical order the build tool nominally produces — and StyleSwin trains on the zip
 labels verbatim. Classify each checkpoint by the dataset path in its
@@ -241,6 +241,6 @@ index→name fallback: a generated `.h5` with bare `class_<n>` groups and no
 has to be rebuilt, not remapped.
 Newly built zips (via `styleswin-prepare-data`) record `class_names`, which travel into
 every checkpoint and generated h5, so new artifacts are self-describing and this ambiguity
-does not recur. The `imagenet_9to4_orig_*` zips are stamped with `class_names`
+does not recur. The `imagenet_9to4_1024x1024_*` zips are stamped with `class_names`
 `['Ultra_Co25', 'Ultra_Co11', 'Ultra_Co6_2']`, so checkpoints trained on them are matched by name.
 ```

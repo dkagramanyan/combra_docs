@@ -70,7 +70,7 @@ always ends in a usable model.
    grayscale SEM images are converted to RGB at build time.
 
    The WC-Co zips the `sh/` scripts train on are
-   `imagenet_9to4_orig_<r>x<r>.zip` (r = 256 / 512 / 1024): the **1080 original
+   `imagenet_9to4_1024x1024_<r>x<r>.zip` (r = 256 / 512 / 1024): the **1080 original
    crops**, 360 per class, `class_names` `['Ultra_Co25', 'Ultra_Co11', 'Ultra_Co6_2']`.
    They replace the `imagenet_9to4_1024x1024_<r>x<r>.zip` zips, which stored each
    crop in all 8 dihedral orientations (8640 images); the orientations are now drawn
@@ -153,7 +153,7 @@ reproducible. Only training batches are augmented: the combra eval fakes, the
 `reals.png` / `fakes*.png` grids and generation never are. `--augment False` trains on
 the images as stored (the v0.6.0 behaviour). There is no `--mirror` option.
 
-An epoch is **1080 images** with the `orig` zips (8640 with the old
+An epoch is **1080 images** with the current zips (8640 with the old
 8-orientation zips). kimg counts training images seen, so `--kimg`, `--tick` and the
 snapshot cadence mean the same amount of training as before.
 
@@ -287,7 +287,7 @@ Training takes zip labels **verbatim**, and the shared `imagenet_9to4_*`
 archives (consumed by the real DiffiT and StyleSwin runs) carry labels in
 **SAN's swapped order** (`0 → Ultra_Co25`, `1 → Ultra_Co11`) — a zip's
 provenance, not the repo, decides the convention. The current
-`imagenet_9to4_orig_*` training zips keep that order and are stamped with
+`imagenet_9to4_1024x1024_*` training zips keep that order and are stamped with
 `class_names` `['Ultra_Co25', 'Ultra_Co11', 'Ultra_Co6_2']`. Classify each checkpoint
 by the dataset path in its `training_options.json` before comparing across
 models. combra ships no index→name fallback, so an artifact without
