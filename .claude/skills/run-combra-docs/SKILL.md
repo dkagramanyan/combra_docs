@@ -103,7 +103,7 @@ CI additionally runs every runnable example — the ```` ```{doctest} ```` block
 the hand-written pages and the `Examples` sections of combra's docstrings, which
 autodoc pulls into the generated reference pages:
 ```bash
-python -m sphinx -b doctest -W --keep-going docs _doctest
+python -m sphinx -b doctest -W --keep-going -D plot_gallery=0 docs _doctest
 ```
 Examples that cannot run in CI carry an explicit `# doctest: +SKIP`. Run this
 after touching any example or docstring.

@@ -5,7 +5,8 @@
 **Useful links**:
 {doc}`Installation <getting_started/installation>` |
 [Source repository](https://github.com/dkagramanyan/combra) |
-[Issue tracker](https://github.com/dkagramanyan/combra/issues)
+[Issue tracker](https://github.com/dkagramanyan/combra/issues) |
+{doc}`Citing combra <getting_started/citing>`
 
 combra measures the geometry of **WC-Co composite-alloy microstructures** in
 SEM images — vertex angles of the cobalt pools, grain beams, fractal dimension,
@@ -16,7 +17,7 @@ crack paths — and scores generated microstructures against real ones.
 
 >>> import combra
 >>> combra.__version__
-'0.15.3'
+'0.16.0'
 ```
 
 ::::{grid} 1 2 2 2

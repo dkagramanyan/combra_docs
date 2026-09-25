@@ -81,7 +81,9 @@ jobs:
           # A 403 here means the token reached GitHub and was refused on
           # permissions. GitHub words that refusal "Write access to repository not
           # granted" even when all the clone needs is read, so say what it means.
-          if ! pip install "combra[metrics] @ git+https://x-access-token:${COMBRA_TOKEN}@github.com/dkagramanyan/combra.git"; then
+          # `graph` pulls networkx/mpire, which the crack-graph example and the
+          # combra.graph reference import (0.16.0 moved them to that extra).
+          if ! pip install "combra[metrics,graph] @ git+https://x-access-token:${COMBRA_TOKEN}@github.com/dkagramanyan/combra.git"; then
             echo "::error::Installing combra failed. If the clone reported 403" \
                  "'Write access to repository not granted', COMBRA_TOKEN is a valid" \
                  "token that cannot read dkagramanyan/combra. For a fine-grained" \
@@ -99,14 +101,23 @@ jobs:
       - name: Check every public name is on a page
         run: python docs/check_api_coverage.py
 
-      # Runs every runnable example: the ```{doctest}``` blocks on the hand-written
-      # pages AND the ``Examples`` sections of the docstrings, which autodoc pulls
-      # into the generated reference pages. Examples that cannot run in CI carry an
-      # explicit ``# doctest: +SKIP``. This is what keeps an example from drifting
-      # away from the code it documents.
+      # Runs the ```{doctest}``` blocks on the hand-written pages AND the
+      # ``Examples`` sections of the docstrings, which autodoc pulls into the
+      # generated reference pages. Examples that cannot run in CI carry an
+      # explicit ``# doctest: +SKIP``. This is what keeps an example from
+      # drifting away from the code it documents.
+      #
+      # The gallery scripts under docs/examples_src/ are NOT doctests: the html
+      # build below executes them, and a failing script fails that step.
+      # `plot_gallery=0` keeps this step from running them a second time; it
+      # writes no execution record, so the html step still runs every script.
       - name: Run the runnable doc examples
-        run: python -m sphinx -b doctest -W --keep-going docs _doctest
+        run: python -m sphinx -b doctest -W --keep-going -D plot_gallery=0 docs _doctest
 
+      # Also executes the example gallery. Its plotly figures are exported to
+      # PNG (the gallery thumbnails) by kaleido, which drives a Chrome; it uses
+      # the google-chrome preinstalled on the ubuntu runner, so no download
+      # step is needed (`plotly_get_chrome -y` fetches one where there is none).
       - name: Build the site (warnings are errors)
         run: python -m sphinx -b html -W --keep-going -j auto docs public
 

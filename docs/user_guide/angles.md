@@ -155,6 +155,8 @@ each vertex. On the same synthetic set it recovers 12% of the true corners at an
 RMS edge error of 1.26 px and misses the faint pools Otsu alone does not see. Its
 parquets live in `..._msl5` folders and remain readable; a comparison across the
 two methods is not meaningful, so every reference set is re-extracted with P6.
+{doc}`legacy` describes P0 in full, and {doc}`experimental` the candidate that
+may replace P6.
 
 ## From angles to a density
 

@@ -114,6 +114,14 @@ is not written as a session**.
   `checkpoint_path`) rather than implying they exist.
 - Show output. An example whose last line produces a value should display it.
 - Keep an example under fifteen lines. Longer belongs in {doc}`../examples/angles`.
+- The worked examples ({doc}`../examples/index`) are a
+  [sphinx-gallery](https://sphinx-gallery.github.io/) gallery: one Python script
+  per page under `docs/examples_src/`, in the `# %%` cell format with reST text
+  blocks. The html build executes every script and writes the pages into
+  `docs/examples/`, which is generated and git-ignored — edit the script, never
+  the page. Print a value to show it, and end a cell with `plotly.io.show(fig)`
+  to embed a figure (one figure per cell). A script whose inputs are not bundled
+  keeps its sessions in reST `code-block` directives, so it runs to nothing.
 - Import explicitly (`from combra import stats`) — no implicit names.
 
 ## Admonitions and emphasis
@@ -197,18 +205,22 @@ Three gates, all run by CI, all runnable locally:
 ```bash
 python -m sphinx -b html -W --keep-going docs public   # 1. the build
 python docs/check_api_coverage.py                      # 2. nothing undocumented
-python -m sphinx -b doctest -W --keep-going docs _doctest   # 3. examples still run
+python -m sphinx -b doctest -W --keep-going -D plot_gallery=0 docs _doctest   # 3. examples still run
 ```
 
 1. **The build.** Warnings are errors, and nitpicky mode is on, so a broken
    cross-reference, an unknown role, a page missing from a toctree, or a
-   reference to a name that no longer exists all fail it.
+   reference to a name that no longer exists all fail it. It also executes the
+   example gallery, so a script that raises fails it too. A script runs again
+   only when it changes; delete `docs/examples/` to force a full run.
 2. **Coverage.** autodoc makes a documented signature incapable of drifting from
    the code, but nothing forces a *newly added* public name to be listed on a
    page. `docs/check_api_coverage.py` compares each module's `__all__`
    against the names its page lists.
 3. **Examples.** `sphinx -b doctest` runs the ```` ```{doctest} ```` blocks on
    these pages *and* the `Examples` sections of combra's docstrings, which
-   autodoc pulls into the generated reference. Note that combra's own `pytest`
+   autodoc pulls into the generated reference. It does not check the gallery
+   scripts, which gate 1 runs; `-D plot_gallery=0` stops it from executing
+   them a second time. Note that combra's own `pytest`
    does **not** collect docstring examples — this build is the only thing that
    does.

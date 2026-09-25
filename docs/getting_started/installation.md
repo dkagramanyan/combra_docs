@@ -31,12 +31,22 @@ Python 3.12 or newer is required.
 
 ## Optional extras
 
-| Extra     | Install                    | Adds                                                        |
-| --------- | -------------------------- | ----------------------------------------------------------- |
-| `tests`   | `pip install ".[tests]"`   | pytest + pytest-cov                                          |
-| `docs`    | `pip install ".[docs]"`    | Sphinx docs toolchain                                        |
-| `dev`     | `pip install -e ".[dev]"`  | the `tests` extra + ruff + mypy                              |
+| Extra     | Install                    | Adds                                                          |
+| --------- | -------------------------- | ------------------------------------------------------------- |
+| `graph`   | `pip install ".[graph]"`   | `networkx` and `mpire`, needed only by {py:mod}`combra.graph`   |
+| `tests`   | `pip install ".[tests]"`   | the `graph` extra + pytest + pytest-cov                       |
+| `docs`    | `pip install ".[docs]"`    | the `graph` extra + the Sphinx docs toolchain                 |
+| `dev`     | `pip install -e ".[dev]"`  | the `tests` extra + ruff + mypy                               |
 | `metrics` | `pip install ".[metrics]"` | nothing — an empty alias kept so existing installs still work |
+
+Without the `graph` extra every
+module except {py:mod}`combra.graph` works; calling into that one fails with a
+`ModuleNotFoundError` for `networkx`.
+
+```{versionchanged} 0.16.0
+`networkx` and `mpire` moved from the core dependencies to the `graph` extra,
+and the `bresenham` and `radio-beam` dependencies were dropped.
+```
 
 The image-feature metrics score in-memory image batches and use CUDA when
 available, falling back to CPU. {py:func}`~combra.metrics.compute_fid` uses the
@@ -51,10 +61,13 @@ which is a core dependency rather than an extra.
 ## Verifying the install
 
 The bundled self-check estimates the fractal dimension of reference shapes whose
-dimensions are known analytically, and reports the error on each. It needs
-nothing beyond the core install.
+dimensions are known analytically, and logs the error on each: `INFO` per
+shape, `WARNING` for the average. combra configures no logging itself, so turn
+it on to see the report. It needs nothing beyond the core install.
 
 ```{doctest}
+>>> import logging
+>>> logging.basicConfig(level=logging.INFO)
 >>> import numpy as np
 >>> from combra import validation
 >>> validation.check_fractal_dimension(np.array([2, 3, 4, 6, 8, 12, 16, 24, 32]))

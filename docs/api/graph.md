@@ -14,6 +14,9 @@ the image to the bottom.
 from combra import graph
 ```
 
+This module needs the `graph` extra, `pip install "combra[graph]"`, which
+installs `networkx` and `mpire`; see {doc}`/getting_started/installation`.
+
 ## Building the graph
 
 ```{eval-rst}

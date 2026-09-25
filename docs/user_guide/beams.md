@@ -30,8 +30,9 @@ you have before interpreting a beam length as a grain diameter.
 ## The algorithm
 
 {py:func}`combra.ellipse.fit_mvee` solves the MVEE with Khachiyan's barycentric
-coordinate-descent iteration [^khachiyan], following the implementation in
-[radio-beam](https://radio-beam.readthedocs.io/en/latest/api/radio_beam.commonbeam.getMinVolEllipse.html).
+coordinate-descent iteration [^khachiyan], with the implementation of
+[radio-beam](https://radio-beam.readthedocs.io/en/latest/api/radio_beam.commonbeam.getMinVolEllipse.html)
+0.3.9 vendored into combra, so radio-beam is not a dependency.
 The `tol` argument is the convergence tolerance: lower values give tighter
 ellipses and run slower. The default of `0.2` is loose enough to be fast on
 thousands of contours per image and tight enough that the resulting distribution

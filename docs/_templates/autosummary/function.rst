@@ -2,10 +2,7 @@
 
 .. currentmodule:: {{ module }}
 
-.. autoclass:: {{ objname }}
-   :members:
-   :show-inheritance:
-   :exclude-members: __init__, __new__
+.. autofunction:: {{ objname }}
 
 .. minigallery:: {{ fullname }}
    :add-heading:

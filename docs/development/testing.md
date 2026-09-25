@@ -30,6 +30,36 @@ pytest -m visual -s              # writes interactive plotly HTML for inspection
 CI (GitHub Actions) runs the ruff lint and format checks, mypy on the
 strict-typed core, and `pytest` on Python 3.12 and 3.13.
 
+## Benchmarks
+
+The `benchmarks/` directory of the combra repository is an
+[airspeed velocity](https://asv.readthedocs.io/) (asv) suite, laid out as in
+NumPy, SciPy and scikit-image. Every command runs from that directory:
+
+```bash
+pip install asv virtualenv
+cd benchmarks
+
+asv run --quick --python=same    # smoke run against the current environment
+asv run                          # the latest commit on main, in a fresh virtualenv
+asv continuous main HEAD         # compare HEAD with main, report regressions
+asv run --python=same --bench angles   # one module or benchmark only
+```
+
+`asv publish && asv preview` builds and serves an HTML report of the stored
+results. Results (`results/`), built environments (`env/`) and the report
+(`html/`) are local and not committed.
+
+| Module | Times |
+| --- | --- |
+| `angles` | P6 extraction |
+| `legacy_experimental` | P0 and P7 |
+| `synth` | synthetic canvas generation, rendering and scoring |
+| `fitting_metrics` | the bimodal fit and the density metrics |
+| `data` | {py:meth}`~combra.data.MicrostructureDataset.generate_angles` on the bundled images |
+
+CI does not run the suite.
+
 ## Documentation
 
 The documentation lives in a separate repository,

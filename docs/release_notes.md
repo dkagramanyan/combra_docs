@@ -23,6 +23,19 @@ below track what changes for a *user* of the library.
 - The polyamide fracture dataset and its two plotters are back in the
   reference, on the {py:mod}`combra.data` page, with a worked example,
   {doc}`examples/polyamide`.
+- The synthetic benchmark, P0 and P7 each have a user-guide page,
+  {doc}`user_guide/synth`, {doc}`user_guide/legacy` and
+  {doc}`user_guide/experimental`, and a worked example,
+  {doc}`examples/synth`, {doc}`examples/legacy` and
+  {doc}`examples/experimental`.
+- The worked examples are a gallery ({doc}`examples/index`): each is a Python
+  script the build runs, with its figures shown interactively on the page and
+  downloadable as `.py` or `.ipynb`. Reference pages list the examples that use
+  a function.
+- New pages: {doc}`development/api_policy` (what stable, legacy and experimental
+  mean, versioning and the deprecation cycle) and {doc}`getting_started/citing`.
+  {doc}`getting_started/installation` documents the `graph` extra, and
+  {doc}`development/testing` the asv benchmarks.
 
 **Known issues**
 
@@ -30,6 +43,56 @@ below track what changes for a *user* of the library.
   has a contour of at least `N` points: PyTorch runs in the main process
   (the constructor's fractal self-check) before the worker pool forks, and
   the workers deadlock in the PyTorch box counting. Not fixed yet.
+
+### 0.16.0
+
+A clean break: defaults and names change without aliases.
+
+**Changed (breaking)**
+
+- Every `plot_*` function returns its figure and no longer displays it by
+  default: `show` now defaults to `False`. Pass `show=True`, or leave the figure
+  as the last expression of a notebook cell.
+- All plots are plotly. The beam plots of {py:mod}`combra.ellipse` and the
+  crack-graph plots of {py:mod}`combra.graph` were matplotlib; those that
+  returned several figures now return one multi-panel figure, with sizes in
+  pixels. {py:func}`~combra.ellipse.plot_beam_compare` takes `width` and
+  `height` after `indices_2` and returns its figure as `.figure`.
+- {py:func}`~combra.synth.make_canvas` and {py:func}`~combra.synth.plot_pools`
+  take `rng` (an integer, a NumPy `Generator` or `None`) instead of `seed`; an
+  integer gives the same canvas as before.
+- combra no longer prints from library code. {py:func}`~combra.metrics.compare_folders`
+  logs its table at INFO on the `combra.metrics.compare` logger;
+  {py:func}`~combra.metrics.print_convergence_report` still prints and also
+  returns the report.
+- `networkx` and `mpire` are the new `graph` extra, needed only by
+  {py:mod}`combra.graph`: `pip install "combra[graph]"`.
+
+**Added**
+
+- Metric results are `Bunch` objects: dictionaries whose keys are also
+  attributes (`metrics.compute_all_metrics(...).fid`).
+- A `deprecated` decorator in `combra.utils`; `combra.image.tile_images` is
+  deprecated and will be removed in 0.18.0.
+- `CITATION.cff` in the combra repository, and an asv benchmark suite.
+
+**Fixed**
+
+- {py:func}`~combra.ellipse.plot_enclosing_ellipse` draws the contour its
+  ellipse was fitted to; it drew a different one.
+- {py:func}`~combra.synth.plot_pools` with eight pools or fewer is readable.
+
+**Removed**
+
+- The `bresenham` and `radio-beam` dependencies; the results they gave are
+  unchanged.
+
+**Internal**
+
+- 27 private helpers are inlined or merged, comments are trimmed, and the
+  docstrings of names without a reference page are shortened; the package is
+  about 19% smaller. Parquet output and metric values are unchanged; nothing
+  needs regenerating.
 
 ### 0.15.3
 

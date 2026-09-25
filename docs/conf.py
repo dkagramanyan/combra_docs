@@ -25,8 +25,8 @@ import combra  # noqa: E402
 project = "combra"
 copyright = "2026, D.G.Kagramanyan"
 author = "D.G.Kagramanyan"
-release = "0.15.3"
-version = "0.15"
+release = "0.16.0"
+version = "0.16"
 
 # -- General configuration ---------------------------------------------------
 
@@ -40,6 +40,7 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.intersphinx",
     "numpydoc",
+    "sphinx_gallery.gen_gallery",
 ]
 
 # -- API reference generation ------------------------------------------------
@@ -192,6 +193,39 @@ import os as _os, tempfile as _tempfile
 _os.chdir(_tempfile.mkdtemp(prefix='combra-doctest-'))
 """
 
+# -- Example gallery ---------------------------------------------------------
+#
+# The worked examples are Python scripts under ``examples_src/``, in
+# sphinx-gallery's ``# %%`` cell format. The html build executes every one and
+# writes a page per script into ``examples/`` -- generated output, git-ignored,
+# the same layout as the scikit-learn and scikit-image galleries. A failing
+# script fails the build. The doctest builder does not collect these pages;
+# the scripts are checked by running them here.
+#
+# Figures are plotly. The scripts end a cell with ``plotly.io.show(fig)``;
+# importing plotly's scraper switches the default renderer to
+# ``sphinx_gallery_png``, which writes each shown figure as an interactive HTML
+# page plus a static PNG (through kaleido), and the scraper embeds the HTML
+# in the example page and keeps the PNG for the gallery thumbnail. The scraper
+# keeps one figure per cell, so a cell shows at most one.
+#
+# ``doc_module``/``backreferences_dir`` record which example uses which combra
+# function; the function pages list them through the ``minigallery`` in
+# ``_templates/autosummary/function.rst``. ``reference_url`` links the names in
+# the example code to their API pages.
+sphinx_gallery_conf = {
+    "examples_dirs": "examples_src",
+    "gallery_dirs": "examples",
+    "filename_pattern": r"\.py$",  # execute every script, not only plot_*.py
+    "within_subsection_order": "FileNameSortKey",
+    "image_scrapers": ("plotly.io._sg_scraper.plotly_sg_scraper",),
+    "download_all_examples": True,
+    "remove_config_comments": True,
+    "doc_module": ("combra",),
+    "backreferences_dir": "api/generated/backreferences",
+    "reference_url": {"combra": None},
+}
+
 # -- Copy button -------------------------------------------------------------
 #
 # Examples are written as `pycon` sessions (`>>> ` / `... ` prompts). Pygments
@@ -235,6 +269,8 @@ exclude_patterns = [
     "layouts/**",
     "archetypes/**",
     "public/**",
+    # Gallery sources; sphinx-gallery writes the pages into examples/.
+    "examples_src/**",
 ]
 
 # -- Options for HTML output -------------------------------------------------

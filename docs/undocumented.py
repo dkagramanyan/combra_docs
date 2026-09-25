@@ -188,6 +188,7 @@ UNDOCUMENTED = frozenset({
     "combra.synth.TruthRegion",
     # combra.utils
     "combra.utils.Bunch",
+    "combra.utils.deprecated",
     # combra.validation
     "combra.validation.check_fractal_dimension",
     # combra.viz

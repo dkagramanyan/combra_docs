@@ -23,6 +23,9 @@ Experimental
 : `combra.experimental`, a candidate angle method; its API and output may
   change without a deprecation period.
 
+{doc}`/development/api_policy` states what the labels promise, how version
+numbers are read, and how a function is deprecated and removed.
+
 ## Modules
 
 | Module | |
@@ -64,11 +67,15 @@ Results
 : Anything returning more than two values returns a SciPy-style named tuple.
   It unpacks positionally, so
   `a, b, angle_rad, centroid, contour = fit_mvee(image)` works alongside
-  `result.a`.
+  `result.a`. Results keyed by name — the metric dictionaries of
+  {py:func}`~combra.metrics.compute_all_metrics`, {py:func}`~combra.synth.summarize`
+  — are a `Bunch`, a dictionary whose keys are also attributes:
+  `result['w1']` and `result.w1` are the same value.
 
 Plotting
-: Every `plot_*` returns its figure and takes the same tail arguments —
-  `save_path=None` (write a PNG) and `show=True` (render it).
+: Every `plot_*` returns a plotly figure and takes the same tail arguments —
+  `save_path=None` (write a PNG) and `show=False` (render it). Figure sizes
+  are in pixels.
 
 Reference vs. generated
 : Every comparison names its two sides `reference` and `generated`, reference

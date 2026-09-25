@@ -8,3 +8,9 @@ docs/api/generated/
 # Build artifacts: the rendered site, and the screenshots the run skill takes.
 public/
 _shots/
+
+# sphinx-gallery output: the example pages, their figures and downloads are
+# generated from docs/examples_src/ by the html build, as is the timing page
+# and the per-function example lists.
+docs/examples/
+docs/sg_execution_times.rst

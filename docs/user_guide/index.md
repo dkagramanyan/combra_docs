@@ -73,14 +73,16 @@ against that truth by size: the overlap of the polygon with the true region,
 where its edge sits, the angle error at the corners it found and the share of
 reflex vertices it sees. It is how P6 was chosen over P0
 ({py:mod}`combra.legacy`) and how P7
-({py:mod}`combra.experimental`) is kept in view.
+({py:mod}`combra.experimental`) is kept in view; see {doc}`synth`,
+{doc}`legacy` and {doc}`experimental`.
 
 ## Other tooling
 
 {py:mod}`combra.graph` is a separate analysis: it converts a
 binarized crack image into a directed graph whose edges are classified by the
 phase they cross (Co, WC-Co, WC, WC-WC), then searches for minimum-energy
-propagation paths.
+propagation paths. It needs the `graph` extra
+({doc}`../getting_started/installation`).
 
 {py:class}`combra.data.PolyamideFractureDataset` applies the fractal-dimension
 and contour-size measures to a different material, frames of a polyamide
@@ -97,6 +99,7 @@ struct written on every row.
 
 ../getting_started/installation
 ../getting_started/quickstart
+../getting_started/citing
 ```
 
 ```{toctree}
@@ -108,6 +111,16 @@ angles
 angle_fit
 beams
 metrics
+```
+
+```{toctree}
+:maxdepth: 1
+:caption: Methods and ground truth
+:hidden:
+
+synth
+legacy
+experimental
 ```
 
 ```{toctree}
