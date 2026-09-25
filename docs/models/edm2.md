@@ -54,7 +54,19 @@ always ends in a usable model.
 
 2. **(Optional) prefetch model weights** — handy for offline / cluster nodes.
    Training needs the Stable-Diffusion VAE (plus InceptionV3 / CLIP / DINOv2 for the
-   combra metrics); fetch everything up front with `edm2-download-models`.
+   combra metrics); fetch everything up front on a node with internet:
+
+   ```bash
+   bash download_models.sh                                  # caches under ~/.cache
+   MODEL_CACHE=/shared/team/caches bash download_models.sh  # or somewhere else
+   ```
+
+   The VAE goes to the dnnlib cache `load_stability_vae` reads
+   (`$DNNLIB_CACHE_DIR/diffusers`, default `~/.cache/dnnlib/diffusers`) through the
+   `hf` / `huggingface-cli` CLI; without the CLI the script points at the Python
+   fallback `edm2-download-models`. With `MODEL_CACHE` set, run the jobs with
+   `TORCH_HOME=$MODEL_CACHE/torch HF_HOME=$MODEL_CACHE/huggingface
+   DNNLIB_CACHE_DIR=$MODEL_CACHE/dnnlib`.
 
 3. **Prepare the dataset.** `edm2-prepare-data convert` center-crops a folder of
    images into a `.zip` the trainer reads, writing index-aligned `class_names`

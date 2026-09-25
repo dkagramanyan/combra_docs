@@ -14,6 +14,13 @@ below track what changes for a *user* of the library.
 - The model pages name the WC-Co training zips `imagenet_9to4_1024x1024_<r>x<r>.zip`
   again (the model repos' v0.7.1): the 1080-original-crop sets took over those
   names and the old 8640-image zips are gone.
+- All four model pages and the model spec make `bash download_models.sh` (with the
+  `MODEL_CACHE` override) the weight-prefetch step, as san-v2 already did (the model
+  repos' v0.7.2): edm2 and StyleSwin gained the script, StyleSwin dropped
+  `styleswin-download-models`, and edm2 / DiffiT keep `<model>-download-models` only
+  as the VAE fallback. The scripts now put the CMMD CLIP weights in the HuggingFace
+  hub cache, where open_clip reads them, and edm2 no longer overrides `HF_HOME` when
+  it loads the VAE, which had hidden that cache from an offline CMMD.
 
 ### 0.19.0
 

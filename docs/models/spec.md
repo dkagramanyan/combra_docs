@@ -51,8 +51,17 @@ console-script family:
 | `<model>-gen-images` | per-class generation | all |
 | `<model>-eval` | standalone metrics | all |
 | `<model>-prepare-data` | dataset zip builder | all |
-| `<model>-download-models` | backbone / weight prefetch | all |
+| `<model>-download-models` | Python fallback for the VAE prefetch | diffusion only |
 | `<model>-compare-samplers` | sampler-vs-steps sweep | diffusion only |
+
+Pretrained weights are prefetched by **`bash download_models.sh`** at the repo
+root, in all four repos: wget/curl + git, no GPU, straight into the caches the
+libraries read (`torch/hub`, the HuggingFace hub cache, and for edm2 the dnnlib
+cache). `MODEL_CACHE=/path bash download_models.sh` moves every cache off
+`~/.cache`; the jobs then need `TORCH_HOME=$MODEL_CACHE/torch` and
+`HF_HOME=$MODEL_CACHE/huggingface` (edm2 also `DNNLIB_CACHE_DIR=$MODEL_CACHE/dnnlib`).
+The diffusion repos fetch their SD-VAE with the `hf` / `huggingface-cli` CLI and
+keep `<model>-download-models` as the fallback when it is absent.
 
 - **`pyproject.toml` is the only dependency declaration**, and `pip install -e .`
   is the one install path.
@@ -607,7 +616,7 @@ Each script contains exactly two things:
    conda activation (env name = repo name), `CUDA_HOME` /
    `TORCH_CUDA_ARCH_LIST`, and the **offline-cluster contract**:
    `HF_HUB_OFFLINE=1` and `TRANSFORMERS_OFFLINE=1` set in every script, with
-   backbones prefetched once on a login node via `<model>-download-models`.
+   backbones prefetched once on a login node via `bash download_models.sh`.
 2. **One console-command call** — `<model>-train …` or
    `<model>-gen-images …` with the §2 / §4 flags.
 

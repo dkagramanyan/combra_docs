@@ -46,7 +46,9 @@ Installing the package exposes four console scripts: **`san-train`**,
 **`san-gen-images`**, **`san-eval`**, **`san-prepare-data`**. The `sh/` launch
 scripts set `CUDA_HOME=$CONDA_PREFIX` so the ops compile against this conda
 toolkit, and set `HF_HUB_OFFLINE=1` / `TRANSFORMERS_OFFLINE=1` for offline compute
-nodes (prefetch backbones once on a login node with `bash download_models.sh`).
+nodes (prefetch backbones once on a login node with `bash download_models.sh`;
+`MODEL_CACHE=/path bash download_models.sh` caches somewhere other than `~/.cache`,
+and the jobs then need `TORCH_HOME=$MODEL_CACHE/torch HF_HOME=$MODEL_CACHE/huggingface`).
 
 ## Test the build
 

@@ -41,9 +41,11 @@ pip install -e '.[combra]'               # optional: combra in-training metrics
 ```
 
 `pip install -e .` exposes the shared console-script family: `styleswin-train`,
-`styleswin-gen-images`, `styleswin-eval`, `styleswin-prepare-data` and
-`styleswin-download-models` (which prefetches the InceptionV3 / CLIP / DINOv2 combra backbones for
-offline / cluster nodes).
+`styleswin-gen-images`, `styleswin-eval` and `styleswin-prepare-data`. StyleSwin has no
+pretrained weights of its own; `bash download_models.sh` (wget/curl + git, no Python)
+prefetches the InceptionV3 / CLIP / DINOv2 combra backbones for offline / cluster nodes.
+`MODEL_CACHE=/path bash download_models.sh` caches somewhere other than `~/.cache`; the jobs
+then need `TORCH_HOME=$MODEL_CACHE/torch HF_HOME=$MODEL_CACHE/huggingface`.
 
 combra lives in a **private** repo, so the `.[combra]` extra clones it over `git+https` and only
 succeeds when you are authenticated to GitHub — sign in once with the GitHub CLI

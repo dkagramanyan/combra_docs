@@ -41,11 +41,16 @@ fresh optimizer). Runs go start-to-finish (see Checkpoints).
 
 2. **(Optional) prefetch model weights** — handy for offline / cluster nodes.
    Training needs the Stable-Diffusion VAE (plus InceptionV3 for FID/IS); the VAE
-   auto-downloads on first run, or fetch everything up front:
+   auto-downloads on first run, or fetch everything up front on a node with internet:
 
    ```bash
-   diffit-download-models
+   bash download_models.sh                                  # caches under ~/.cache
+   MODEL_CACHE=/shared/team/caches bash download_models.sh  # or somewhere else
    ```
+
+   The VAEs go through the `hf` / `huggingface-cli` CLI; without it the script points
+   at the Python fallback `diffit-download-models`. With `MODEL_CACHE` set, run the
+   jobs with `TORCH_HOME=$MODEL_CACHE/torch HF_HOME=$MODEL_CACHE/huggingface`.
 
 3. **Prepare the dataset.** `diffit-prepare-data` center-crops and resizes a folder
    of images into a `.zip` the trainer reads:
