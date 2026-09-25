@@ -22,6 +22,15 @@ below track what changes for a *user* of the library.
   hub cache, where open_clip reads them, and edm2 no longer overrides `HF_HOME` when
   it loads the VAE, which had hidden that cache from an offline CMMD.
 
+### 0.20.1
+
+**Fixed**
+
+- `scale` also reaches the image-batch angle metrics
+  (`combra.metrics.images_to_pooled_angles`, `images_to_angle_density`, and so
+  `compare_folders(..., angle_kw={'scale': s})`), so the image-level comparisons
+  can use the same physical settings as the parquet extraction.
+
 ### 0.20.0
 
 **Added**
