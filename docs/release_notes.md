@@ -22,6 +22,25 @@ below track what changes for a *user* of the library.
   hub cache, where open_clip reads them, and edm2 no longer overrides `HF_HOME` when
   it loads the VAE, which had hidden that cache from an offline CMMD.
 
+### 0.20.0
+
+**Added**
+
+- `scale` in {py:func}`combra.angles.vertex_angles` (and `pool_regions`,
+  `MicrostructureDataset.generate_angles`, `sweep_angles` through its keyword
+  arguments): the image pixels per native micrograph pixel. The Douglas–Peucker
+  tolerance, the median filter and the smallest pool kept then follow
+  {py:func}`combra.angles.settings_for_scale`, which reproduces the settings the
+  P6 benchmark validated at 256, 512 and 1536 px of the 1536 px field, so angle
+  densities of different resolutions are measured with the same physical
+  settings. Without `scale` nothing changes. See
+  {doc}`user_guide/angles`.
+- {py:func}`combra.angles.output_directory` names folders of scaled extractions
+  `..._scale{scale:.4g}`; `resolve_overlay_rows` / `plot_overlay_grid` accept a
+  fifth manifest element `scale` per source, and
+  `combra.metrics.find_kimg_parquets` a `scale`. The parquet's
+  `run_meta.extraction_params` records `scale`, `median` and `min_area`.
+
 ### 0.19.1
 
 **Fixed**

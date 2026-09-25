@@ -21,6 +21,7 @@ from combra import angles
    :nosignatures:
 
    vertex_angles
+   settings_for_scale
    angle_summary
 ```
 

@@ -146,6 +146,31 @@ the blur rounds it over the whole edge of the pool; no setting of the stage
 removes that, so small pools carry a known bias toward 180° rather than a
 tunable one.
 
+### Images of different resolution: `scale`
+
+`tol`, the median filter and the smallest pool kept (`min_area`) are lengths in
+pixels, tuned at 512 px of the full 1536 px micrograph field, a third of the
+native resolution. Applied unchanged to another resolution they describe a
+different physical size: on native 1536 px frames the default 1.75 px cuts the
+boundary into about 70% more vertices, most of them nearly straight (160–200°),
+and moves the convex mode by about 4°. Pass `scale`, the image pixels per native
+micrograph pixel, and the three settings follow it
+({py:func}`combra.angles.settings_for_scale`); the settings the benchmark
+validated at 256, 512 and 1536 px of the 1536 px field are reproduced exactly:
+
+```python
+angles.vertex_angles(img, scale=256 / 1536)   # the full field resized to 256 px
+angles.vertex_angles(img, scale=256 / 1024)   # a native 1024 px crop resized to 256 px
+```
+
+The scale is a property of how the images were made, not of their size, so it
+cannot be read off the image: a 1024 px crop at native resolution and the full
+field resized to 1024 px need different settings. Generated images take the
+scale of the training images. With `scale` the output folder is named
+`..._scale{scale:.4g}` instead of `..._tol{tol}`. Even with matched settings a
+coarser image resolves fewer corners, so a generated set is best compared with
+a real set of the same scale.
+
 ### The previous method
 
 Until combra 0.15 the angles came from P0, now {py:func}`combra.legacy.vertex_angles`:
