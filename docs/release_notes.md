@@ -22,6 +22,16 @@ below track what changes for a *user* of the library.
   hub cache, where open_clip reads them, and edm2 no longer overrides `HF_HOME` when
   it loads the VAE, which had hidden that cache from an offline CMMD.
 
+### 0.20.2
+
+**Fixed**
+
+- `compute_all_metrics(angle_kw={'workers': N})` and
+  `all_metrics_by_sample_size(..., angle_kw=...)` no longer raise a duplicate
+  `workers` `TypeError`.
+- `resolve_overlay_rows` / `plot_overlay_grid` take `tol=None` for manifests
+  whose sources all carry a `scale`.
+
 ### 0.20.1
 
 **Fixed**
