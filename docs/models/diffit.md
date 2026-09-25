@@ -79,12 +79,15 @@ fresh optimizer). Runs go start-to-finish (see Checkpoints).
        --cfg=diffit-256 \
        --data=./datasets/wc_co_256x256.zip \
        --gpus 2 \
-       --batch-gpu 96
+       --batch-gpu 128
    ```
 
-   The total batch is `batch-gpu × gpus × grad-accum`. Precision is chosen with
-   `--precision {fp32,fp16,bf16}` (default `bf16`); boolean flags take an explicit
-   value (`--tf32 True`, `--bench True`, `--mirror False`, `--cache-in-ram True`).
+   The total batch is `batch-gpu × gpus × grad-accum` (here 256, the paper's
+   256² batch; `sh/train_256.sh` defaults to `BATCH_GPU=128`). Precision is chosen with
+   `--precision {fp32,fp16,bf16}` (default `bf16`); eval / snapshot sampling and the
+   VAE decode follow it too (fp32 runs without autocast). Boolean flags take an explicit
+   value (`--tf32 True`, `--bench True`, `--cache-in-ram True`). There is no
+   horizontal-flip augmentation (`--mirror` was removed in v0.6.0).
 
 ### Quick example (single-GPU smoke test)
 
@@ -107,7 +110,10 @@ default).
 ### Progressive finetuning
 
 Each higher-resolution stage warm-starts from the previous stage's EMA snapshot
-via `--init-weights` (weights only, fresh optimizer — not a resume):
+via `--init-weights` (weights only, fresh optimizer — not a resume). Use the
+previous stage's best-by-`combra_fid` snapshot, the file named for `combra_fid` on
+the last `Best snapshots:` line of that run's log (also what `INIT_WEIGHTS` takes in
+`sh/train_*.sh`):
 
 ```bash
 # 256² → 512² finetune
@@ -115,18 +121,18 @@ diffit-train --outdir=./training-runs \
     --cfg=diffit-512 \
     --data=./datasets/wc_co_512x512.zip \
     --gpus 2 --batch-gpu 64 \
-    --init-weights ./training-runs/00000-diffit-256-*/diffit-snapshot-000400-inference.pt \
+    --init-weights ./training-runs/00000-diffit-256-*/diffit-snapshot-<best-FID kimg>-inference.pt \
     --lr 5e-5 --lr-warmup 500 --kimg 100000
 ```
 
 ### Checkpoints
 
-There is exactly one checkpoint kind — no resume, no best-model tracking, no
-separate final checkpoint:
+There is exactly one checkpoint kind — no resume, no separate best-model or
+final checkpoint:
 
 | File | Contents | Cadence |
 | --- | --- | --- |
-| `diffit-snapshot-<kimg>-inference.pt` | EMA weights only + self-describing metadata (`n_classes`, `resolution`, `class_names`, `cur_nimg`) | every `--snap` ticks **and always at the last tick**; only the newest `--snapshot-keep-last` (default 3, `0` = keep all) are kept |
+| `diffit-snapshot-<kimg>-inference.pt` | EMA weights only + self-describing metadata (`n_classes`, `resolution`, `class_names`, `cur_nimg`) | every `--snap` ticks **and always at the last tick**; kept: the newest `--snapshot-keep-last` (default 1, `0` = keep all) **plus** the best by each of `combra_fid`, `combra_fd_dinov2`, `combra_cmmd` |
 
 Only EMA weights ever touch disk — raw model weights and optimizer state are
 never saved. Every snapshot is written **atomically** (temp file + `os.replace`),
@@ -134,8 +140,12 @@ so a snapshot present under its final name is always complete, and the last tick
 always snapshots, so the newest snapshot *is* the final model. Runs are
 unrecoverable by design (a crash or SLURM walltime kill cannot be resumed) — size
 `--kimg` (or split into progressive stages via `--init-weights`) so a run fits its
-job's time limit. Pick the best checkpoint post-hoc from `stats.jsonl` against the
-snapshot history (set `--snapshot-keep-last 0` to keep them all).
+job's time limit. Pruning runs after the tick's combra eval has scored the newest
+snapshot; lower is better, `nan` is skipped, ties keep the earlier snapshot, best
+snapshots are never pruned and one file may serve several roles, so a default run
+holds at most 4 files. Each snapshot tick logs
+`Best snapshots: combra_fid <v> <file>  combra_fd_dinov2 <v> <file>  combra_cmmd <v> <file>`;
+`stats.jsonl` keeps every tick's metrics.
 
 During training, at each evaluation tick (every `--snap` ticks) the loop
 generates a batch of images from the EMA model by running the configured
@@ -195,12 +205,13 @@ All three reuse the same trained model — they only differ in how the reverse
 process is integrated:
 
 - **`ddim`** *(default)* — deterministic DDIM. Reproducible (low-variance) metric
-  curves and good quality at moderate step counts; the recommended default for the
-  training-time eval signal and for final inference.
+  curves and good quality at moderate step counts; the default for the
+  training-time eval signal (100 steps) and of the `diffit-gen-images` CLI.
 - **`dpm++`** — DPM-Solver++(2M). Fastest (near-converged quality in ~25 steps);
   use it for the cheapest possible training-time eval.
 - **`ddpm`** — stochastic ancestral sampling. Most faithful / most diverse at high
-  step counts (~250), but the slowest.
+  step counts (~250), but the slowest. The paper's sampler (250 steps) and the
+  default of `sh/generate_*.sh` (`SAMPLER=ddim` switches back).
 
 During training, pick the eval sampler with `--eval-sampler` and its step count
 with `--eval-sampling-steps` (per-sampler defaults: `dpm++`=25, `ddim`=100,
@@ -208,7 +219,7 @@ with `--eval-sampling-steps` (per-sampler defaults: `dpm++`=25, `ddim`=100,
 
 ```bash
 diffit-train --outdir=./training-runs --cfg=diffit-256 \
-    --data=./datasets/wc_co_256.zip --gpus 2 --batch-gpu 96 \
+    --data=./datasets/wc_co_256.zip --gpus 2 --batch-gpu 128 \
     --eval-sampler ddim --eval-sampling-steps 100
 ```
 
@@ -288,7 +299,7 @@ diffit-gen-images \
     --samples-per-class 1000 \
     --classes Ultra_Co11,Ultra_Co25,Ultra_Co6_2 \
     --cfg-scale 4.4 \
-    --sampler ddim --steps 250 \
+    --sampler ddpm --steps 250 \
     --gpus 4 \
     --batch-gpu 32 \
     --desc wc_co_256

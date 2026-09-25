@@ -78,28 +78,34 @@ san-prepare-data convert --source ./raw/wc_co --dest ./datasets/wc_co_256.zip \
 Models are trained **progressively** (low → high resolution). The 16² stem trains
 from scratch; every higher resolution is a super-resolution stage that
 **weights-only warm-starts** from the previous stage's inference snapshot via
-`--path-stem` (runs go start-to-finish):
+`--path-stem` (runs go start-to-finish). Use the previous stage's **best-FID**
+snapshot, named in the `combra_fid` entry of the last `Best snapshots:` line of
+that run's log, once that stage has finished:
 
 ```bash
 # Stage 0 — 16x16 stem
 san-train --outdir ./runs --cfg stylegan3-r --cond True \
     --data ./datasets/wc_co_16x16.zip \
-    --gpus 2 --mirror False --snap 500 --batch-gpu 320 --kimg 20000 --syn-layers 6
+    --gpus 2 --snap 500 --batch-gpu 320 --kimg 20000 --syn-layers 6
 
 # Stage N — superres, warm-starting from the previous stage's snapshot
 san-train --outdir ./runs --cfg stylegan3-r --cond True \
     --data ./datasets/wc_co_32x32.zip \
-    --gpus 2 --mirror False --snap 100 --batch-gpu 96 --kimg 20000 --syn-layers 6 \
-    --superres --up-factor 2 --head-layers 7 \
-    --path-stem ./runs/00000-stylegan3-r-gpus2-batch640/san-snapshot-020000-inference.pt
+    --gpus 2 --snap 100 --batch-gpu 96 --kimg 20000 --syn-layers 6 \
+    --superres True --up-factor 2 --head-layers 7 \
+    --path-stem ./runs/00000-stylegan3-r-gpus2-batch640/san-snapshot-<best-FID kimg>-inference.pt
 ```
 
-Ready-made per-resolution launch scripts live in `sh/` (`train_256.sh`,
-`generate_512.sh`, …); they carry only the compute-node environment plus one
+Ready-made launch scripts live in `sh/`: one per stage,
+`train_{16,32,64,128,256,512,1024}.sh` (`--syn-layers 6`, `--head-layers 7`,
+per-GPU batch 320/96/120/64/42/25/14, i.e. total 640/192/240/128/84/50/28 on
+2 GPUs; `train_16.sh` trains the stem, every higher stage takes `PATH_STEM`), plus
+`generate_{256,512,1024}.sh`. They carry only the compute-node environment plus one
 console-command call, with SLURM specifics supplied at submission time:
 
 ```bash
-DATA=./datasets/wc_co_256.zip GPUS=2 bash sh/train_256.sh
+DATA=./datasets/wc_co_16x16.zip GPUS=2 bash sh/train_16.sh
+PATH_STEM=./runs/00000-stylegan3-r-gpus2-batch640/san-snapshot-<best-FID kimg>-inference.pt bash sh/train_32.sh
 sbatch --account=<proj> --partition=rocky --gpus=2 sh/train_256.sh   # same script on a cluster
 ```
 
@@ -109,21 +115,28 @@ There is exactly one artifact kind: an **EMA-only inference snapshot**
 `san-snapshot-<kimg:06d>-inference.pt`, a `.pt` **state dict** (no pickled
 modules — loading never depends on the `timm` version that trained the
 discriminator). It is written **atomically** every snapshot tick **and always at
-the last tick**, so the newest snapshot *is* the final model, and the history is
-pruned to `--snapshot-keep-last` (default 3, `0` = keep all). Each snapshot carries
+the last tick**, so the newest snapshot *is* the final model. After each snapshot
+tick's combra eval the run keeps the `--snapshot-keep-last` newest snapshots
+(default 1, `0` = keep all) **plus** the single best by each of `combra_fid`,
+`combra_fd_dinov2` and `combra_cmmd` (lower is better, `nan` skipped, ties keep
+the earlier; best snapshots are never pruned, and one file may serve several
+roles), so a default run holds at most 4 files. Each snapshot tick logs
+`Best snapshots: combra_fid <v> <file>  combra_fd_dinov2 <v> <file>  combra_cmmd <v> <file>`.
+Each snapshot carries
 self-describing metadata `{n_classes, resolution, class_names, cur_nimg}`.
 
-There is **no resume, no `best_model`, no rolling `latest` checkpoint** — pick the
-best snapshot post-hoc from `stats.jsonl` (the combra metrics are mirrored there,
-not TensorBoard-only). Size `--kimg` (or split stages) so a run fits its job's time
+There is **no resume, no `best_model`, no rolling `latest` checkpoint** — the
+best snapshots are the retained ones above, and `stats.jsonl` holds every tick's
+combra metrics (not TensorBoard-only). Size `--kimg` (or split stages) so a run fits its job's time
 limit; an interrupted run cannot be continued.
 
 ```{warning}
 This is a **breaking change** from pre-0.2.0 san-v2: `.pkl` artifacts,
 `--resume`, `best_model.pkl`, `--save-inference-only`/`--save-weights-only`,
 `--fp32`/`--nobench`, the `--metrics` registry and the Hydra entry point are all
-gone. Precision is now `--precision {fp32,fp16,bf16}` with `--tf32`/`--bench`;
-`--mirror` is a stochastic loader-level flip (no longer dataset x-flip doubling).
+gone. Precision is now `--precision {fp32,fp16}` (bf16 is refused) with
+`--tf32`/`--bench`. Since v0.6.0 there is no horizontal-flip augmentation and no
+`--mirror` option.
 ```
 
 ### combra metrics during training

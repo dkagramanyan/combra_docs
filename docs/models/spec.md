@@ -91,15 +91,17 @@ console-script family:
   `True`, cuDNN autotune).
 - **Boolean flags are `--flag True/False`** (click `type=bool`) — no
   `--x/--no-x` pairs.
-- **`--mirror True/False`** (default `False`) means one thing everywhere: a
-  stochastic per-item horizontal flip in the **training** loader. Eval and
+- **No horizontal-flip augmentation.** No repo flips training data, and none
+  has a `--mirror` option (removed in v0.6.0 of all four repos). Eval and
   combra-reference loaders never flip, and datasets are never flip-doubled.
+  Flips inside a model's own regularizer (san-v2's DiffAugment / ADA,
+  StyleSwin-v2's bCR) are part of that loss, not data augmentation.
 - Shared optional flags — identical names *and semantics* in all four:
 
   | group | flags |
   |---|---|
   | run control | `--kimg --tick --snap --seed --desc -n/--dry-run --workers` (workers default 3) |
-  | data | `--cond --mirror` |
+  | data | `--cond` |
   | batch / precision | `--grad-accum --precision --tf32 --bench` |
   | checkpointing | `--snapshot-keep-last` |
   | combra eval | `--combra-metrics --num-fid-samples --combra-ref-count` |
@@ -152,12 +154,12 @@ console-script family:
 
 ### 3. Checkpoint contract
 
-Exactly one artifact kind — no resume, no best-model tracking, no separate
-final checkpoint:
+Exactly one artifact kind — no resume, no separate best-model or final
+checkpoint:
 
 | artifact | rule |
 |---|---|
-| `<model>-snapshot-<kimg:06d>-inference.pt` | EMA-only weights; written every snapshot tick **and always at the last tick**, so the newest snapshot *is* the final model; history pruned to `--snapshot-keep-last` (default 3, `0` = keep all). `<model>` is the literal repo name (`san`, `styleswin`, `diffit`, `edm2`). EDM2-v2 alone writes one file per PowerFunctionEMA std — `edm2-snapshot-<kimg:06d>-<std:.3f>-inference.pt` — and prunes by distinct kimg; that suffix is inherent to its per-family EMA (below), not tooling drift |
+| `<model>-snapshot-<kimg:06d>-inference.pt` | EMA-only weights; written every snapshot tick **and always at the last tick**, so the newest snapshot *is* the final model; retention keeps the `--snapshot-keep-last` newest (default 1, `0` = keep all) **plus** the single best by each of `combra_fid`, `combra_fd_dinov2`, `combra_cmmd` (below). `<model>` is the literal repo name (`san`, `styleswin`, `diffit`, `edm2`). EDM2-v2 alone writes one file per PowerFunctionEMA std — `edm2-snapshot-<kimg:06d>-<std:.3f>-inference.pt` — and counts all files of one kimg as one snapshot; that suffix is inherent to its per-family EMA (below), not tooling drift |
 
 - **Runs go start-to-finish.** A run's whole lifecycle is launch → `--kimg` →
   stop; recovering from an interruption means launching a fresh run.
@@ -176,18 +178,27 @@ final checkpoint:
   partial interval), so the newest snapshot is always the final model.
 - **Only EMA weights ever touch disk** — raw (non-EMA) model weights,
   discriminators and optimizer state are never saved.
-- **No `best_model.*`.** Pick the best checkpoint post-hoc from `stats.jsonl`
-  against the snapshot history (set `--snapshot-keep-last 0` on runs where
-  you want the full history to choose from). This depends on the §6 rule
-  that combra metrics are mirrored into `stats.jsonl` — today san-v2 and
-  StyleSwin-v2 write them to TensorBoard only, so post-hoc selection is
-  impossible for their existing runs.
+- **Best snapshots are kept, not copied — no `best_model.*`.** Retention
+  keeps the `--snapshot-keep-last N` newest snapshots plus the best one by each
+  of `combra_fid`, `combra_fd_dinov2` and `combra_cmmd`: lower is better, `nan`
+  or missing values are skipped, a tie keeps the earlier snapshot, and a best
+  snapshot is replaced only by a strictly better one, so it is never pruned.
+  One file may serve several roles, so at most `N + 3` remain (4 at the
+  default `N = 1`); `0` keeps all. Pruning runs after the tick's combra eval
+  has scored the new snapshot (same `cur_nimg`). Each snapshot tick logs
+  `Best snapshots: combra_fid <v> <file>  combra_fd_dinov2 <v> <file>  combra_cmmd <v> <file>`.
+  The full per-tick history stays in `stats.jsonl` (the §6 rule that combra
+  metrics are mirrored there — today san-v2 and StyleSwin-v2 write them to
+  TensorBoard only, so post-hoc selection is impossible for their existing
+  runs).
 - **EMA stays per-family** (like samplers): classic half-life EMA in the
   GANs, `--ema-rate` in DiffiT-v2, PowerFunctionEMA in EDM2-v2 — the
   algorithms are genuinely different and are documented, not unified.
 - **Progressive stages still work**: san-v2's `--path-stem` and DiffiT-v2's
   `--init-weights` are **weights-only warm starts** from a previous stage's
-  snapshot (§2) — initialization, not resume.
+  snapshot (§2) — initialization, not resume. The next stage's `PATH_STEM`
+  (san-v2) / `INIT_WEIGHTS` (DiffiT-v2) is the previous stage's best-FID
+  snapshot, the `combra_fid` file on its last `Best snapshots:` line.
 - **Format: `.pt` state dicts only** — a state dict stores only weight
   tensors keyed by parameter name, so loading rebuilds the model from current
   code instead of unpickling stored classes. No pickled-module saving.
@@ -339,8 +350,8 @@ What a dataset yields is part of the API, identical in all four repos:
   grayscale sources are converted **once, at dataset build time**
   (`<model>-prepare-data`); dataset classes and generation writers *assert*
   3 channels instead of silently converting at runtime.
-- Horizontal flip is the loader-level `--mirror` augmentation defined in §2 —
-  datasets are never flip-doubled.
+- No horizontal flip anywhere (§2) — datasets are never flip-doubled and
+  loaders never flip.
 
 ### Normalization contract
 
@@ -396,7 +407,7 @@ One eval pass per snapshot tick, identical in all four repos:
    its deterministic slice of the real training set — **raw dataset pixels
    as uint8, never flip-augmented and never VAE round-trips** (today EDM2-v2
    scores against encoder-decoded reals, which hides the VAE quality gap and
-   breaks cross-repo comparability, and StyleSwin-v2's `--mirror`
+   breaks cross-repo comparability, and StyleSwin-v2
    flip-doubles the reference) — InceptionV3 features
    (FID), CLIP embeddings (CMMD), DINOv2 features (FD-DINOv2) and pooled
    vertex angles — via combra's split APIs

@@ -12,7 +12,8 @@ generated samples with combra's sharded split-API metrics (numerically equivalen
 `stats.jsonl` — the same integration as {doc}`san_v2` and {doc}`diffit`.
 
 Conditioning reuses the san-v2 techniques: the generator embeds the one-hot label into the
-mapping network (2nd-moment normalised alongside `z`), and the discriminator adds a Miyato &
+mapping network (2nd-moment normalised alongside `z`; the class embedding trains at lr
+multiplier 1.0, as in StyleGAN2-ADA, not the mapping network's 0.01), and the discriminator adds a Miyato &
 Koyama projection term to StyleSwin's unchanged logistic + R1 loss. Enable it with
 `--cond True`; `n_classes` and `class_names` are read from the dataset's `dataset.json`
 (`n_classes = 0` keeps the unconditional path). The generator/discriminator update math is
@@ -81,9 +82,10 @@ styleswin-prepare-data convert --source /path/to/wc_co_source \
 
 `styleswin-train` is the primary entry point — the shared-convention `click` CLI
 (`--outdir/--data/--gpus/--batch-gpu/--cfg/--cond/--kimg/--tick/--snap`, the
-`--precision/--tf32/--bench` scheme, the single `--mirror` loader-level flip, `--grad-accum`,
+`--precision/--tf32/--bench` scheme, `--grad-accum`,
 `--combra-metrics/--num-fid-samples/--combra-ref-count/--snapshot-keep-last`) plus StyleSwin's own
-model flags. StyleSwin builds all layers at the target resolution at once, so **each resolution is
+model flags. There is no horizontal-flip augmentation (`--mirror` was removed; bCR's own flips
+are unrelated). StyleSwin builds all layers at the target resolution at once, so **each resolution is
 trained independently** (no stage-to-stage resume chain). Pick the resolution with a `--cfg`
 preset:
 
@@ -91,7 +93,7 @@ preset:
 styleswin-train --outdir=./runs/wc-cv \
         --cfg styleswin-256 \
         --data=./datasets/imagenet_9to4_1024x1024_256x256.zip \
-        --gpus=2 --cond True --combra-metrics True --snapshot-keep-last 3 \
+        --gpus=2 --cond True --combra-metrics True --snapshot-keep-last 1 \
         --kimg 25000 --snap 50
 ```
 
@@ -104,9 +106,15 @@ in a single `RESOLUTION_CONFIGS` dict in `train.py`, selected by `--cfg`:
 |---|---|---|---|
 | `styleswin-256`  | 256²  | 64 | 128 |
 | `styleswin-512`  | 512²  | 32 | 64  |
-| `styleswin-1024` | 1024² | 4  | 8   |
+| `styleswin-1024` | 1024² | 8  | 16  |
 
-Today the presets differ only in the memory-bound batch size. Any explicit CLI flag overrides the
+All three presets take the upstream StyleSwin FFHQ optimizer recipe (paper appendix A /
+table 7): G lr 5e-5 and D lr 2e-4 (upstream's TTUR ratio), R1 10 every 16 steps, spectral
+norm in D (`--d-sn`), and a linear decay of both learning rates to 0 from
+`--lr-decay-start × --kimg` to the end (`--lr-decay`; start 0.775 at 256, 0.7625 at 512,
+0.75 at 1024). bCR is on at 256 only, as upstream. Runs without `--cfg` keep the CLI
+defaults (G and D lr 2e-4, no decay, no D spectral norm). The lr decay only takes effect if
+the run reaches the decay start, so size `--kimg` accordingly. Any explicit CLI flag overrides the
 preset, and `--cfg` cross-checks its resolution against the `--data` zip. The total batch is
 `batch_gpu × gpus × grad_accum`, and the run directory is named
 `<id:05d>-<cfg>-gpus<G>-batch<B>[-desc]` (no dataset name spliced in). On the cluster:
@@ -119,13 +127,17 @@ bash sh/train_256.sh                                                 # same scri
 ### Checkpoints
 
 The run follows the **checkpoint contract**: exactly one artifact kind,
-`network-snapshot-<kimg:06d>-inference.pt`, holding **only `G_ema`** plus self-describing metadata
+`styleswin-snapshot-<kimg:06d>-inference.pt`, holding **only `G_ema`** plus self-describing metadata
 (`n_classes`, `resolution`, `class_names`, `cur_nimg`, and the `arch` hyperparameters needed to
 rebuild the generator). It is written **atomically** (temp file + `os.replace`) every snapshot
-tick **and always at the last tick**, so the newest snapshot *is* the final model; history is
-pruned to the most recent `--snapshot-keep-last` (default `3`; `0` = keep all). There is **no
-resume, no rolling `latest`, and no `best_model.pt`** — pick the best snapshot post-hoc from
-`stats.jsonl` (`Metrics/combra_fid`). Because runs are unrecoverable by design, size `--kimg`
+tick **and always at the last tick**, so the newest snapshot *is* the final model. After each
+snapshot tick's combra eval the run keeps the `--snapshot-keep-last` newest snapshots (default
+`1`; `0` = keep all) **plus** the single best by each of `combra_fid`, `combra_fd_dinov2` and
+`combra_cmmd` (lower is better, `nan` skipped, ties keep the earlier; best snapshots are never
+pruned, and one file may serve several roles), so a default run holds at most 4 files. Each
+snapshot tick logs
+`Best snapshots: combra_fid <v> <file>  combra_fd_dinov2 <v> <file>  combra_cmmd <v> <file>`.
+There is **no resume, no rolling `latest`, and no `best_model.pt`**. Because runs are unrecoverable by design, size `--kimg`
 (or split stages) to fit the job's time limit.
 
 ## Metrics
@@ -172,7 +184,7 @@ pipeline consumes (per-class `images` as uint8 NHWC + `seeds`, root `format`/`sc
 
 ```bash
 styleswin-gen-images \
-  --network=./runs/wc-cv/00000-styleswin-256-gpus2-batch128-cond/network-snapshot-025000-inference.pt \
+  --network=./runs/wc-cv/00000-styleswin-256-gpus2-batch128-cond/styleswin-snapshot-025000-inference.pt \
   --outdir=./generated/256x256 \
   --save-mode hdf5 \
   --classes Ultra_Co11,Ultra_Co25,Ultra_Co6_2 \

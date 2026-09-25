@@ -90,8 +90,15 @@ always ends in a usable model.
 
    Each snapshot tick (and the last tick) writes EMA-only **`.pt` state-dict**
    inference snapshots `edm2-snapshot-<kimg:06d>-<ema_std>-inference.pt` (one per EMA
-   std, e.g. `edm2-snapshot-000200-0.100-inference.pt`), pruned to the newest
-   `--snapshot-keep-last` (default 3). Every snapshot carries self-describing
+   std, e.g. `edm2-snapshot-000200-0.100-inference.pt`; all files of one kimg count
+   as one snapshot). After each snapshot tick's combra eval the run keeps the newest
+   `--snapshot-keep-last` snapshots (default 1, `0` = keep all) **plus** the best by
+   each of `combra_fid`, `combra_fd_dinov2` and `combra_cmmd` (lower is better, `nan`
+   skipped, ties keep the earlier; best snapshots are never pruned, and one snapshot
+   may serve several roles), so a default run holds at most 4 snapshots. Each
+   snapshot tick logs
+   `Best snapshots: combra_fid <v> <file>  combra_fd_dinov2 <v> <file>  combra_cmmd <v> <file>`.
+   Every snapshot carries self-describing
    `{n_classes, resolution, class_names, cur_nimg}` metadata, so loading rebuilds the
    model from current code. The newest snapshot *is* the final model — snapshots are
    the only checkpoint kind the run writes.
@@ -113,12 +120,21 @@ Watch it in TensorBoard with `tensorboard --logdir ./runs`. Add `-n` /
 `--num-fid-samples 0` to re-enable the combra eval (DPM-Solver++(2M) at 25 steps by
 default).
 
-### Precision, TF32 and mirror
+### Learning-rate schedule
+
+The schedule is the paper's (EDM2 Eq. 67, Table 6): α(t) = α_ref · min(t / t_rampup, 1)
+/ √max(t / t_ref, 1), with t in iterations and t_ref = 70k iterations. The paper tunes
+the 10 Mimg rampup at batch 2048; here it is 10 Mimg × batch / 2048, so it stays
+~4.9k iterations and the peak reaches α_ref at any batch (`--rampup` in Mimg
+overrides it; `--rampup 10` restores upstream's count in images). α_ref is the
+paper's, not rescaled with the batch. The paper has no 1024 px models, so the
+`edm2-img1024-*` presets take the img512 values for the same model size.
+
+### Precision and TF32
 
 `--precision {fp32,fp16,bf16}` selects the training precision (default `fp16`);
 `--tf32 True/False` (default `True`) controls the cuDNN / matmul TF32 paths.
-`--mirror True/False` (default `False`) is a stochastic per-item horizontal flip in
-the **training** loader only — the eval and combra-reference loaders never flip.
+There is no horizontal-flip augmentation (`--mirror` was removed in v0.6.0).
 
 ### Logging
 

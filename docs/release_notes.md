@@ -11,6 +11,21 @@ below track what changes for a *user* of the library.
 
 ### 0.18.0
 
+**Documentation**
+
+- The model pages and {doc}`models/spec` follow the four model repos' v0.6.0.
+  Horizontal flip is gone everywhere: no repo has a `--mirror` option any more.
+  `--snapshot-keep-last N` (default now 1 in all four) keeps the N newest
+  snapshots plus the best by each of `combra_fid`, `combra_fd_dinov2` and
+  `combra_cmmd`, and each snapshot tick logs a `Best snapshots:` line; the next
+  progressive stage starts from the best-FID snapshot. The recipes are updated:
+  san-v2 trains progressively from a 16² stem with `--syn-layers 6`; EDM2-v2
+  counts the LR rampup in iterations and its img1024 presets take the img512
+  values; DiffiT-v2 trains at batch 256 at 256², evaluates in the training
+  precision and generates with DDPM 250; StyleSwin-v2's presets use the upstream
+  TTUR learning rates, linear LR decay, bCR at 256 and spectral norm in D. All
+  four pin combra v0.18.0.
+
 **Changed**
 
 - FD-DINOv2 now matches the dgm-eval reference implementation (Stein et al.,
@@ -573,10 +588,10 @@ convention all four implement.
 
 | repo | current | changelog |
 | --- | --- | --- |
-| san-v2 | 0.4.0 | `CHANGELOG.md` in [san-v2](https://github.com/dkagramanyan/san-v2) |
-| StyleSwin-v2 | 0.4.0 | `CHANGELOG.md` in [StyleSwin-v2](https://github.com/dkagramanyan/StyleSwin-v2) |
-| DiffiT-v2 | 0.4.0 | `CHANGELOG.md` in [DiffiT-v2](https://github.com/dkagramanyan/DiffiT-v2) |
-| EDM2-v2 | 0.4.0 | `CHANGELOG.md` in [edm2-v2](https://github.com/dkagramanyan/edm2-v2) |
+| san-v2 | 0.6.0 | `CHANGELOG.md` in [san-v2](https://github.com/dkagramanyan/san-v2) |
+| StyleSwin-v2 | 0.6.0 | `CHANGELOG.md` in [StyleSwin-v2](https://github.com/dkagramanyan/StyleSwin-v2) |
+| DiffiT-v2 | 0.6.0 | `CHANGELOG.md` in [DiffiT-v2](https://github.com/dkagramanyan/DiffiT-v2) |
+| EDM2-v2 | 0.6.0 | `CHANGELOG.md` in [edm2-v2](https://github.com/dkagramanyan/edm2-v2) |
 
 The current cycle in all four: the conda environments moved to Python 3.12 (they were
 still 3.11, so `pip install -e .` could not succeed and combra was absent everywhere);
