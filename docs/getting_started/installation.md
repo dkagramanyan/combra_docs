@@ -33,19 +33,16 @@ Python 3.12 or newer is required.
 
 | Extra     | Install                    | Adds                                                          |
 | --------- | -------------------------- | ------------------------------------------------------------- |
-| `graph`   | `pip install ".[graph]"`   | `networkx` and `mpire`, needed only by {py:mod}`combra.graph`   |
-| `tests`   | `pip install ".[tests]"`   | the `graph` extra + pytest + pytest-cov                       |
-| `docs`    | `pip install ".[docs]"`    | the `graph` extra + the Sphinx docs toolchain                 |
+| `tests`   | `pip install ".[tests]"`   | pytest + pytest-cov                                           |
+| `docs`    | `pip install ".[docs]"`    | the Sphinx docs toolchain                                     |
 | `dev`     | `pip install -e ".[dev]"`  | the `tests` extra + ruff + mypy                               |
 | `metrics` | `pip install ".[metrics]"` | nothing — an empty alias kept so existing installs still work |
+| `graph`   | `pip install ".[graph]"`   | nothing — an empty alias kept so existing installs still work |
 
-Without the `graph` extra every
-module except {py:mod}`combra.graph` works; calling into that one fails with a
-`ModuleNotFoundError` for `networkx`.
-
-```{versionchanged} 0.16.0
-`networkx` and `mpire` moved from the core dependencies to the `graph` extra,
-and the `bresenham` and `radio-beam` dependencies were dropped.
+```{versionchanged} 0.17.0
+`networkx` is a core dependency again (scikit-image requires it anyway), and
+`mpire`, `matplotlib` and `scikit-learn` are no longer dependencies; the `graph`
+extra is an empty alias. In 0.16.0 `bresenham` and `radio-beam` were dropped.
 ```
 
 The image-feature metrics score in-memory image batches and use CUDA when

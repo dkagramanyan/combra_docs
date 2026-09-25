@@ -25,8 +25,8 @@ import combra  # noqa: E402
 project = "combra"
 copyright = "2026, D.G.Kagramanyan"
 author = "D.G.Kagramanyan"
-release = "0.16.0"
-version = "0.16"
+release = "0.17.0"
+version = "0.17"
 
 # -- General configuration ---------------------------------------------------
 
@@ -81,9 +81,6 @@ numpydoc_xref_param_type = False
 # errors, so it cannot be committed.
 nitpicky = True
 nitpick_ignore = [
-    # Internal base class: it is not part of the public API and has no page, but
-    # ``:show-inheritance:`` names it in the "Bases:" line of its subclasses.
-    ("py:class", "combra.data.pobedit_dataset.BaseImageDataset"),
 ]
 
 # The reference lists only the high-level entry points; every other export is

@@ -83,7 +83,7 @@ jobs:
           # granted" even when all the clone needs is read, so say what it means.
           # `graph` pulls networkx/mpire, which the crack-graph example and the
           # combra.graph reference import (0.16.0 moved them to that extra).
-          if ! pip install "combra[metrics,graph] @ git+https://x-access-token:${COMBRA_TOKEN}@github.com/dkagramanyan/combra.git"; then
+          if ! pip install "combra[metrics] @ git+https://x-access-token:${COMBRA_TOKEN}@github.com/dkagramanyan/combra.git"; then
             echo "::error::Installing combra failed. If the clone reported 403" \
                  "'Write access to repository not granted', COMBRA_TOKEN is a valid" \
                  "token that cannot read dkagramanyan/combra. For a fine-grained" \

@@ -81,8 +81,7 @@ reflex vertices it sees. It is how P6 was chosen over P0
 {py:mod}`combra.graph` is a separate analysis: it converts a
 binarized crack image into a directed graph whose edges are classified by the
 phase they cross (Co, WC-Co, WC, WC-WC), then searches for minimum-energy
-propagation paths. It needs the `graph` extra
-({doc}`../getting_started/installation`).
+propagation paths.
 
 {py:class}`combra.data.PolyamideFractureDataset` applies the fractal-dimension
 and contour-size measures to a different material, frames of a polyamide

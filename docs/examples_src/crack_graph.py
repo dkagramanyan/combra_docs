@@ -95,12 +95,9 @@ print(paths["path_len_pixels"].tolist())
 # carbide.
 #
 # :func:`~combra.graph.plot_paths` draws the paths over the image, colored by
-# length. It reads the length from a column named ``path_len_pixel``, so the
-# table is renamed first:
+# length, read from the table's ``path_len_pixels`` column:
 
-fig = graph.plot_paths(
-    g, paths.rename(columns={"path_len_pixels": "path_len_pixel"}), preview
-)
+fig = graph.plot_paths(g, paths, preview)
 pio.show(fig)
 
 # %%

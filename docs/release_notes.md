@@ -44,6 +44,34 @@ below track what changes for a *user* of the library.
   (the constructor's fractal self-check) before the worker pool forks, and
   the workers deadlock in the PyTorch box counting. Not fixed yet.
 
+### 0.17.0
+
+Fewer dependencies and less code; every angle, fit, parquet, metric value and
+figure is unchanged.
+
+**Removed**
+
+- The `scikit-learn`, `matplotlib` and `mpire` dependencies. `networkx` is a core
+  dependency again and the `graph` extra is an empty alias.
+
+**Changed**
+
+- {py:func}`~combra.graph.plot_paths` reads the `path_len_pixels` column that
+  {py:func}`~combra.graph.find_shortest_energy_paths` writes; drop any rename to
+  `path_len_pixel`.
+- Importing the metrics plots no longer loads tensorboard, and the fractal
+  module no longer loads torch until it is used.
+
+**Fixed**
+
+- {py:meth}`~combra.data.MicrostructureDataset.generate_angles` and
+  {py:meth}`~combra.data.MicrostructureDataset.generate_beams` write the
+  per-image series in image order, so repeated runs give identical parquets.
+- {py:func}`~combra.graph.plot_graph` draws edge types outside 0–3 in gray
+  instead of raising.
+- {py:func}`~combra.metrics.compare_folders` accepts a set of steps with
+  `image_metrics=True`.
+
 ### 0.16.0
 
 A clean break: defaults and names change without aliases.
