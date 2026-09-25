@@ -13,8 +13,8 @@ StyleSwin-v2 (v0.4.0), DiffiT-v2 (v0.4.0) and EDM2-v2 (v0.4.0).
 | [EDM2-v2](https://github.com/dkagramanyan/edm2-v2) | latent diffusion — EDM σ-space U-Net | NVlabs EDM2 | {doc}`edm2` |
 
 ```{note}
-**The "today …" asides in sections 6 and 7 are history.** They name specific
-defects in the present tense — EDM2-v2 taking the first N reference images,
+**The "today …" asides in sections 3, 6 and 7 are history.** They name specific
+defects in the present tense — EDM2-v2 skipping the final snapshot and taking the first N reference images,
 EDM2-v2 scoring against VAE round-tripped reals, StyleSwin-v2 flip-doubling its
 reference, DiffiT-v2 interleaving text records into `stats.jsonl`, san-v2 and
 StyleSwin-v2 writing metrics to TensorBoard only. All of them have since been
