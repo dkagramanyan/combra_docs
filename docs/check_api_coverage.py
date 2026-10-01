@@ -42,7 +42,6 @@ SUBMODULES = [
     "graph",
     "image",
     "io",
-    "legacy",
     "metrics",
     "metrics.distributed",
     "stats",

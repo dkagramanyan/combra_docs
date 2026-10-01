@@ -22,6 +22,54 @@ below track what changes for a *user* of the library.
   hub cache, where open_clip reads them, and edm2 no longer overrides `HF_HOME` when
   it loads the VAE, which had hidden that cache from an offline CMMD.
 
+### 0.21.0
+
+**Changed**
+
+- **The angle method of {py:mod}`combra.angles` is P0 again (breaking; angle
+  results of 0.15.0 - 0.20.2 are P6 and not comparable with new ones).**
+  {py:func}`~combra.angles.vertex_angles` reads the map of
+  {py:func}`~combra.angles.preprocess_image`, simplifies each contour with
+  Douglas–Peucker at `tol=3`, prunes the segments shorter than
+  `min_segment_len=10` and measures the angle between the chords at every
+  vertex. These are the functions that were in `combra.legacy`, unchanged;
+  `extract_polygons` and `output_directory` (folders named `_msl{msl}`) moved
+  with them. See {doc}`user_guide/angles`.
+- **P6 is {py:mod}`combra.experimental`.**
+  {py:func}`~combra.experimental.vertex_angles`,
+  {py:func}`~combra.experimental.settings_for_scale`, `pool_mask`,
+  `pool_regions`, `extract_polygons`, `output_directory` and `Region` moved
+  there from `combra.angles`, unchanged, with the `scale` argument and the
+  `_tol` / `_scale` folder names. On the bundled images both methods return
+  the arrays of 0.20.2 bit for bit under their new names. See
+  {doc}`user_guide/experimental`.
+- {py:meth}`~combra.data.MicrostructureDataset.generate_angles`,
+  {py:func}`~combra.data.sweep_angles` and the image-batch angle metrics
+  (`images_to_pooled_angles`, `images_to_angle_density`, and through them
+  {py:func}`~combra.metrics.compute_all_metrics` and
+  {py:func}`~combra.metrics.distributed.distributed_metrics`) extract with P0: `tol` /
+  `angles_tol` defaults to 3, `min_segment_len` (default 10) is back and `scale`
+  is gone. `run_meta.extraction_params` is `(method, angles_tol,
+  min_segment_len, keep_contours)` with `method = 'p0'`; old parquets still
+  load. The angles image cache holds the P0 map again (cache version 5, rebuilt
+  once).
+- `resolve_overlay_rows`, {py:func}`~combra.angles.plot_overlay_grid` and
+  `combra.metrics.find_kimg_parquets` take `msl` in place of `tol` / `scale`
+  and read the `_msl` folders; a manifest entry no longer carries a `scale`.
+
+**Removed**
+
+- **P7**, the facet method that was `combra.experimental`, with its
+  `gradient_snap` and `facets`.
+- **`combra.legacy`**: its functions are {py:mod}`combra.angles`' now.
+
+**Documentation**
+
+- {doc}`user_guide/angles` describes P0 and {doc}`user_guide/experimental`
+  describes P6; the P0 and P7 pages are gone. The worked examples follow:
+  {doc}`examples/angles` starts from one image, {doc}`examples/experimental`
+  runs P6 and compares it with P0.
+
 ### 0.20.2
 
 **Fixed**
@@ -45,16 +93,16 @@ below track what changes for a *user* of the library.
 
 **Added**
 
-- `scale` in {py:func}`combra.angles.vertex_angles` (and `pool_regions`,
+- `scale` in `combra.angles.vertex_angles` (and `pool_regions`,
   `MicrostructureDataset.generate_angles`, `sweep_angles` through its keyword
   arguments): the image pixels per native micrograph pixel. The Douglas–Peucker
   tolerance, the median filter and the smallest pool kept then follow
-  {py:func}`combra.angles.settings_for_scale`, which reproduces the settings the
+  `combra.angles.settings_for_scale`, which reproduces the settings the
   P6 benchmark validated at 256, 512 and 1536 px of the 1536 px field, so angle
   densities of different resolutions are measured with the same physical
   settings. Without `scale` nothing changes. See
-  {doc}`user_guide/angles`.
-- {py:func}`combra.angles.output_directory` names folders of scaled extractions
+  {doc}`user_guide/experimental`.
+- `combra.angles.output_directory` names folders of scaled extractions
   `..._scale{scale:.4g}`; `resolve_overlay_rows` / `plot_overlay_grid` accept a
   fifth manifest element `scale` per source, and
   `combra.metrics.find_kimg_parquets` a `scale`. The parquet's
@@ -165,10 +213,10 @@ below track what changes for a *user* of the library.
   reference, on the {py:mod}`combra.data` page, with a worked example,
   {doc}`examples/polyamide`.
 - The synthetic benchmark, P0 and P7 each have a user-guide page,
-  {doc}`user_guide/synth`, {doc}`user_guide/legacy` and
-  {doc}`user_guide/experimental`, and a worked example,
-  {doc}`examples/synth`, {doc}`examples/legacy` and
-  {doc}`examples/experimental`.
+  {doc}`user_guide/synth`, `user_guide/legacy` and
+  `user_guide/experimental`, and a worked example,
+  {doc}`examples/synth`, `examples/legacy` and
+  `examples/experimental`.
 - The worked examples are a gallery ({doc}`examples/index`): each is a Python
   script the build runs, with its figures shown interactively on the page and
   downloadable as `.py` or `.ipynb`. Reference pages list the examples that use
@@ -284,9 +332,9 @@ A clean break: defaults and names change without aliases.
 
 **Changed**
 
-- The reference entry of {py:func}`~combra.angles.vertex_angles` states the
+- The reference entry of `angles.vertex_angles` states the
   five P6 stages with the input, output, parameters and formula of each, as
-  {doc}`user_guide/angles` does. Documentation only; nothing needs
+  {doc}`user_guide/experimental` does. Documentation only; nothing needs
   regenerating.
 
 ### 0.15.1
@@ -310,9 +358,9 @@ A clean break: defaults and names change without aliases.
 **Changed**
 
 - **The angle method is P6 (breaking; parquets extracted before 0.15 are
-  P0 and not comparable with new ones).** {py:func}`~combra.angles.vertex_angles`
+  P0 and not comparable with new ones).** `angles.vertex_angles`
   takes the grey image, detects the cobalt pools itself
-  ({py:func}`~combra.angles.pool_mask`), locates their boundary to sub-pixel
+  (`angles.pool_mask`), locates their boundary to sub-pixel
   precision, chooses the vertices with Douglas–Peucker at `tol=1.75` and reads
   each angle from lines fitted to the boundary on either side of it. It returns
   the angles and one sub-pixel polygon per pool. `min_segment_len` is gone —
@@ -325,9 +373,9 @@ A clean break: defaults and names change without aliases.
   corners with an RMS edge error of 0.67 px where P0 recovered 12% at 1.26 px,
   and finds every pool where P0's Otsu mask missed 7%; the convex mode sits
   about 15° higher than under P0, so every reference set is re-extracted. See
-  {doc}`user_guide/angles`.
+  {doc}`user_guide/experimental`.
 - The per-source folder suffix is `_tol{tol:g}` instead of `_msl{msl}`:
-  {py:func}`~combra.angles.output_directory`,
+  `angles.output_directory`,
   {py:func}`~combra.angles.resolve_overlay_rows`,
   {py:func}`~combra.angles.plot_overlay_grid` and
   {py:func}`~combra.metrics.find_kimg_parquets` take the tolerance. The
@@ -349,13 +397,13 @@ A clean break: defaults and names change without aliases.
   draws them for several methods at once.
 - {py:func}`~combra.angles.angle_summary` — the bimodal fit of an angle set
   with its residual and the model-free reflex, trough and needle shares;
-  {py:func}`~combra.angles.pool_regions` and
-  {py:func}`~combra.angles.extract_polygons` expose the mask and the polygons.
+  `angles.pool_regions` and
+  `angles.extract_polygons` expose the mask and the polygons.
 - {py:mod}`combra.experimental` — P7, the facet-based
   candidate method: gradient-located edge points and split-and-merge facets.
   Best of the three against the truth (54% of corners), slower and further
   from the two-Gaussian model on real images.
-- {py:mod}`combra.legacy` — P0, moved verbatim: `preprocess_image`,
+- `combra.legacy` — P0, moved verbatim: `preprocess_image`,
   `vertex_angles(prep, border_eps, tol, min_segment_len)` and the `_msl`
   folder naming, for reading and reproducing pre-0.15 results.
 

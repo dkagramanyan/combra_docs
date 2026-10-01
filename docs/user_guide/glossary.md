@@ -14,10 +14,9 @@ angle density
   their angle densities, not their pixels.
 
 vertex angle
-  The interior angle at one vertex of a cobalt pool's polygon, in degrees.
-  {py:func}`combra.angles.vertex_angles` fits a line to the boundary on either
-  side of each vertex and reads the angle between the two lines, reflex above
-  180°. WC-Co angle densities are characteristically **bimodal** —
+  The interior angle at one vertex of a simplified grain contour, in degrees.
+  {py:func}`combra.angles.vertex_angles` reads the angle between the two
+  segments that meet at the vertex, reflex above 180°. WC-Co angle densities are characteristically **bimodal** —
   hence the bimodal-Gaussian fit everywhere in `combra.fitting`.
 
 step
@@ -95,7 +94,7 @@ pool
   A region of the cobalt binder between carbide grains, the dark phase of the
   micrograph. Its junctions with the surrounding grains are its convex
   vertices, the grain corners pressed into it its reflex ones.
-  {py:func}`combra.angles.pool_mask` detects the pools;
+  {py:func}`combra.experimental.pool_mask` detects the pools;
   {py:func}`combra.synth.pool_polygon` generates one with an exact truth.
 
 labelled set

@@ -5,7 +5,7 @@
 .. currentmodule:: combra.angles
 ```
 
-The vertex angles of the cobalt pools of an SEM image, the bimodal fit of the
+The vertex angles of the grain contours of an SEM image, the bimodal fit of the
 density they form, and the plots of stored densities. What the angles measure
 and how the fit is defined is in {doc}`/user_guide/angles`.
 
@@ -20,8 +20,8 @@ from combra import angles
    :toctree: generated/
    :nosignatures:
 
+   preprocess_image
    vertex_angles
-   settings_for_scale
    angle_summary
 ```
 
@@ -36,21 +36,14 @@ from combra import angles
    plot_overlay_grid
 ```
 
-## Legacy and experimental methods
+## Experimental method
 
-Both take the same image and return the same `(angles, polygons)` pair as
-{py:func}`vertex_angles`.
-
-Legacy
-: `combra.legacy` is the method used before 0.15, kept to reproduce results
-  extracted with it.
-
-Experimental
-: `combra.experimental` is a candidate method; its API and output may change
-  without a deprecation period.
+`combra.experimental` is a candidate method, P6: it takes the image itself and
+returns the angles with one sub-pixel polygon per cobalt pool. Its API and
+output may change without a deprecation period; see
+{doc}`/user_guide/experimental`.
 
 ```{eval-rst}
-.. module:: combra.legacy
 .. module:: combra.experimental
 ```
 
@@ -61,6 +54,6 @@ Experimental
    :toctree: generated/
    :nosignatures:
 
-   legacy.vertex_angles
    experimental.vertex_angles
+   experimental.settings_for_scale
 ```

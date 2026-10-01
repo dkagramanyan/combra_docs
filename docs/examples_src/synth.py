@@ -3,7 +3,7 @@ Benchmarking an angle method
 ============================
 
 Generate a canvas of pools with an exact truth, render it, score one method on
-it, then compare P0, P6 and P7 over the same canvas.
+it, then compare P0 and P6 over the same canvas.
 
 For what the metrics mean, see :doc:`/user_guide/synth`; for the entry points,
 see :func:`combra.synth.make_canvas` and :func:`combra.synth.benchmark`.
@@ -41,11 +41,11 @@ print(round(float((truth > 180).mean()), 3))
 # ------------------------------
 #
 # A method is any function that returns ``(mask, polygons)`` for an image.
-# :func:`combra.angles.extract_polygons` is P6 in that form:
+# :func:`combra.experimental.extract_polygons` is P6 in that form:
 
-from combra import angles
+from combra import experimental
 
-score = synth.score_canvas(*angles.extract_polygons(img), cv)
+score = synth.score_canvas(*experimental.extract_polygons(img), cv)
 summary, by_bin = synth.summarize([score])
 print(f"found {summary['found']:.3f}, IoU {summary['iou_truth']:.3f}")
 print(f"RMS edge error {summary['rms']:.2f} px")
@@ -59,12 +59,11 @@ print(list(by_bin)[:3])
 # ``seeds=[0]`` scores the single canvas above; the reference numbers use
 # ``range(20)``.
 
-from combra import experimental, legacy
+from combra import angles
 
 methods = {
-    "P0": legacy.extract_polygons,
-    "P6": angles.extract_polygons,
-    "P7": experimental.extract_polygons,
+    "P0": angles.extract_polygons,
+    "P6": experimental.extract_polygons,
 }
 results = {name: synth.benchmark(m, seeds=[0]) for name, m in methods.items()}
 recovery = {name: r.summary["corner_recovery"] for name, r in results.items()}
@@ -81,7 +80,7 @@ pio.show(fig)
 # To score a variant of a method, wrap it so it keeps the same signature. Here
 # P6 runs at a coarser simplification tolerance, and recovers fewer corners:
 
-coarse = synth.benchmark(lambda im: angles.extract_polygons(im, tol=3.0), seeds=[0])
+coarse = synth.benchmark(lambda im: experimental.extract_polygons(im, tol=3.0), seeds=[0])
 print(round(coarse.summary["corner_recovery"], 3), "<", round(recovery["P6"], 3))
 
 # %%

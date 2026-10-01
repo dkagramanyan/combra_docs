@@ -4,9 +4,9 @@ A real micrograph cannot tell you how accurate an angle method is: nobody knows
 where the true corners of its pools are. {py:mod}`combra.synth` makes images
 where that is known. It draws cobalt {term}`pools <pool>` as polygons, renders
 them like an SEM image, runs a method on the rendering and scores the method's
-polygons against the polygons that were drawn. This is how P6
-({py:func}`combra.angles.vertex_angles`) was chosen over P0
-({doc}`legacy`), and how P7 ({doc}`experimental`) is measured.
+polygons against the polygons that were drawn. This is how P0
+({py:func}`combra.angles.vertex_angles`) and P6 ({doc}`experimental`) are
+measured.
 
 For a worked run, see {doc}`/examples/synth`.
 
@@ -59,8 +59,7 @@ to rerun either to use the benchmark.
 
 A method is any function `method(image) -> (mask, polygons)`: a boolean
 detection mask and one `(N, 2)` polygon in `(x, y)` pixel coordinates per pool.
-{py:func}`combra.angles.extract_polygons`,
-{py:func}`combra.legacy.extract_polygons` and
+{py:func}`combra.angles.extract_polygons` and
 {py:func}`combra.experimental.extract_polygons` have this form.
 
 {py:func}`~combra.synth.score_canvas` matches every polygon to the true pool it
@@ -81,7 +80,7 @@ covered by the mask, and `false_polygons`, polygons that overlap no true pool.
 {py:func}`~combra.synth.benchmark` runs all of this over a set of canvases.
 Every canvas is rendered with the seed `seed + 300`, so every method sees the
 same images. The default, `seeds=range(20)`, holds about 1960 true pools and
-gives the reference numbers quoted in {doc}`angles`; it takes a few minutes for
+gives the reference numbers quoted in {doc}`experimental`; it takes a few minutes for
 P6. {py:func}`~combra.synth.plot_benchmark` draws the four metrics by pool size
 for several methods at once.
 

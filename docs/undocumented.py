@@ -28,9 +28,6 @@ UNDOCUMENTED = frozenset({
     "combra.angles.extract_polygons",
     "combra.angles.output_directory",
     "combra.angles.plot_density_grid",
-    "combra.angles.pool_mask",
-    "combra.angles.pool_regions",
-    "combra.angles.Region",
     "combra.angles.resolve_overlay_rows",
     # combra.contours
     "combra.contours.contour_to_binary_mask",
@@ -52,9 +49,10 @@ UNDOCUMENTED = frozenset({
     "combra.exceptions.UnknownFormatWarning",
     # combra.experimental
     "combra.experimental.extract_polygons",
-    "combra.experimental.facets",
-    "combra.experimental.gradient_snap",
+    "combra.experimental.output_directory",
+    "combra.experimental.pool_mask",
     "combra.experimental.pool_regions",
+    "combra.experimental.Region",
     # combra.fitting
     "combra.fitting.BimodalGaussianFit",
     "combra.fitting.DistributionFit",
@@ -101,10 +99,6 @@ UNDOCUMENTED = frozenset({
     "combra.io.flatten_hparams",
     "combra.io.progress_fraction",
     "combra.io.read_tb_scalars",
-    # combra.legacy
-    "combra.legacy.extract_polygons",
-    "combra.legacy.output_directory",
-    "combra.legacy.preprocess_image",
     # combra.metrics
     "combra.metrics.all_metrics_by_sample_size",
     "combra.metrics.angle_density_metrics_from_pooled",

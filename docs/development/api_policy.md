@@ -13,16 +13,12 @@ containers and constants — and those can change or disappear without notice,
 even though their names carry no leading underscore. Anything with a leading
 underscore is private.
 
-Each module carries one of three stability labels:
+Each module carries one of two stability labels:
 
 Stable
 : Every module except `combra.experimental`. A breaking change goes through the
   deprecation cycle below where that is possible, and is always listed in the
   {doc}`/release_notes`.
-
-Legacy
-: `combra.legacy`, the angle method used before 0.15, kept to reproduce results
-  extracted with it. It is stable in the same sense.
 
 Experimental
 : `combra.experimental`, a candidate angle method; its API and output may

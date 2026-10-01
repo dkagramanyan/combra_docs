@@ -8,43 +8,37 @@ every formula the implementation actually uses.
 
 ## 1. From vertex to angle
 
-Let a simplified contour be the closed polygon $V_1, \dots, V_M$, cut from a
-sub-pixel boundary curve $C$ (stages 2–3 of {doc}`angles`). Edge $k$ runs from
-$V_k$ to $V_{k+1}$ and owns the arc of $C$ between them. Its points, less those
-within $\varepsilon$ (`fit_exclusion`) of arclength from either vertex, have
-mean $\mathbf{m}_k$ and covariance $\Sigma_k$; the total-least-squares line
-through them is $\mathbf{m}_k + s\,\mathbf{d}_k$, with $\mathbf{d}_k$ the unit
-leading eigenvector of $\Sigma_k$, oriented so that
-$\langle \mathbf{d}_k, V_{k+1} - V_k \rangle > 0$. At vertex $V_k$, between
-edges $k-1$ and $k$, write the two directions leaving the vertex
+Let a simplified contour be the closed polygon $V_1, \dots, V_M$, the vertices
+left by the simplification and the pruning of {doc}`angles`. At vertex $V_k$
+write the two chords leaving the vertex
 
-$$\mathbf{u}_1 = -\mathbf{d}_{k-1}, \qquad \mathbf{u}_2 = \mathbf{d}_k .$$
+$$\mathbf{v}_1 = V_{k-1} - V_k, \qquad \mathbf{v}_2 = V_{k+1} - V_k .$$
 
 {py:func}`combra.angles.vertex_angles` reports
 
 $$
 \alpha_k =
 \begin{cases}
-\theta_k, & \det(\mathbf{u}_1, \mathbf{u}_2) > 0 \quad \text{(convex)} \\[4pt]
-360^\circ - \theta_k, & \det(\mathbf{u}_1, \mathbf{u}_2) \le 0 \quad \text{(reflex)}
+\theta_k, & \det(\mathbf{v}_1, \mathbf{v}_2) < 0 \quad \text{(convex)} \\[4pt]
+360^\circ - \theta_k, & \det(\mathbf{v}_1, \mathbf{v}_2) \ge 0 \quad \text{(reflex)}
 \end{cases}
 \qquad
-\theta_k = \arccos \langle \mathbf{u}_1, \mathbf{u}_2 \rangle
+\theta_k = \arccos
+\frac{\langle \mathbf{v}_1, \mathbf{v}_2 \rangle}{\|\mathbf{v}_1\|\,\|\mathbf{v}_2\|}
 \in [0^\circ, 180^\circ]
 $$
 
-with $\det(\mathbf{u}_1, \mathbf{u}_2) = u_1^x u_2^y - u_1^y u_2^x$, the signed
-area of the pair, in image coordinates on a contour oriented with the cobalt on
-a fixed side (holes are reversed to keep it so). So
+with $\det(\mathbf{v}_1, \mathbf{v}_2) = v_1^x v_2^y - v_1^y v_2^x$, the signed
+area of the pair, for the orientation the contours are traced in. So
 $\alpha_k \in [0^\circ, 360^\circ)$, convex vertices occupy the lower half and
-reflex vertices the upper half. The angle depends on which two edges meet at
-the vertex, not on where along $C$ the vertex was placed.
+reflex vertices the upper half.
 
-The previous method, {py:func}`combra.legacy.vertex_angles`, used the chords
-$\mathbf{v}_1 = V_{k-1} - V_k$, $\mathbf{v}_2 = V_{k+1} - V_k$ in place of
-$\mathbf{u}_1, \mathbf{u}_2$, with the convex test
-$\det(\mathbf{v}_1, \mathbf{v}_2) < 0$ for the orientation its contours are
-traced in.
+The experimental method, {py:func}`combra.experimental.vertex_angles`, uses in
+place of the chords the directions of two lines fitted to the boundary on
+either side of the vertex, $\mathbf{u}_1 = -\mathbf{d}_{k-1}$ and
+$\mathbf{u}_2 = \mathbf{d}_k$, with the convex test
+$\det(\mathbf{u}_1, \mathbf{u}_2) > 0$ for the orientation its contours are
+traced in; see {doc}`experimental`.
 
 :::{important}
 **The angle domain is an interval, not a circle.** $\alpha = 1^\circ$ is a
@@ -62,9 +56,8 @@ shape.
 after Douglas–Peucker simplification at tolerance `tol` (`angles_tol` in
 {py:meth}`~combra.data.MicrostructureDataset.generate_angles`), so the angle
 density is a property of the contour *at that scale*, not of the grain alone.
-With the previous method ({py:func}`combra.legacy.vertex_angles`) on the
-1024 px reference set, raising `tol` from 2 to 5 px at `min_segment_len = 5`
-moved the fitted convex mode from $117$–$119^\circ$ to $94$–$97^\circ$ and the
+On the 1024 px reference set, raising `tol` from 2 to 5 px at
+`min_segment_len = 5` moved the fitted convex mode from $117$–$119^\circ$ to $94$–$97^\circ$ and the
 reflex mode up by $15$–$17^\circ$ across the three classes, while the model-free
 reflex share $\sum_{x_k > 180} y_k$ moved by less than $0.04$. Report the
 tolerance (and the method) with every fitted mode, and compare fits only at

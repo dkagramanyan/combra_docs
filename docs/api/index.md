@@ -15,10 +15,6 @@ Stable
 : Every module below except `combra.experimental`. A breaking change is listed
   in the {doc}`/release_notes`.
 
-Legacy
-: `combra.legacy`, the angle method used before 0.15, kept to reproduce results
-  extracted with it.
-
 Experimental
 : `combra.experimental`, a candidate angle method; its API and output may
   change without a deprecation period.
@@ -32,7 +28,7 @@ numbers are read, and how a function is deprecated and removed.
 | --- | --- |
 | {doc}`combra.data <data>` | Datasets that write angle and beam parquets; sample images |
 | {doc}`combra.io <io>` | Parquet, HDF5 and TensorBoard input and output |
-| {doc}`combra.angles <angles>` | Vertex angles, their density fit and plots; legacy and experimental methods |
+| {doc}`combra.angles <angles>` | Vertex angles, their density fit and plots; the experimental method |
 | {doc}`combra.ellipse <ellipse>` | Minimum-volume enclosing ellipses and beam-length plots |
 | {doc}`combra.image <image>` | Measures computed on an image |
 | {doc}`combra.metrics <metrics>` | Real-vs-generated metrics, convergence, training-loop evaluation |

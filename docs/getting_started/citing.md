@@ -28,24 +28,18 @@ combra implements published algorithms, and a paper that relies on one of them
 should cite it as well. These are the references given in the reference pages
 and the user guide, grouped by the part of combra that uses them.
 
-Pool detection and vertex angles ({py:mod}`combra.angles`, {py:mod}`combra.legacy`)
+Thresholding and vertex angles ({py:mod}`combra.angles`, {py:mod}`combra.experimental`)
 : N. Otsu, "A Threshold Selection Method from Gray-Level Histograms",
   *IEEE Transactions on Systems, Man, and Cybernetics* 9(1), 1979.
 : D. H. Douglas and T. K. Peucker, "Algorithms for the Reduction of the Number
   of Points Required to Represent a Digitized Line or its Caricature",
   *Cartographica* 10(2), 112–122, 1973.
 
-Contours ({py:mod}`combra.legacy`, {py:mod}`combra.ellipse`, {py:mod}`combra.graph`)
+Contours ({py:mod}`combra.angles`, {py:mod}`combra.ellipse`, {py:mod}`combra.graph`)
 : J. Canny, "A Computational Approach to Edge Detection", *IEEE TPAMI* 8(6),
   679–698, 1986.
 : S. Suzuki and K. Abe, "Topological Structural Analysis of Digitized Binary
   Images by Border Following", *CVGIP* 30(1), 32–46, 1985.
-
-Experimental angle method ({py:mod}`combra.experimental`)
-: F. Devernay, "A Non-Maxima Suppression Method for Edge Detection with
-  Sub-Pixel Accuracy", INRIA Research Report 2724, 1995.
-: T. Pavlidis and S. L. Horowitz, "Segmentation of Plane Curves", *IEEE
-  Transactions on Computers* C-23(8), 860–870, 1974.
 
 Beams ({py:mod}`combra.ellipse`)
 : L. G. Khachiyan, "Rounding of polytopes in the real number model of
