@@ -56,9 +56,8 @@ extraction, which the beam fit and the crack graph use as well.
 
 **Fitting.** `combra.fitting` fits parametric models to
 those distributions. WC-Co angle densities are bimodal, so the
-bimodal-Gaussian fit carries most of the interpretive weight: its two means
-and widths and the mixing coefficient summarize a microstructure in five
-numbers.
+bimodal-Gaussian fit carries most of the interpretive weight: its two means,
+widths and amplitudes summarize a microstructure in six numbers.
 
 **Comparison.** {doc}`metrics` scores a generated distribution against a
 reference one — Wasserstein distances on the densities, relative errors on the

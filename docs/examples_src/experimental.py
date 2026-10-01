@@ -1,9 +1,10 @@
 """
-The sub-pixel method (P6)
-=========================
+Experimental methods
+====================
 
-Run P6 on a bundled image, inspect its regions, and compare its angles with
-P0, the method of :mod:`combra.angles`.
+Run P6 on a bundled image, inspect its regions, compare its angles with P0,
+the method of :mod:`combra.angles`, and fit a density with the mass-share
+model.
 
 For what the stages do, see :doc:`/user_guide/experimental`; for the entry
 point, see :func:`combra.experimental.vertex_angles`. The module is
@@ -112,3 +113,29 @@ pio.show(fig)
 # one method. :func:`~combra.experimental.extract_polygons` gives P6 in the form
 # :func:`combra.synth.benchmark` scores; see :doc:`synth` for the comparison on
 # synthetic images.
+
+# %%
+# The mass-share fit
+# ------------------
+#
+# :func:`~combra.experimental.fit_bimodal_gaussian` fits a density with one
+# mass share in place of the two amplitudes of
+# :func:`combra.fitting.fit_bimodal_gaussian`. Both on the P0 angles of all
+# five bundled images:
+
+from combra import fitting, stats
+
+pooled = np.concatenate(
+    [angles.vertex_angles(angles.preprocess_image(im))[0] for im in data.load_microstructure().images]
+)
+x, y = stats.density_histogram(pooled, 5.0)
+share_fit = experimental.fit_bimodal_gaussian(x, y)
+amp_fit = fitting.fit_bimodal_gaussian(x, y)
+print("share fit:", np.round(share_fit.mus, 1), np.round(share_fit.shares, 3), round(share_fit.total, 3))
+print("amplitude fit:", np.round(amp_fit.mus, 1), np.round(amp_fit.amps, 3))
+
+# %%
+# The share fit holds the sum of the amplitudes at the mass of the histogram,
+# here the bin width; the amplitude fit leaves it free:
+
+print(round(sum(amp_fit.amps), 3), "against", round(share_fit.total, 3))

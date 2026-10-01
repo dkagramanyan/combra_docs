@@ -22,6 +22,39 @@ below track what changes for a *user* of the library.
   hub cache, where open_clip reads them, and edm2 no longer overrides `HF_HOME` when
   it loads the VAE, which had hidden that cache from an offline CMMD.
 
+### 0.22.0
+
+**Changed**
+
+- **The angle fit has six parameters again (breaking; the metric key `pi` is
+  gone and stored fits must be refitted).**
+  `combra.fitting.fit_bimodal_gaussian` fits the two means, widths and
+  amplitudes, as before 0.13.0, and returns
+  `BimodalGaussianFit(curve, mus, sigmas, amps)`;
+  `combra.stats.truncated_bimodal_gaussian` takes `amp1`, `amp2`. See
+  {doc}`user_guide/angles` and {doc}`user_guide/angle_fit`.
+- The bimodal-Gaussian metrics are keyed `mu1`, `mu2`, `sigma1`, `sigma2`,
+  `amp1`, `amp2`: {py:func}`~combra.metrics.compute_all_metrics`,
+  {py:func}`combra.metrics.distributed.distributed_metrics` and the parquet
+  comparisons return ten angle keys rather than nine, the comparison records
+  carry `amp_m` in place of `pi_m`, and
+  {py:func}`~combra.metrics.plot_metrics_overlay` draws `A₁` and `A₂`. A
+  training loop that logged `combra_pi` logs `combra_amp1` and `combra_amp2`.
+- The parquet column `angles_gauss_shares` is `angles_gauss_amps`. Parquets
+  written by 0.13.0 - 0.21.0 no longer compare; regenerate them, or refit them
+  from their stored densities.
+- `AngleSummary` has `amps` in place of `pi`; `MIN_OCCUPIED_BINS` is 6.
+
+**Added**
+
+- {py:mod}`combra.experimental` holds the mass-share model that was the fit of
+  0.13.0 - 0.21.0: {py:func}`~combra.experimental.fit_bimodal_gaussian` (five
+  parameters, the total fixed to the histogram's mass),
+  `truncated_bimodal_gaussian(..., weight, total)` and the result
+  `BimodalGaussianFit(curve, mus, sigmas, shares, total)`. On 30 real angle
+  densities it returns the values of 0.21.0 bit for bit, and the six-parameter
+  fit those of 0.12.0. See {doc}`user_guide/experimental`.
+
 ### 0.21.0
 
 **Changed**

@@ -36,11 +36,12 @@ from combra import angles
    plot_overlay_grid
 ```
 
-## Experimental method
+## Experimental methods
 
-`combra.experimental` is a candidate method, P6: it takes the image itself and
-returns the angles with one sub-pixel polygon per cobalt pool. Its API and
-output may change without a deprecation period; see
+`combra.experimental` holds two candidates. P6 is an extraction method: it
+takes the image itself and returns the angles with one sub-pixel polygon per
+cobalt pool. The mass-share fit is a five-parameter variant of the angle fit.
+Their API and output may change without a deprecation period; see
 {doc}`/user_guide/experimental`.
 
 ```{eval-rst}
@@ -56,4 +57,5 @@ output may change without a deprecation period; see
 
    experimental.vertex_angles
    experimental.settings_for_scale
+   experimental.fit_bimodal_gaussian
 ```

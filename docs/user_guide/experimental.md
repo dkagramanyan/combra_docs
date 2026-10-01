@@ -1,16 +1,22 @@
-# The sub-pixel method (P6)
+# Experimental methods
 
-{py:mod}`combra.experimental` holds P6, a candidate angle method. It detects the
+{py:mod}`combra.experimental` holds two candidates that the datasets and the
+metrics do not use: P6, an angle extraction method, and the mass-share model,
+a five-parameter variant of the angle fit. The API and output of this module
+may change without a deprecation period.
+
+For a worked run, see {doc}`/examples/experimental`.
+
+## The sub-pixel method (P6)
+
+P6 detects the
 cobalt pools itself, locates their boundary to sub-pixel precision and reads
 each angle from lines fitted to the boundary. From 0.15.0 to 0.20.2 it was the
 method of `combra.angles`; the datasets and the metrics now use P0,
 {py:func}`combra.angles.vertex_angles`. The two methods' densities are not
 comparable, so a comparison always extracts both sides with the same method.
-The API and output of this module may change without a deprecation period.
 
-For a worked run, see {doc}`/examples/experimental`.
-
-## Pipeline
+### Pipeline
 
 {py:func}`~combra.experimental.vertex_angles` performs the measurement on one
 grey image $I$ in five stages. Each stage is stated with its input, its output
@@ -110,7 +116,7 @@ mask of stage 1 and the curve of stage 2 attached to every region.
 >>> arr.min(), arr.max()
 ```
 
-## Choosing `tol`
+### Choosing `tol`
 
 The tolerance decides which bends of the boundary become vertices, so it is
 **part of a result's identity**: {py:func}`~combra.experimental.output_directory`
@@ -124,7 +130,7 @@ the blur rounds it over the whole edge of the pool; no setting of the stage
 removes that, so small pools carry a known bias toward 180° rather than a
 tunable one.
 
-## Images of different resolution: `scale`
+### Images of different resolution: `scale`
 
 `tol`, the median filter and the smallest pool kept (`min_area`) are lengths in
 pixels, tuned at 512 px of the full 1536 px micrograph field, a third of the
@@ -149,7 +155,7 @@ scale of the training images. With `scale` the output folder is named
 coarser image resolves fewer corners, so a generated set is best compared with
 a real set of the same scale.
 
-## How it compares
+### How it compares
 
 On the synthetic set of {doc}`synth`, P6 recovers about 37% of the true corners
 at an RMS edge error of 0.67 px, against 12% and 1.26 px for P0. It also finds
@@ -157,3 +163,33 @@ the faint pools that Otsu's threshold alone does not see.
 {py:func}`~combra.experimental.extract_polygons` wraps P6 in the form the
 benchmark scores, and {py:func}`combra.angles.extract_polygons` does the same
 for P0.
+
+## The mass-share model
+
+{py:func}`~combra.experimental.fit_bimodal_gaussian` fits the angle density
+with five parameters in place of the six of
+{py:func}`combra.fitting.fit_bimodal_gaussian`: the two amplitudes are replaced
+by one share of the mass,
+
+$$
+p(x; \boldsymbol{\theta}) =
+T \left[ \frac{\pi}{Z_1}\, \varphi(x; \mu_1, \sigma_1)
+      + \frac{1 - \pi}{Z_2}\, \varphi(x; \mu_2, \sigma_2) \right]
+\mathbf{1}_{D}(x),
+$$
+
+with $\boldsymbol{\theta} = (\mu_1, \mu_2, \sigma_1, \sigma_2, \pi)$, and $Z_i$
+and $D = [0^\circ, 360^\circ]$ as in {doc}`angles`. $\pi$ is the
+share of the mass in mode 1 and $1 - \pi$ that in mode 2. The total $T$ is not
+fitted: it is set to the mass of the histogram, $T = h \sum_k y_k$ for bin
+width $h$. The fit is the same bounded least squares, with
+$\pi \in [0, 1]$, started from $\pi^{(0)} = m_1 / (m_1 + m_2)$, the masses on
+either side of $180^\circ$. It is the amplitude model with $a_1 = T\pi$ and
+$a_2 = T(1 - \pi)$, that is with $a_1 + a_2$ held at the mass of the data.
+
+The result is a `BimodalGaussianFit(curve, mus, sigmas, shares, total)`;
+{py:func}`~combra.experimental.truncated_bimodal_gaussian` evaluates the model.
+From 0.13.0 to 0.21.0 this was the fit of `combra.fitting`, and the metrics
+reported the relative error of $\pi$ under the key `pi`; they now report
+`amp1` and `amp2`. {py:func}`combra.metrics.degenerate_fit_reason` screens a
+share fit as it screens an amplitude fit.

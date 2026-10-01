@@ -21,7 +21,7 @@ Stable
   {doc}`/release_notes`.
 
 Experimental
-: `combra.experimental`, a candidate angle method; its API and output may
+: `combra.experimental`, candidate methods; its API and output may
   change without a deprecation period. A change is still listed in the release
   notes.
 

@@ -48,11 +48,13 @@ UNDOCUMENTED = frozenset({
     "combra.exceptions.IncompleteShardError",
     "combra.exceptions.UnknownFormatWarning",
     # combra.experimental
+    "combra.experimental.BimodalGaussianFit",
     "combra.experimental.extract_polygons",
     "combra.experimental.output_directory",
     "combra.experimental.pool_mask",
     "combra.experimental.pool_regions",
     "combra.experimental.Region",
+    "combra.experimental.truncated_bimodal_gaussian",
     # combra.fitting
     "combra.fitting.BimodalGaussianFit",
     "combra.fitting.DistributionFit",

@@ -99,8 +99,8 @@ print(round(distances["w1"], 3))
 
 from combra import fitting
 
-_, mus, sigmas, shares, _ = fitting.fit_bimodal_gaussian(*unimodal)
-print(metrics.degenerate_fit_reason(mus, sigmas, shares, density=unimodal))
+_, mus, sigmas, amps = fitting.fit_bimodal_gaussian(*unimodal)
+print(metrics.degenerate_fit_reason(mus, sigmas, amps, density=unimodal))
 
 # %%
 # The full set of rejection criteria is in :ref:`undefined-rather-than-wrong`.

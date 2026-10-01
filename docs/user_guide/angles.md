@@ -80,7 +80,7 @@ list of the simplified contours that produced them.
 ```
 
 {py:func}`~combra.angles.angle_summary` then fits the density of `arr` and
-reports the two modes, the mass share, the fit residual and the model-free
+reports the two modes, their amplitudes, the fit residual and the model-free
 reflex share in one named tuple.
 
 ### Choosing `tol` and `min_segment_len`
@@ -136,14 +136,13 @@ row and checked by {py:func}`combra.metrics.parquet_has_step`. The default is
 
 ## The bimodal model
 
-The density is described by a mixture of two normal modes, each truncated to
+The density is described by the sum of two normal modes, each truncated to
 the angle domain $D = [0^\circ, 360^\circ]$
 ({py:func}`combra.stats.truncated_bimodal_gaussian`):
 
 $$
 p(x; \boldsymbol{\theta}) =
-T \left[ \frac{\pi}{Z_1}\, \varphi(x; \mu_1, \sigma_1)
-      + \frac{1 - \pi}{Z_2}\, \varphi(x; \mu_2, \sigma_2) \right]
+\sum_{i=1}^{2} \frac{a_i}{Z_i}\, \varphi(x; \mu_i, \sigma_i)\,
 \mathbf{1}_{D}(x),
 \qquad
 Z_i = \Phi\!\left(\frac{360 - \mu_i}{\sigma_i}\right)
@@ -151,29 +150,29 @@ Z_i = \Phi\!\left(\frac{360 - \mu_i}{\sigma_i}\right)
 $$
 
 where $\varphi(x; \mu, \sigma)$ is the normal density, $\Phi$ the standard
-normal CDF, $\mu_i$ and $\sigma_i$ the position and width of mode $i$, and
-$\boldsymbol{\theta} = (\mu_1, \mu_2, \sigma_1, \sigma_2, \pi)$. $Z_i$ is the
-mass the $i$-th normal places inside $D$, so $\int_D p \,\mathrm{d}x = T$ and
-$\pi$ is exactly the share of the mass in mode 1, $1 - \pi$ that in mode 2. Mode
-1 is normally the convex mode and mode 2 the reflex one.
+normal CDF, $\mu_i$, $\sigma_i$ and $a_i$ the position, width and amplitude of
+mode $i$, and
+$\boldsymbol{\theta} = (\mu_1, \mu_2, \sigma_1, \sigma_2, a_1, a_2)$. $Z_i$ is
+the mass the $i$-th normal places inside $D$, so $a_i$ is exactly the mass of
+mode $i$ and $\int_D p \,\mathrm{d}x = a_1 + a_2$. Mode 1 is normally the convex
+mode and mode 2 the reflex one.
 
 Given the histogram $(x_k, y_k)$ of bin width $h$,
-{py:func}`~combra.fitting.fit_bimodal_gaussian` fixes the total mass to that of
-the data, $T = h \sum_k y_k$, and solves
+{py:func}`~combra.fitting.fit_bimodal_gaussian` solves
 
 $$
 \hat{\boldsymbol{\theta}}
 = \arg\min_{\boldsymbol{\theta} \in \Theta}
 \sum_k \bigl( y_k - p(x_k; \boldsymbol{\theta}) \bigr)^2,
 \qquad
-\Theta = [0, 360]^2 \times [10^{-6},\, 180]^2 \times [0, 1],
+\Theta = [0, 360]^2 \times [10^{-6},\, 180]^2 \times [0, \infty)^2,
 $$
 
 by trust-region reflective least squares. The starting point is read off the
 data, one mode per side of $180^\circ$: $\mu_i^{(0)}$ at the tallest bin of
-that side, $\sigma_i^{(0)} = m_i / (\sqrt{2\pi}\, \max y_k)$ from the side's
-mass $m_i$ and peak, and $\pi^{(0)} = m_1 / (m_1 + m_2)$. The result is ordered
-so that $\mu_1 \le \mu_2$.
+that side, $a_i^{(0)}$ the side's mass, and
+$\sigma_i^{(0)} = a_i^{(0)} / (\sqrt{2\pi}\, \max y_k)$ from that mass and the
+side's peak. The result is ordered so that $\mu_1 \le \mu_2$.
 
 The fit always returns two modes, whether or not the data has two, so
 $\hat{\boldsymbol{\theta}}$ is screened by
@@ -182,10 +181,14 @@ measurement. {py:func}`~combra.angles.angle_summary` reports it together with
 the relative residual
 $\sum_k (p(x_k; \hat{\boldsymbol{\theta}}) - y_k)^2 / \sum_k y_k^2$ and the
 model-free reflex share $\#\{\alpha_j > 180^\circ\} / n$, which is the one to
-quote for the physical fraction of reflex vertices: on the reference sets
-$1 - \hat\pi$ runs about 6% (relative) below it. Why least squares and not
-maximum likelihood, why the modes are truncated rather than wrapped, and the
-screening criteria are derived in {doc}`angle_fit`, §3–§5.
+quote for the physical fraction of reflex vertices rather than the fitted
+$\hat a_2 / (\hat a_1 + \hat a_2)$. Why least squares and not maximum
+likelihood, why the modes are truncated rather than wrapped, and the screening
+criteria are derived in {doc}`angle_fit`, §3–§5.
+
+{py:mod}`combra.experimental` holds a five-parameter variant of the model, in
+which the two amplitudes are replaced by one mass share and a total fixed by
+the data; see {doc}`experimental`.
 
 ## Sample size
 

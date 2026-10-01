@@ -16,7 +16,7 @@ Stable
   in the {doc}`/release_notes`.
 
 Experimental
-: `combra.experimental`, a candidate angle method; its API and output may
+: `combra.experimental`, candidate methods; its API and output may
   change without a deprecation period.
 
 {doc}`/development/api_policy` states what the labels promise, how version
@@ -28,7 +28,7 @@ numbers are read, and how a function is deprecated and removed.
 | --- | --- |
 | {doc}`combra.data <data>` | Datasets that write angle and beam parquets; sample images |
 | {doc}`combra.io <io>` | Parquet, HDF5 and TensorBoard input and output |
-| {doc}`combra.angles <angles>` | Vertex angles, their density fit and plots; the experimental method |
+| {doc}`combra.angles <angles>` | Vertex angles, their density fit and plots; the experimental methods |
 | {doc}`combra.ellipse <ellipse>` | Minimum-volume enclosing ellipses and beam-length plots |
 | {doc}`combra.image <image>` | Measures computed on an image |
 | {doc}`combra.metrics <metrics>` | Real-vs-generated metrics, convergence, training-loop evaluation |
