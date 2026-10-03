@@ -22,6 +22,32 @@ below track what changes for a *user* of the library.
   hub cache, where open_clip reads them, and edm2 no longer overrides `HF_HOME` when
   it loads the VAE, which had hidden that cache from an offline CMMD.
 
+### 0.23.0
+
+**Changed**
+
+- **The angle pipeline is again the one that wrote the training-time TensorBoard
+  metrics of June – July 2026** (`wc_cv/tensorboards`, combra commit `ec3674f`).
+  On the five bundled images the angles, the densities, the fit and all ten
+  angle metrics are bit-identical to that code. Angle values, fitted parameters
+  and all angle metrics change against 0.22.0.
+- {py:func}`combra.fitting.fit_bimodal_gaussian` fits the untruncated sum of two
+  normals `amp1 N(mu1, sigma1) + amp2 N(mu2, sigma2)` from the fixed start
+  `(100, 240, 30, 30, 1, 1)`, means free, by Levenberg–Marquardt with lmfit's
+  bound transform: the lmfit fit of June 2026, without the lmfit dependency, and
+  bit-identical to it on 1113 stored densities. The phantom-mode screening is
+  kept. See {doc}`user_guide/angle_fit`, §3–§4.
+- {py:func}`combra.angles.preprocess_image` uses the exact disk median again (in
+  place of a 5×5 `cv2.medianBlur`), with the June border rank; `exact_median` is
+  gone. The beam fit and the crack graph keep the 0.22 median through the new
+  `fast_median=True`, so their results do not change.
+- {py:func}`combra.metrics.wasserstein_density_metrics` interpolates both
+  densities onto one 1024-point grid again. POT's `ot.wasserstein_circle` can
+  return about 360° minus the true circular distance on such grids; none of 528
+  pairs of stored real densities is affected.
+- `combra.stats.truncated_bimodal_gaussian` is removed; the truncated share
+  model stays in {py:mod}`combra.experimental`.
+
 ### 0.22.0
 
 **Changed**
@@ -464,7 +490,7 @@ A clean break: defaults and names change without aliases.
   next to `share1%` (a mass share). See {doc}`user_guide/angle_fit` §6.
 
   Stored fits are untouched: the parquet column `angles_gauss_shares`, the
-  `weight` argument of {py:func}`~combra.stats.truncated_bimodal_gaussian` and
+  `weight` argument of `stats.truncated_bimodal_gaussian` and
   the `shares` field of `BimodalGaussianFit` keep their names, so no parquet
   needs refitting. Code that reads the metric keys does need updating — the
   model training loops log `combra_pi` where they logged `combra_share1`.
@@ -474,7 +500,7 @@ A clean break: defaults and names change without aliases.
 **Changed**
 
 - **The angle fit has five parameters: one mass share replaces the two
-  amplitudes (breaking).** {py:func}`~combra.stats.truncated_bimodal_gaussian`
+  amplitudes (breaking).** `stats.truncated_bimodal_gaussian`
   takes `weight` (the share of mode 1) and `total` (the curve's integral over
   [0°, 360°]) instead of `amp1`, `amp2`;
   {py:func}`~combra.fitting.fit_bimodal_gaussian` fits
@@ -527,7 +553,7 @@ so no h5 access or angle re-extraction is needed.
 **Changed**
 
 - **The angle density is fitted with a model truncated to [0°, 360°]**,
-  {py:func}`~combra.stats.truncated_bimodal_gaussian`. All of the fitted
+  `stats.truncated_bimodal_gaussian`. All of the fitted
   probability mass now lies inside the interval the angles were measured on;
   the untruncated model leaked 46.8% and 99.75% on the worst real fits. `amps`
   is now each mode's integral over [0, 360], so `amps[i] / sum(amps)` is its

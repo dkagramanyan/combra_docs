@@ -178,14 +178,20 @@ T \left[ \frac{\pi}{Z_1}\, \varphi(x; \mu_1, \sigma_1)
 \mathbf{1}_{D}(x),
 $$
 
-with $\boldsymbol{\theta} = (\mu_1, \mu_2, \sigma_1, \sigma_2, \pi)$, and $Z_i$
-and $D = [0^\circ, 360^\circ]$ as in {doc}`angles`. $\pi$ is the
+with $\boldsymbol{\theta} = (\mu_1, \mu_2, \sigma_1, \sigma_2, \pi)$,
+$D = [0^\circ, 360^\circ]$ and
+$Z_i = \Phi((360 - \mu_i)/\sigma_i) - \Phi(-\mu_i/\sigma_i)$, the mass the $i$-th
+normal places inside $D$, with $\Phi$ the standard normal CDF. $\pi$ is the
 share of the mass in mode 1 and $1 - \pi$ that in mode 2. The total $T$ is not
 fitted: it is set to the mass of the histogram, $T = h \sum_k y_k$ for bin
-width $h$. The fit is the same bounded least squares, with
-$\pi \in [0, 1]$, started from $\pi^{(0)} = m_1 / (m_1 + m_2)$, the masses on
-either side of $180^\circ$. It is the amplitude model with $a_1 = T\pi$ and
-$a_2 = T(1 - \pi)$, that is with $a_1 + a_2$ held at the mass of the data.
+width $h$. Each mode is divided by its $Z_i$, so no mass falls outside $D$,
+which the default model of {doc}`angles` does not do. The fit is bounded least
+squares (trust-region reflective) with $\mu_i \in D$,
+$\sigma_i \in [10^{-6}, 180]$ and $\pi \in [0, 1]$, started from the density
+itself: each mean at the tallest bin on its side of $180^\circ$, and
+$\pi^{(0)} = m_1 / (m_1 + m_2)$ from the masses $m_i$ on either side. On the
+1083 stored real angle densities the screening accepts 992 of its fits,
+against 1035 of the default fit's.
 
 The result is a `BimodalGaussianFit(curve, mus, sigmas, shares, total)`;
 {py:func}`~combra.experimental.truncated_bimodal_gaussian` evaluates the model.

@@ -150,7 +150,6 @@ UNDOCUMENTED = frozenset({
     "combra.stats.gaussian",
     "combra.stats.poisson",
     "combra.stats.require_density",
-    "combra.stats.truncated_bimodal_gaussian",
     # combra.synth
     "combra.synth.BenchmarkResult",
     "combra.synth.Canvas",

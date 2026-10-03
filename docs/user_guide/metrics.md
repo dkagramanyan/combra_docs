@@ -57,14 +57,13 @@ the model has two. When an angle density has only one, the solver must still put
 the second somewhere, and it parks a **phantom** — either a flat pedestal or a
 narrow spike at a position with no data under it.
 
-A phantom used to appear even on genuinely *bimodal* densities, whenever the
-reflex mode was weak over a heavy baseline: a wide pedestal is a competing
-least-squares minimum, and unbounded widths made it a cheap one — fitted
-$\sigma$ of $3.3 \times 10^4$ degrees has been observed. Seeding each mode from
-its own side of the density and bounding $\sigma$ at 180° removed that failure
-(83 degenerate fits out of 231 real angle densities became 0), so a rejection now
-much more reliably means the data really has one mode rather than that the solver
-missed the second. The relative errors above divide by the
+A phantom can also appear on genuinely *bimodal* densities when the reflex mode
+is weak over a heavy baseline: a wide pedestal is a competing least-squares
+minimum, and the fit, which starts from a fixed point and leaves the means and
+the widths free, can reach it — fitted $\sigma$ of $3.3 \times 10^4$ degrees has
+been observed. On the 1083 stored real angle densities the screening below
+accepts 1035 fits; the 48 it rejects all have a reflex mode just under the 5%
+floors. The relative errors above divide by the
 reference fit, so a phantom denominator produces numbers that look like
 measurements and are not: two densities differing by 2° once scored
 $\varepsilon_{\sigma_1} = 1357$ and $\varepsilon_{\mathrm{amp}_2} = 3050$.
@@ -74,21 +73,19 @@ Every parametric entry point therefore screens both fits with
 reason at warning level, when a fit is:
 
 - carrying under 5% of its mass in one mode, meaning there is only one real mode;
-- sitting on the $[0, 360]$ boundary the means are clamped to, which is a fit
-  artefact, and where $0$ would also be the denominator of the $\mu$ relative
-  error;
-- wider than 120° in one mode, which is a pedestal rather than a peak. The
-  solver is itself bounded at 180°, deliberately above this threshold: bounding
-  it at 120° would park every pedestal at exactly 120.0 and, since the test is a
-  strict `>`, switch the rejection off;
+- with a mean within 5° of either end of $[0, 360]$ or outside it (the means are
+  free), which is a fit artefact, and where $0$ would also be the denominator of
+  the $\mu$ relative error;
+- wider than 120° in one mode, which is a pedestal rather than a peak (the widths
+  are not bounded above);
 - unresolved, with the two means closer together than one $\sigma$;
 - placed where the density carries under 5% of its mass. This is checked only
   when the density is supplied, and it is the criterion that catches a spike,
   whose amplitude is an integral and therefore not small.
 
-In practice the metrics are reliable on realistic WC-Co angle densities, those
-with roughly 23% reflex vertices: across more than 900 such fits none was
-rejected. They go undefined as the second mode thins, which is exactly the regime
+In practice the metrics are reliable on realistic WC-Co angle densities: of the
+1083 stored real densities, the 48 rejected are those whose reflex mode carries
+just under 5%. They go undefined as the second mode thins, which is exactly the regime
 in which they previously returned nonsense. Two consequences are worth knowing.
 
 Small samples say so

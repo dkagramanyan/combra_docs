@@ -44,11 +44,11 @@ traced in; see {doc}`experimental`.
 **The angle domain is an interval, not a circle.** $\alpha = 1^\circ$ is a
 needle-thin protrusion and $\alpha = 359^\circ$ a needle-thin notch: opposite
 shapes that happen to sit at opposite ends of the axis, not neighbours on a
-circle. Everything downstream that *models a density* on this axis therefore
-truncates rather than wraps. The Wasserstein distances of §6 are the one
-exception, and deliberately so — there the circular variant is reported
-alongside the linear one, because transport cost is a different question from
-shape.
+circle. The fitted model of §3 is therefore not wrapped around the circle (it
+is a sum of two normals on the real line, see §3). The Wasserstein distances of
+§6 are the one place that treats the axis as a circle, and deliberately so —
+there the circular variant is reported alongside the linear one, because
+transport cost is a different question from shape.
 :::
 
 :::{note}
@@ -107,80 +107,67 @@ the estimator of §4 is most fragile.
 
 ## 3. The model
 
-Write $\varphi(x; \mu, \sigma)$ and $\Phi(z)$ for the normal density and the
-standard normal CDF, and let the angle domain be $D = [0^\circ, 360^\circ]$.
-{py:func}`combra.stats.truncated_bimodal_gaussian` is
+Write $\varphi(x; \mu, \sigma)$ for the normal density and let the angle domain
+be $D = [0^\circ, 360^\circ]$. {py:func}`combra.stats.bimodal_gaussian` is the
+sum of two normals,
 
 $$
 p(x; \boldsymbol{\theta}) =
-\sum_{i=1}^{2} \frac{a_i}{Z_i}\, \varphi(x; \mu_i, \sigma_i)\,
-\mathbf{1}_{D}(x),
-\qquad
-Z_i = \Phi\!\left(\frac{360 - \mu_i}{\sigma_i}\right)
-    - \Phi\!\left(\frac{0 - \mu_i}{\sigma_i}\right)
+a_1\, \varphi(x; \mu_1, \sigma_1) + a_2\, \varphi(x; \mu_2, \sigma_2),
 $$
 
 with parameter vector
-$\boldsymbol{\theta} = (\mu_1, \mu_2, \sigma_1, \sigma_2, a_1, a_2)$.
+$\boldsymbol{\theta} = (\mu_1, \mu_2, \sigma_1, \sigma_2, a_1, a_2)$. It is
+the model combra fitted when the training-time metrics of June 2026 were
+logged, and the default again since 0.23.0.
 
-Three consequences are the reason for the truncation.
-
-**Mass is conserved and interpretable.** Because $Z_i$ is exactly the mass the
-$i$-th parent normal places inside $D$,
-
-$$
-\int_D p \,\mathrm{d}x = a_1 + a_2,
-\qquad
-\int_D \frac{a_i}{Z_i} \varphi(x; \mu_i, \sigma_i)\,\mathrm{d}x = a_i ,
-$$
-
-so $a_i$ *is* the mass of mode $i$ and $a_i / (a_1 + a_2)$ its share
-({py:mod}`combra.experimental` holds the variant fitted with that share as
-the parameter and $a_1 + a_2$ fixed, see {doc}`experimental`). The
-untruncated model has $\int_{\mathbb{R}} = a_1 + a_2$ instead, and the fraction
-lost outside $D$,
+$a_i$ is the integral of mode $i$ over the whole real line,
+$\int_{\mathbb{R}} p\,\mathrm{d}x = a_1 + a_2$. The model is **not truncated**
+to $D$: a mode whose mean lies near $0^\circ$ or $360^\circ$, or whose width is
+large, places part of its amplitude on angles that cannot occur, and the
+fraction lost outside $D$,
 
 $$
 \text{leak} = 1 - \frac{1}{a_1 + a_2}\sum_{i=1}^{2} a_i Z_i ,
+\qquad
+Z_i = \Phi\!\left(\frac{360 - \mu_i}{\sigma_i}\right)
+    - \Phi\!\left(\frac{0 - \mu_i}{\sigma_i}\right),
 $$
 
-reached 99.75% on real reference sets before this change.
+with $\Phi$ the standard normal CDF, reached 99.75% on real reference sets.
+Holding a wide pedestal at a fixed height $h_\ast$ forces
+$a = h_\ast \sigma \sqrt{2\pi}$ to grow with $\sigma$: fitted
+$\sigma = 10^5$ degrees with $a = 2 \times 10^3$ against an expected 5 have
+been observed. Both are why §5 screens every fit before it is read.
 
-**Pedestals stay bounded.** A plain Gaussian of peak height $h_\ast$ satisfies
-$a = h_\ast \sigma \sqrt{2\pi}$, so holding a wide pedestal at fixed height
-forces $a \propto \sigma$ — fitted $\sigma = 10^5$ degrees with $a = 2\times10^3$
-against an expected 5 were observed. Under truncation,
-
-$$\lim_{\sigma \to \infty} p(x) \;=\; \frac{a_1 + a_2}{360},$$
-
-a uniform density of bounded amplitude. A pedestal remains *representable*, so
-§5 still has to screen for it, but it no longer diverges.
-
-**It matches the measurement.** No probability mass is placed on angles that
-cannot occur.
+{py:mod}`combra.experimental` holds the truncated variant, each mode divided by
+its $Z_i$ and the two amplitudes replaced by one mass share; see
+{doc}`experimental`.
 
 ## 4. The estimator
 
 Given $(x_k, y_k)$, {py:func}`combra.fitting.fit_bimodal_gaussian` solves the
-bound-constrained nonlinear least-squares problem
+nonlinear least-squares problem
 
 $$
 \hat{\boldsymbol{\theta}}
 = \arg\min_{\boldsymbol{\theta} \in \Theta}
 \sum_k \bigl( y_k - p(x_k; \boldsymbol{\theta}) \bigr)^2 ,
+\qquad
+\Theta = \mathbb{R}^2 \times [10^{-6}, \infty)^2 \times [0, \infty)^2 ,
 $$
 
-$$
-\Theta = [0, 360]^2 \times [10^{-6},\, 180]^2 \times [0, \infty)^2
-$$
-
-by trust-region reflective least squares. Note that the objective is fitted to
-$y_k$ on the bin-probability scale of §2, so $a_1 + a_2 \approx h$ for a fit that
-reproduces the data — a cheap, independent goodness check, since least squares
-does *not* constrain the integral.
+by Levenberg–Marquardt (`scipy.optimize.leastsq`), the bounds applied by the
+Minuit-style transform $v = \ell - 1 + \sqrt{u^2 + 1}$ of each bounded
+parameter $v \ge \ell$ to a free one $u$. The transform and the solver
+settings are those of lmfit's `Model.fit`, which combra used in June 2026, so
+the result is that fit's bit for bit. The objective is fitted to $y_k$ on the
+bin-probability scale of §2, so $a_1 + a_2 \approx h$ for a fit that reproduces
+the data.
 
 ### Why least squares on the histogram, and not maximum likelihood
 
+Measured in September 2026 with the truncated model of combra 0.12 – 0.22.
 Maximum likelihood on the raw angles, or equivalently on the grouped counts at
 any $h \le 5^\circ$ (the two agree to $0.1^\circ$), was tried on the nine
 reference class-sets (three resolutions, three classes, $n$ from
@@ -203,41 +190,25 @@ without any refit as the gap between the fit's mass above $180^\circ$ and the
 density's own share: at most $0.027$ (median $0.010$) over the 231 stored fits
 of real angle densities.
 
-### Constraints
+### Constraints and start
 
 | bound | reason |
 |---|---|
-| $\mu_i \in [0, 360]$ | left free, the solver walks a mode out of the domain; $\mu = 648^\circ$ and $-167^\circ$ have both been observed |
 | $\sigma_i \ge 10^{-6}$ | excludes the sign-flipped minimum $\sigma_2 < 0$ that weakly bimodal data invites |
-| $\sigma_i \le 180$ | half the domain; wider is a pedestal, not a peak |
 | $a_i \ge 0$ | a mode cannot carry negative mass |
 
-The width bound is $180^\circ$ and **not** the $120^\circ$ at which §5 rejects.
-That test is a strict $\sigma_{\max} > 120$, so bounding the solver at the
-rejection threshold would park every pedestal at exactly $120.0$ and silently
-switch the rejection off.
+The means and the upper end of the widths are free. Left free, the solver can
+walk a mode out of the domain — means of $648^\circ$ and $-167^\circ$ have been
+observed — and §5 rejects such a fit.
 
-### Initialization
-
-The objective is not convex, and on a density with a weak reflex mode over a
-heavy baseline a broad pedestal is a genuine competing minimum. The starting
-point is therefore read off the data rather than fixed. Splitting the domain at
-$180^\circ$ into $S_1 = \{x_k < 180\}$ and $S_2 = \{x_k \ge 180\}$, and using
-$a = h_\ast \sigma \sqrt{2\pi}$ in reverse:
-
-$$
-\mu_i^{(0)} = \arg\max_{x_k \in S_i} y_k,
-\qquad
-a_i^{(0)} = h \sum_{x_k \in S_i} y_k,
-\qquad
-\sigma_i^{(0)} = \frac{a_i^{(0)}}
-                      {\sqrt{2\pi} \, \max_{x_k \in S_i} y_k}
-$$
-
-with $\sigma_i^{(0)}$ clipped into $[1, 162]$ so the solver never starts on a
-bound. Measured over 231 fits of real angle densities, this replaced 83
-degenerate results with 0, improved 58 fits by more than 5% in residual, and made
-none worse.
+The start is fixed, $(\mu_1, \mu_2, \sigma_1, \sigma_2, a_1, a_2)^{(0)} =
+(100, 240, 30, 30, 1, 1)$, and assumes the density is on the bin-probability
+scale of §2. From it a curve that does not sum to one (raw counts, or peak
+heights of one) can send the means thousands of degrees out of the domain. On a
+density with a weak reflex mode over a heavy baseline, a broad pedestal is a
+genuine competing minimum from this start; the experimental variant reads its
+start off the data instead. With fewer than six bins the problem is
+undetermined, and every parameter is returned as $\text{nan}$.
 
 Each bin width is fitted independently. Warm-starting each $h$ from the previous
 one's solution — as
@@ -283,8 +254,8 @@ cannot claim the mass of a bin it never covers. It is the only criterion that
 catches a *spike* phantom — a very narrow mode parked where there is no data —
 because a spike's amplitude is an integral and therefore not small.
 
-A returned $\mu$ of exactly $0$ or $360$, or a $\sigma$ of exactly $180$, is the
-solver sitting on a bound of §4 rather than a measured quantity.
+A returned $\mu$ outside $[0, 360]$ is the free mean walking out of the
+domain, not a measured angle; the boundary test above rejects it.
 
 ## 6. The metrics
 
@@ -312,15 +283,14 @@ six are returned as $\text{nan}$ with the reason logged. Undefined rather than
 wrong.
 
 Because both sides are divided by the same reference, $\varepsilon$ is invariant
-to any common rescaling of the amplitudes; the mode *share*
-$a_i / (a_1 + a_2)$ is likewise scale-free.
+to any common rescaling of the amplitudes, but the amplitudes themselves scale
+with $h$ (§4), so two fits compare only at the same bin width.
 
 :::{warning}
-$a_2 / (a_1 + a_2)$ is **not** the reflex-vertex fraction, though it is close.
-On the reference sets it runs about 6% low in relative terms — the two-Gaussian
-model does not reproduce all of the reflex mass. Quote
-$\sum_{x_k \ge 180} y_k$ from the data when the physical fraction is what is
-wanted.
+$a_2 / (a_1 + a_2)$ is **not** the reflex-vertex fraction. The amplitudes include
+whatever mass the normals place outside $D$, and the two-Gaussian model does not
+reproduce all of the reflex mass. Quote $\sum_{x_k \ge 180} y_k$ from the data
+when the physical fraction is what is wanted.
 :::
 
 ### Transport distances
@@ -334,9 +304,20 @@ W_p(u, v) = \left( \int_0^1
 \bigl| F_u^{-1}(q) - F_v^{-1}(q) \bigr|^p \,\mathrm{d}q \right)^{1/p},
 $$
 
-evaluated on the union of the two supports. The circular variants apply the same
-construction on $\mathbb{R} / 360\mathbb{Z}$, minimizing over the rotation
-offset, and are reported in degrees. Four keys result: `w1`, `w2`,
+evaluated after both densities are linearly interpolated onto one 1024-point
+grid spanning their supports and renormalized, as in June 2026. The
+interpolation turns an empty bin between two occupied ones into a linear ramp,
+so the distances depend on how sparse a histogram is as well as on its shape.
+The circular variants apply the same construction on $\mathbb{R} / 360\mathbb{Z}$,
+minimizing over the rotation offset, and are reported in degrees.
+
+:::{warning}
+POT's circular routine, `ot.wasserstein_circle` (0.9.7), returns about
+$360^\circ$ minus the true distance for some inputs on grids of 256 – 1024
+points. On the 1024-point grid a smooth two-mode pair $8.35^\circ$ apart reads
+`circular_w1` $= 355.4^\circ$. None of 528 pairs of stored real angle densities
+is affected; a circular value above $180^\circ$ is this fault, not a distance.
+::: Four keys result: `w1`, `w2`,
 `circular_w1`, `circular_w2`. Unlike the parametric errors above these are defined at
 any sample size, which makes them the ones to watch while a generator is still
 producing near-convex grains.
@@ -362,8 +343,8 @@ $B = 0$, $A = \operatorname{mean}|m|$.
 | $h$ | histogram bin width, the {term}`step` | §2 |
 | $x_k, y_k$ | occupied bin centres and bin probabilities, $\sum_k y_k = 1$ | §2 |
 | $n, n_k$ | pooled angle count; count in bin $k$ | §2 |
-| $\mu_i, \sigma_i, a_i$ | mode mean, parent width, in-domain mass | §3 |
-| $Z_i$ | mass of parent normal $i$ inside $[0, 360]$ | §3 |
-| $\Theta$ | the box the fit is constrained to | §4 |
+| $\mu_i, \sigma_i, a_i$ | mode mean, width, amplitude (integral over the real line) | §3 |
+| $Z_i$ | mass of normal $i$ inside $[0, 360]$, used for the leak | §3 |
+| $\Theta$ | the set the fit is constrained to | §4 |
 | $\varepsilon^{\theta}_i$ | signed relative error of parameter $\theta$, mode $i$ | §6 |
 | $A, B$ | convergence plateau and decay coefficients | §6 |
