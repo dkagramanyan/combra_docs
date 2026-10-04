@@ -22,6 +22,16 @@ below track what changes for a *user* of the library.
   hub cache, where open_clip reads them, and edm2 no longer overrides `HF_HOME` when
   it loads the VAE, which had hidden that cache from an offline CMMD.
 
+### 0.24.0
+
+**Added**
+
+- {py:func}`combra.metrics.training_metric_consistency`: Kendall $\tau_b$ between
+  each angle statistic (`w2`, `mu1`, `mu2`, `sigma1`, `sigma2`, `amp1`, `amp2`) and
+  each image metric (FD-DINOv2, CMMD, FID) over all evaluations of one training run,
+  read with {py:func}`combra.io.read_tb_scalars`, with a moving-block bootstrap 95 %
+  interval. One row per pair: the data of the consistency heatmap.
+
 ### 0.23.0
 
 **Changed**

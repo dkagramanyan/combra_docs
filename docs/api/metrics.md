@@ -37,6 +37,19 @@ from combra import metrics
    print_convergence_report
 ```
 
+## Consistency over training
+
+Agreement between the angle statistics and the image metrics across the
+evaluations of one training run, from its TensorBoard event file.
+
+```{eval-rst}
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   training_metric_consistency
+```
+
 ## Plotting
 
 ```{eval-rst}
