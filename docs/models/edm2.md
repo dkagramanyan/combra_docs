@@ -196,10 +196,10 @@ at 25 steps by default — see the Samplers section below) in VAE latent space,
 decodes them to pixels, and scores them with the combra suite (when combra is
 installed) — the sharded equivalent of `compute_all_metrics(reals, fakes)`.
 All returned metrics — angle-Wasserstein `w1`, `w2`, `circular_w1`, `circular_w2`,
-the bimodal-Gaussian relative errors `mu1`/`mu2`/`sigma1`/`sigma2`/`pi`,
-and the image-feature metrics `fid`, `cmmd`, `fd_dinov2` — are logged to
-TensorBoard under `Metrics/combra_*`, written to `stats.jsonl`, and printed to the
-run log. Metrics whose optional backends are unavailable (e.g. no network to fetch
+the bimodal-Gaussian relative errors `mu1`/`mu2`/`sigma1`/`sigma2`/`amp1`/`amp2`,
+and the image-feature metrics `fid`, `cmmd`, `fd_dinov2` — are logged in three sections (since v0.8.0, combra 0.25.0): `Metrics/combra_*` for the image metrics, `Metrics_v1/combra_*` and `Metrics_v2/combra_*` for the angle metrics of {py:func}`combra.angles.vertex_angles.v1` and {py:func}`combra.angles.vertex_angles.v2` (v2 fits one mass share, so its Gaussian keys end in `pi` instead of `amp1`/`amp2`). They go to
+TensorBoard and `stats.jsonl` under those tags and to the run log as the
+`Metrics:`, `Metrics v1:` and `Metrics v2:` lines. Metrics whose optional backends are unavailable (e.g. no network to fetch
 DINOv2 weights) are recorded as `nan`; the angle metrics always come back.
 
 On a multi-GPU run **all** the per-image extraction work is spread across every

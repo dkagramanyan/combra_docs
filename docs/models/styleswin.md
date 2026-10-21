@@ -172,12 +172,13 @@ distribution the generator learns. It is scored against
 `--num-fid-samples` (default 10 000) images generated from `G_ema` (labels sampled from the
 training-set class distribution, latents seeded from `--seed` alone so the metric set is identical
 at any `--gpus`). Each snapshot computes **both** the angle-density metrics (Wasserstein `w1`,
-`w2`, `circular_w1`, `circular_w2` and the bimodal-Gaussian `mu/sigma/share` errors) **and** the
+`w2`, `circular_w1`, `circular_w2` and the bimodal-Gaussian `mu/sigma/amp` errors), once per
+angle version, v1 and v2, **and** the
 image-feature metrics `fid`, `cmmd`, `fd_dinov2` (keys `combra_fid`, `combra_cmmd`,
 `combra_fd_dinov2`; the running best is `combra_fid_best`, and `combra_num_fid_samples`
 records the count the run used, so a key never claims a count the run did not
-evaluate at). All are **mirrored into
-`stats.jsonl`** (`Metrics/combra_*`) as well as TensorBoard, so post-hoc best-snapshot selection
+evaluate at). All are logged in three sections (since v0.8.0, combra 0.25.0): `Metrics/combra_*` for the image metrics, `Metrics_v1/combra_*` and `Metrics_v2/combra_*` for the angle metrics of {py:func}`combra.angles.vertex_angles.v1` and {py:func}`combra.angles.vertex_angles.v2` (v2 fits one mass share, so its Gaussian keys end in `pi` instead of `amp1`/`amp2`), **mirrored into
+`stats.jsonl`** as well as TensorBoard, so post-hoc best-snapshot selection
 survives the loss of the tfevents file; the combra row is cleared every tick, so a tick with no eval
 writes no combra columns rather than repeating the previous tick's values at a new step. `styleswin-eval` scores a checkpoint standalone and reproduces the training metrics: snapshots
 record `augment`, and `styleswin-eval` builds the reference with the same `dihedral` setting

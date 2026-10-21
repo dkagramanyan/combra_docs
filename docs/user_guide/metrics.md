@@ -124,8 +124,9 @@ Two results are comparable only when produced the same way. Both the
 {term}`step` used to bin the angles and the `min_segment_len` used to extract
 them change the measured distribution, so both are recorded on every parquet row;
 {py:func}`~combra.metrics.parquet_has_step` checks the first before a comparison,
-and {py:func}`~combra.angles.output_directory` encodes the second in the folder
-name. See {doc}`angles` for what each does.
+and `combra.angles.output_directory.v1` encodes the second in the folder
+name. The angle version is part of the identity too: the training-time metrics
+report v1 and v2 in separate sections, each against its own reference. See {doc}`angles` for what each does.
 
 [^fid]: M. Heusel, H. Ramsauer, T. Unterthiner, B. Nessler, S. Hochreiter,
     *GANs Trained by a Two Time-Scale Update Rule Converge to a Local Nash

@@ -11,13 +11,13 @@ Load a bundled SEM image and extract its {term}`vertex angle` values:
 ```pycon
 >>> from combra import data, angles
 >>> img = data.load_microstructure().images[0]
->>> arr, contours = angles.vertex_angles(angles.preprocess_image(img))
+>>> arr, contours = angles.vertex_angles.v1(angles.preprocess_image(img))
 >>> print(f'{len(arr)} angles, mean={arr.mean():.2f}°')
 >>> angles.angle_summary(arr).mus
 ```
 
 {py:func}`~combra.angles.preprocess_image` reduces the image to the thresholded
-map {py:func}`~combra.angles.vertex_angles` reads; it returns the angles
+map {py:func}`~combra.angles.vertex_angles.v1` reads; it returns the angles
 concatenated across grain contours and the simplified contours that produced
 them. {py:func}`~combra.angles.angle_summary` fits the density of the angles.
 
@@ -38,7 +38,7 @@ provenance:
 ...     save_path='./smoke_test',
 ...     class_types={'Ultra_Co11': 'medium', 'Ultra_Co25': 'fine'},
 ...     step=[1, 5, 10],
-...     workers=8, min_segment_len=10.0, keep_contours=False,
+...     workers=8, min_segment_len=5.0, keep_contours=False,
 ...     run_meta={'family': 'real', 'resolution': 1024, 'notes': 'smoke'},
 ... )
 ```

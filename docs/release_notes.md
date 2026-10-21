@@ -7,10 +7,71 @@ combra's changelog, and pointers to the four model repos' own.
 The authoritative copy is `CHANGELOG.md` in the combra repository; the highlights
 below track what changes for a *user* of the library.
 
-### Unreleased
+### 0.25.0
+
+The two angle methods are now two versions of one function, and the training-time
+metrics report both. **Breaking:** `combra.angles.vertex_angles` is a namespace,
+`combra.experimental` is gone, and v1 angle values change where `min_segment_len`
+was left at its default.
+
+**Changed**
+
+- **{py:func}`combra.angles.vertex_angles.v1`** is P0 (the method of 0.21 – 0.24),
+  **{py:func}`combra.angles.vertex_angles.v2`** is P6 (was
+  `combra.experimental.vertex_angles`). Calling `vertex_angles(...)` itself raises
+  `TypeError`. `extract_polygons` and `output_directory` follow the same `.v1` /
+  `.v2` pattern; {py:func}`~combra.angles.settings_for_scale`, `pool_mask`,
+  `pool_regions` and `Region` are now in {py:mod}`combra.angles`. See
+  {doc}`user_guide/angles` and {doc}`user_guide/angles_v2`.
+- **`min_segment_len` defaults to 5** (was 10) in v1,
+  {py:meth}`~combra.data.MicrostructureDataset.generate_angles` and the image-batch
+  metrics. At 10 most small pools were pruned to triangles (83 / 70 / 41 % of the
+  real pools at 256 / 512 / 1024 px), a spurious peak near 45° with no reflex
+  vertex, and at 256 px every training tick reported `nan` for the six
+  bimodal-Gaussian metrics. The trade-off is in {doc}`user_guide/angles`.
+- **The metrics take the version**: `images_to_pooled_angles` /
+  `images_to_angle_density` have `method='v1' | 'v2'` and pass the version's own
+  keyword arguments through, so `border_eps`, `tol` and `min_segment_len` are no
+  longer named parameters; {py:func}`~combra.metrics.compute_all_metrics` reaches
+  it through `angle_kw={'method': 'v2'}`.
+- **The bimodal fit follows the angle version.** v1 densities keep the
+  amplitude fit (keys `amp1`, `amp2`); v2 densities are fitted with one mass share,
+  `combra.fitting.fit_bimodal_share` (key `pi`), as P6 was up to 0.21.
+- **Training-time metrics in two angle sections.** The sharded harness
+  ({py:mod}`combra.metrics.distributed`) extracts both versions and returns
+  `v1_<key>` (ten keys) and `v2_<key>` (nine, `pi` in place of the amplitudes),
+  and `fid` / `cmmd` / `fd_dinov2` once. The model repos (v0.8.0) log them under `Metrics_v1/combra_*`,
+  `Metrics_v2/combra_*` and `Metrics/combra_*` ({doc}`models/spec`, §6 – §7).
+- {py:func}`~combra.metrics.self_test` runs both versions and, with `images=`,
+  no longer requires the bimodal-Gaussian keys: four real images can fit
+  degenerately while the full reference does not, which aborted 256 px training
+  runs at random.
+- {py:func}`~combra.metrics.compute_all_metrics` returns `nan` angle keys when a
+  side has no vertex angle, instead of raising, and still computes the image
+  metrics.
+
+**Fixed**
+
+- The sharded training metrics gather the angles as float64: a float32 cast moved
+  lattice angles across a bin edge at steps such as 2 or 10, so the angle keys
+  differed from {py:func}`~combra.metrics.compute_all_metrics` (step 5 was not
+  affected).
+- The angle extraction pool of {py:mod}`combra.metrics.distributed` is sized by the
+  ranks on one machine (`LOCAL_WORLD_SIZE`), not by the global world size.
+
+**Moved**
+
+- The mass-share fit: `combra.experimental.fit_bimodal_gaussian` ->
+  `combra.fitting.fit_bimodal_share` (result `BimodalShareFit`),
+  `combra.experimental.truncated_bimodal_gaussian` ->
+  `combra.stats.truncated_bimodal_gaussian`.
 
 **Documentation**
 
+- The model spec and the four model pages describe the three metric sections and
+  the `combra <v>` field of the `[startup]` line; `pi` is gone from the key lists.
+- The experimental page became {doc}`user_guide/angles_v2`; the v1 page cites the
+  pipeline's paper and discusses the choice of `min_segment_len`.
 - The model pages name the WC-Co training zips `imagenet_9to4_1024x1024_<r>x<r>.zip`
   again (the model repos' v0.7.1): the 1080-original-crop sets took over those
   names and the old 8640-image zips are gone.
@@ -56,7 +117,7 @@ below track what changes for a *user* of the library.
   return about 360° minus the true circular distance on such grids; none of 528
   pairs of stored real densities is affected.
 - `combra.stats.truncated_bimodal_gaussian` is removed; the truncated share
-  model stays in {py:mod}`combra.experimental`.
+  model stays in `combra.experimental`.
 
 ### 0.22.0
 
@@ -83,13 +144,13 @@ below track what changes for a *user* of the library.
 
 **Added**
 
-- {py:mod}`combra.experimental` holds the mass-share model that was the fit of
-  0.13.0 - 0.21.0: {py:func}`~combra.experimental.fit_bimodal_gaussian` (five
+- `combra.experimental` holds the mass-share model that was the fit of
+  0.13.0 - 0.21.0: `combra.experimental.fit_bimodal_gaussian` (five
   parameters, the total fixed to the histogram's mass),
   `truncated_bimodal_gaussian(..., weight, total)` and the result
   `BimodalGaussianFit(curve, mus, sigmas, shares, total)`. On 30 real angle
   densities it returns the values of 0.21.0 bit for bit, and the six-parameter
-  fit those of 0.12.0. See {doc}`user_guide/experimental`.
+  fit those of 0.12.0. See {doc}`user_guide/angles_v2`.
 
 ### 0.21.0
 
@@ -97,21 +158,21 @@ below track what changes for a *user* of the library.
 
 - **The angle method of {py:mod}`combra.angles` is P0 again (breaking; angle
   results of 0.15.0 - 0.20.2 are P6 and not comparable with new ones).**
-  {py:func}`~combra.angles.vertex_angles` reads the map of
+  `combra.angles.vertex_angles` reads the map of
   {py:func}`~combra.angles.preprocess_image`, simplifies each contour with
   Douglas–Peucker at `tol=3`, prunes the segments shorter than
   `min_segment_len=10` and measures the angle between the chords at every
   vertex. These are the functions that were in `combra.legacy`, unchanged;
   `extract_polygons` and `output_directory` (folders named `_msl{msl}`) moved
   with them. See {doc}`user_guide/angles`.
-- **P6 is {py:mod}`combra.experimental`.**
-  {py:func}`~combra.experimental.vertex_angles`,
-  {py:func}`~combra.experimental.settings_for_scale`, `pool_mask`,
+- **P6 is `combra.experimental`.**
+  `combra.experimental.vertex_angles`,
+  `combra.experimental.settings_for_scale`, `pool_mask`,
   `pool_regions`, `extract_polygons`, `output_directory` and `Region` moved
   there from `combra.angles`, unchanged, with the `scale` argument and the
   `_tol` / `_scale` folder names. On the bundled images both methods return
   the arrays of 0.20.2 bit for bit under their new names. See
-  {doc}`user_guide/experimental`.
+  {doc}`user_guide/angles_v2`.
 - {py:meth}`~combra.data.MicrostructureDataset.generate_angles`,
   {py:func}`~combra.data.sweep_angles` and the image-batch angle metrics
   (`images_to_pooled_angles`, `images_to_angle_density`, and through them
@@ -134,9 +195,9 @@ below track what changes for a *user* of the library.
 
 **Documentation**
 
-- {doc}`user_guide/angles` describes P0 and {doc}`user_guide/experimental`
+- {doc}`user_guide/angles` describes P0 and {doc}`user_guide/angles_v2`
   describes P6; the P0 and P7 pages are gone. The worked examples follow:
-  {doc}`examples/angles` starts from one image, {doc}`examples/experimental`
+  {doc}`examples/angles` starts from one image, {doc}`examples/angles_v2`
   runs P6 and compares it with P0.
 
 ### 0.20.2
@@ -170,7 +231,7 @@ below track what changes for a *user* of the library.
   P6 benchmark validated at 256, 512 and 1536 px of the 1536 px field, so angle
   densities of different resolutions are measured with the same physical
   settings. Without `scale` nothing changes. See
-  {doc}`user_guide/experimental`.
+  {doc}`user_guide/angles_v2`.
 - `combra.angles.output_directory` names folders of scaled extractions
   `..._scale{scale:.4g}`; `resolve_overlay_rows` / `plot_overlay_grid` accept a
   fifth manifest element `scale` per source, and
@@ -403,7 +464,7 @@ A clean break: defaults and names change without aliases.
 
 - The reference entry of `angles.vertex_angles` states the
   five P6 stages with the input, output, parameters and formula of each, as
-  {doc}`user_guide/experimental` does. Documentation only; nothing needs
+  {doc}`user_guide/angles_v2` does. Documentation only; nothing needs
   regenerating.
 
 ### 0.15.1
@@ -442,7 +503,7 @@ A clean break: defaults and names change without aliases.
   corners with an RMS edge error of 0.67 px where P0 recovered 12% at 1.26 px,
   and finds every pool where P0's Otsu mask missed 7%; the convex mode sits
   about 15° higher than under P0, so every reference set is re-extracted. See
-  {doc}`user_guide/experimental`.
+  {doc}`user_guide/angles_v2`.
 - The per-source folder suffix is `_tol{tol:g}` instead of `_msl{msl}`:
   `angles.output_directory`,
   {py:func}`~combra.angles.resolve_overlay_rows`,
@@ -468,7 +529,7 @@ A clean break: defaults and names change without aliases.
   with its residual and the model-free reflex, trough and needle shares;
   `angles.pool_regions` and
   `angles.extract_polygons` expose the mask and the polygons.
-- {py:mod}`combra.experimental` — P7, the facet-based
+- `combra.experimental` — P7, the facet-based
   candidate method: gradient-located edge points and split-and-merge facets.
   Best of the three against the truth (54% of corners), slower and further
   from the two-Gaussian model on real images.

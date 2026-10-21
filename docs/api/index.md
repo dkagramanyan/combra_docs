@@ -12,12 +12,7 @@ stages its pipelines run internally, helpers, result containers and constants
 carry no leading underscore.
 
 Stable
-: Every module below except `combra.experimental`. A breaking change is listed
-  in the {doc}`/release_notes`.
-
-Experimental
-: `combra.experimental`, candidate methods; its API and output may
-  change without a deprecation period.
+: Every module below. A breaking change is listed in the {doc}`/release_notes`.
 
 {doc}`/development/api_policy` states what the labels promise, how version
 numbers are read, and how a function is deprecated and removed.
@@ -28,7 +23,7 @@ numbers are read, and how a function is deprecated and removed.
 | --- | --- |
 | {doc}`combra.data <data>` | Datasets that write angle and beam parquets; sample images |
 | {doc}`combra.io <io>` | Parquet, HDF5 and TensorBoard input and output |
-| {doc}`combra.angles <angles>` | Vertex angles, their density fit and plots; the experimental methods |
+| {doc}`combra.angles <angles>` | Vertex angles (versions v1 and v2), their density fit and plots |
 | {doc}`combra.ellipse <ellipse>` | Minimum-volume enclosing ellipses and beam-length plots |
 | {doc}`combra.image <image>` | Measures computed on an image |
 | {doc}`combra.metrics <metrics>` | Real-vs-generated metrics, convergence, training-loop evaluation |

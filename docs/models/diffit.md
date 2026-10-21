@@ -177,9 +177,10 @@ VAE latent space, decodes them to pixels, and scores them with the combra suite
 (when combra is installed) — the sharded equivalent of
 `compute_all_metrics(reals, fakes, image_metrics=True)` (see below). All returned metrics — angle-Wasserstein `w1`, `w2`, `circular_w1`,
 `circular_w2`, the bimodal-Gaussian relative errors
-`mu1`/`mu2`/`sigma1`/`sigma2`/`pi`, and the image-feature metrics `fid`,
-`cmmd`, `fd_dinov2` — are logged to TensorBoard under `Metrics/combra_*`, written
-to `stats.jsonl`, and printed to the run log. Enabling the combra metrics (the
+`mu1`/`mu2`/`sigma1`/`sigma2`/`amp1`/`amp2`, and the image-feature metrics `fid`,
+`cmmd`, `fd_dinov2` — are logged in three sections (since v0.8.0, combra 0.25.0): `Metrics/combra_*` for the image metrics, `Metrics_v1/combra_*` and `Metrics_v2/combra_*` for the angle metrics of {py:func}`combra.angles.vertex_angles.v1` and {py:func}`combra.angles.vertex_angles.v2` (v2 fits one mass share, so its Gaussian keys end in `pi` instead of `amp1`/`amp2`). They go to TensorBoard and `stats.jsonl` under
+those tags and to the run log as the `Metrics:`, `Metrics v1:` and `Metrics v2:`
+lines. Enabling the combra metrics (the
 default `--combra-metrics=true`) **replaces** DiffiT's own Inception suite: when
 they are on, IS / FID / sFID / Precision / Recall are **not** computed (so FID is
 not measured twice); pass `--combra-metrics=false` to compute that Inception
@@ -298,9 +299,11 @@ To score arbitrary real/generated image batches with the combra metrics directly
 >>> results = compute_all_metrics(reference_images, generated_images, image_metrics=True)
 >>> results
 {'w1': ..., 'w2': ..., 'circular_w1': ..., 'circular_w2': ...,
- 'mu1': ..., 'mu2': ..., 'sigma1': ..., 'sigma2': ..., 'pi': ...,
+ 'mu1': ..., 'mu2': ..., 'sigma1': ..., 'sigma2': ..., 'amp1': ..., 'amp2': ...,
  'fid': ..., 'cmmd': ..., 'fd_dinov2': ...}
 ```
+
+That is the v1 section; `angle_kw={'method': 'v2'}` gives the v2 one.
 
 `image_metrics=True` is what adds the `fid`/`cmmd`/`fd_dinov2` keys; without it,
 only the angle-Wasserstein and bimodal-Gaussian metrics come back. Batches may be

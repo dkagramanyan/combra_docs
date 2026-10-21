@@ -21,7 +21,7 @@ what the bimodal-Gaussian fit in `combra.fitting` is for, and its presence or
 absence is diagnostic — see {ref}`undefined-rather-than-wrong`. The whole
 scheme is stated formally in {doc}`angle_fit`.
 
-Note that the two halves are not two ends of a circle. `vertex_angles` reports
+Note that the two halves are not two ends of a circle. `vertex_angles` (either version) reports
 $\theta$ for a convex vertex and $360° - \theta$ for a reflex one, so 1° is a
 needle-thin protrusion and 359° a needle-thin notch: opposite shapes that happen
 to sit at opposite ends of the axis. The angle domain is an **interval**, which
@@ -29,8 +29,17 @@ is why the fitted model is not wrapped around it.
 
 ## From image to angle
 
-{py:func}`combra.angles.vertex_angles` measures the angles of one image in two
-calls (the method called P0 in the extraction report).
+The angles come in two versions, `combra.angles.vertex_angles.v1` and
+`combra.angles.vertex_angles.v2`, whose densities are not comparable with each
+other; `vertex_angles` itself is a namespace and is not callable. This section
+describes **v1** (the method called P0 in the extraction report), which the
+datasets use and the metrics use by default; {doc}`angles_v2` describes v2 (P6).
+v1 is the pipeline of Straumal et al., *Materials* 16, 5560 (2023) — median
+filter, Otsu, gradient, Canny, border following, Douglas–Peucker, chord angles
+— plus the short-segment pruning of step 3 below.
+
+{py:func}`combra.angles.vertex_angles.v1` measures the angles of one image in
+two calls.
 
 **Preprocessing.** {py:func}`~combra.angles.preprocess_image` reduces the image
 to a three-level map:
@@ -45,7 +54,7 @@ The mask and its boundary are stored in one `uint8` array with the levels 0,
 must be converted from BGR first. The same map is the input of the beam fit,
 {doc}`beams`.
 
-**Angles.** {py:func}`~combra.angles.vertex_angles` then takes that map:
+**Angles.** {py:func}`~combra.angles.vertex_angles.v1` then takes that map:
 
 1. contours are found, and a contour whose bounding box comes within
    `border_eps` px of the frame is dropped: a grain clipped by the frame has
@@ -53,8 +62,8 @@ must be converted from BGR first. The same map is the input of the beam fit,
 2. each contour is simplified with Douglas–Peucker at `tol` px (default 3), and
    one left with three or fewer vertices is dropped;
 3. vertices are removed one at a time, shortest neighbouring segment first,
-   until no segment is shorter than `min_segment_len` px (default 10) or only
-   three vertices remain;
+   until no segment is shorter than `min_segment_len` px (default 5; 10 before
+   combra 0.25.0) or only three vertices remain;
 4. the angle at every remaining vertex $V_k$ is measured between the chords
    $\mathbf{a} = V_{k-1} - V_k$ and $\mathbf{b} = V_{k+1} - V_k$,
 
@@ -74,7 +83,7 @@ list of the simplified contours that produced them.
 >>> from combra import data, angles
 >>> img = data.load_microstructure().images[0]
 >>> prep = angles.preprocess_image(img)
->>> arr, contours = angles.vertex_angles(prep, border_eps=5, tol=3, min_segment_len=10.0)
+>>> arr, contours = angles.vertex_angles.v1(prep, border_eps=5, tol=3, min_segment_len=5.0)
 >>> arr.min(), arr.max()
 ```
 
@@ -87,21 +96,37 @@ reflex share in one named tuple.
 Both settings decide which bends of the boundary become vertices. `tol` is how
 far the simplified contour may leave the pixel contour. `min_segment_len` then
 suppresses the staircase vertices of the pixel boundary: raising it gives fewer
-angles and a smoother density, and 5 to 20 px is the useful range. Densities
-extracted at different values are different measurements, so the value is
-**part of a result's identity**: {py:func}`combra.angles.output_directory`
-writes it into the output folder name (`..._msl5`), so runs made at different
-settings cannot be silently compared.
+angles and a smoother density. Pruning stops at three vertices, so it cuts both
+ways:
 
-### The experimental method
+- **Too long** turns small pools into triangles. A pool whose perimeter is under
+  about three times `min_segment_len` keeps three vertices, whose angles add up
+  to 180° and are never reflex. At 10 px this put 83 %, 70 % and 41 % of the
+  real pools at 256, 512 and 1024 px into triangles, a spurious peak near 45°;
+  at 256 px the reference fit was rejected outright. Hence the default of 5
+  since 0.25.0.
+- **Too short** keeps split corners. On a large figure with a sharp tip the
+  median rounds the tip enough that Douglas–Peucker splits it into two vertices,
+  which a longer `min_segment_len` merges back: on 88 px synthetic stars, 5 px
+  finds 11 % more vertices than were drawn, 10 px none.
 
-{py:mod}`combra.experimental` holds P6, which detects the cobalt pools itself,
+At 5 px the real 1024 px fits reproduce the paper's Table 1 to within 1° on the
+reflex mode and 3–6° on the convex one. Densities extracted at different values
+are different measurements, so the value is **part of a result's identity**:
+`combra.angles.output_directory.v1` writes it into the output folder name
+(`..._msl5`), so runs made at different settings cannot be silently compared.
+
+### The other version
+
+{py:func}`combra.angles.vertex_angles.v2` (P6) detects the cobalt pools itself,
 locates their boundary to sub-pixel precision and reads each angle from lines
-fitted to the boundary; {doc}`experimental` describes it. From 0.15.0 to 0.20.2
-P6 was the method of this module, and the parquets extracted with it live in
-`..._tol1.75` and `..._scale0.25` folders and remain readable. A comparison
-across the two methods is not meaningful, so both sides of a comparison are
-always extracted with the same method.
+fitted to the boundary; {doc}`angles_v2` describes it. From 0.15.0 to 0.20.2 P6
+was the only method of this module, and from 0.21.0 to 0.24.0 it lived in
+`combra.experimental`; the parquets extracted with it live in `..._tol1.75` and
+`..._scale0.25` folders and remain readable. A comparison across the two
+versions is not meaningful, so both sides of a comparison are always extracted
+with the same version — the training-time metrics report both, each against its
+own reference.
 
 ## From angles to a density
 
@@ -181,9 +206,9 @@ $\hat a_2 / (\hat a_1 + \hat a_2)$. Why least squares and not maximum
 likelihood, and the screening criteria, are derived in {doc}`angle_fit`,
 §3–§5.
 
-{py:mod}`combra.experimental` holds a five-parameter variant of the model,
+`combra.fitting.fit_bimodal_share` fits a five-parameter variant of the model,
 truncated to $D$, in which the two amplitudes are replaced by one mass share
-and a total fixed by the data; see {doc}`experimental`.
+and a total fixed by the data; see {doc}`angles_v2`.
 
 ## Sample size
 

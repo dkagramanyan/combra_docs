@@ -1,29 +1,31 @@
-# Experimental methods
+# Angle version v2 and the mass-share fit
 
-{py:mod}`combra.experimental` holds two candidates that the datasets and the
-metrics do not use: P6, an angle extraction method, and the mass-share model,
-a five-parameter variant of the angle fit. The API and output of this module
-may change without a deprecation period.
+This page describes the second angle version,
+{py:func}`combra.angles.vertex_angles.v2` (P6), and the mass-share fit,
+`combra.fitting.fit_bimodal_share`, a five-parameter variant of the angle fit.
+The datasets use version v1 ({doc}`angles`); the training-time metrics report
+both versions, each in its own section.
 
-For a worked run, see {doc}`/examples/experimental`.
+For a worked run, see {doc}`/examples/angles_v2`.
 
-## The sub-pixel method (P6)
+## The sub-pixel method (v2, P6)
 
 P6 detects the
 cobalt pools itself, locates their boundary to sub-pixel precision and reads
 each angle from lines fitted to the boundary. From 0.15.0 to 0.20.2 it was the
-method of `combra.angles`; the datasets and the metrics now use P0,
-{py:func}`combra.angles.vertex_angles`. The two methods' densities are not
-comparable, so a comparison always extracts both sides with the same method.
+only method of `combra.angles`, from 0.21.0 to 0.24.0 it was
+`combra.experimental.vertex_angles`, and since 0.25.0 it is
+`combra.angles.vertex_angles.v2`. The densities of v1 and v2 are not
+comparable, so a comparison always extracts both sides with the same version.
 
 ### Pipeline
 
-{py:func}`~combra.experimental.vertex_angles` performs the measurement on one
+{py:func}`~combra.angles.vertex_angles.v2` performs the measurement on one
 grey image $I$ in five stages. Each stage is stated with its input, its output
 and its own parameters.
 
 **Stage 1 — detection mask.** $I \mapsto M$, a boolean image, true on the
-cobalt ({py:func}`~combra.experimental.pool_mask`). With $\tilde I$ the image after a
+cobalt (`combra.angles.pool_mask`). With $\tilde I$ the image after a
 $3 \times 3$ median filter (`median`),
 
 $$
@@ -106,20 +108,20 @@ not depend on the inset.
 
 The output is the concatenation of the $\alpha_k$ over all kept regions and
 the list of the stored polygons, one row per angle.
-{py:func}`~combra.experimental.pool_regions` returns the same result with the
+`combra.angles.pool_regions` returns the same result with the
 mask of stage 1 and the curve of stage 2 attached to every region.
 
 ```pycon
->>> from combra import data, experimental
+>>> from combra import angles, data
 >>> img = data.load_microstructure().images[0]
->>> arr, polygons = experimental.vertex_angles(img, border_eps=5, tol=1.75)
+>>> arr, polygons = angles.vertex_angles.v2(img, border_eps=5, tol=1.75)
 >>> arr.min(), arr.max()
 ```
 
 ### Choosing `tol`
 
 The tolerance decides which bends of the boundary become vertices, so it is
-**part of a result's identity**: {py:func}`~combra.experimental.output_directory`
+**part of a result's identity**: `combra.angles.output_directory.v2`
 encodes it in the output folder name (`..._tol1.75`) so runs made at different
 settings cannot be silently compared. The default was chosen on the synthetic
 set of {py:mod}`combra.synth`, where the truth is exact: at 1.75 px
@@ -139,12 +141,12 @@ different physical size: on native 1536 px frames the default 1.75 px cuts the
 boundary into about 70% more vertices, most of them nearly straight (160–200°),
 and moves the convex mode by about 4°. Pass `scale`, the image pixels per native
 micrograph pixel, and the three settings follow it
-({py:func}`~combra.experimental.settings_for_scale`); the settings the benchmark
+({py:func}`~combra.angles.settings_for_scale`); the settings the benchmark
 validated at 256, 512 and 1536 px of the 1536 px field are reproduced exactly:
 
 ```python
-experimental.vertex_angles(img, scale=256 / 1536)   # the full field resized to 256 px
-experimental.vertex_angles(img, scale=256 / 1024)   # a native 1024 px crop resized to 256 px
+angles.vertex_angles.v2(img, scale=256 / 1536)   # the full field resized to 256 px
+angles.vertex_angles.v2(img, scale=256 / 1024)   # a native 1024 px crop resized to 256 px
 ```
 
 The scale is a property of how the images were made, not of their size, so it
@@ -160,13 +162,13 @@ a real set of the same scale.
 On the synthetic set of {doc}`synth`, P6 recovers about 37% of the true corners
 at an RMS edge error of 0.67 px, against 12% and 1.26 px for P0. It also finds
 the faint pools that Otsu's threshold alone does not see.
-{py:func}`~combra.experimental.extract_polygons` wraps P6 in the form the
-benchmark scores, and {py:func}`combra.angles.extract_polygons` does the same
+`combra.angles.extract_polygons.v2` wraps P6 in the form the
+benchmark scores, and `combra.angles.extract_polygons.v1` does the same
 for P0.
 
 ## The mass-share model
 
-{py:func}`~combra.experimental.fit_bimodal_gaussian` fits the angle density
+`combra.fitting.fit_bimodal_share` fits the angle density
 with five parameters in place of the six of
 {py:func}`combra.fitting.fit_bimodal_gaussian`: the two amplitudes are replaced
 by one share of the mass,
@@ -193,9 +195,12 @@ $\pi^{(0)} = m_1 / (m_1 + m_2)$ from the masses $m_i$ on either side. On the
 1083 stored real angle densities the screening accepts 992 of its fits,
 against 1035 of the default fit's.
 
-The result is a `BimodalGaussianFit(curve, mus, sigmas, shares, total)`;
-{py:func}`~combra.experimental.truncated_bimodal_gaussian` evaluates the model.
-From 0.13.0 to 0.21.0 this was the fit of `combra.fitting`, and the metrics
-reported the relative error of $\pi$ under the key `pi`; they now report
-`amp1` and `amp2`. {py:func}`combra.metrics.degenerate_fit_reason` screens a
+The result is a `BimodalShareFit(curve, mus, sigmas, shares, total)`;
+`combra.stats.truncated_bimodal_gaussian` evaluates the model.
+Since 0.25.0 it is the fit of the v2 angle metrics: a density extracted with
+{py:func}`combra.angles.vertex_angles.v2` is fitted with it, and its metrics
+report the relative error of $\pi$ under the key `pi`, while v1 densities keep
+the amplitude fit and the keys `amp1` and `amp2`. From 0.13.0 to 0.21.0 this was
+the fit of `combra.fitting` (named `fit_bimodal_gaussian`), from 0.22.0 to 0.24.0
+it was `combra.experimental.fit_bimodal_gaussian`. {py:func}`combra.metrics.degenerate_fit_reason` screens a
 share fit as it screens an amplitude fit.

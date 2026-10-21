@@ -7,7 +7,7 @@ for every class of the bundled dataset: write them to parquet, and plot the
 per-class densities with their bimodal-Gaussian fits.
 
 For what the steps mean, see :doc:`/user_guide/angles`; for the primitives, see
-:func:`combra.angles.vertex_angles` and
+:func:`combra.angles.vertex_angles.v1` and
 :meth:`combra.data.MicrostructureDataset.generate_angles`.
 """
 
@@ -33,10 +33,10 @@ print(prep.shape, prep.dtype)
 print(np.unique(prep).tolist())
 
 # %%
-# :func:`~combra.angles.vertex_angles` returns every vertex angle in degrees and
+# :func:`~combra.angles.vertex_angles.v1` returns every vertex angle in degrees and
 # the simplified contours that produced them.
 
-angles_deg, contours = angles.vertex_angles(prep, min_segment_len=10.0)
+angles_deg, contours = angles.vertex_angles.v1(prep, min_segment_len=5.0)
 print(angles_deg.min(), angles_deg.max())
 print(contours[0].shape[1], contours[0].dtype)
 
@@ -44,15 +44,15 @@ print(contours[0].shape[1], contours[0].dtype)
 # A larger ``min_segment_len`` prunes more of the short, pixel-staircase
 # segments, so fewer angles survive:
 
-counts = {m: len(angles.vertex_angles(prep, min_segment_len=m)[0]) for m in (5, 10, 20)}
+counts = {m: len(angles.vertex_angles.v1(prep, min_segment_len=m)[0]) for m in (5, 10, 20)}
 print(counts)
 
 # %%
 # Because of that, the value is part of a result's name.
-# :func:`~combra.angles.output_directory` builds the folder the parquets are
+# ``combra.angles.output_directory.v1`` builds the folder the parquets are
 # kept in:
 
-print(angles.output_directory("./data/angles", "./data/h5/gen_san_N10000.h5", 5.0))
+print(angles.output_directory.v1("./data/angles", "./data/h5/gen_san_N10000.h5", 5.0))
 
 # %%
 # A dataset
@@ -80,7 +80,7 @@ out_path = dataset.generate_angles(
     class_types=class_types,
     step=[5],  # one or more bin widths, in degrees
     workers=2,
-    min_segment_len=10.0,
+    min_segment_len=5.0,
 )
 print(out_path.name)
 

@@ -14,7 +14,7 @@ write the two chords leaving the vertex
 
 $$\mathbf{v}_1 = V_{k-1} - V_k, \qquad \mathbf{v}_2 = V_{k+1} - V_k .$$
 
-{py:func}`combra.angles.vertex_angles` reports
+{py:func}`combra.angles.vertex_angles.v1` reports
 
 $$
 \alpha_k =
@@ -33,12 +33,12 @@ area of the pair, for the orientation the contours are traced in. So
 $\alpha_k \in [0^\circ, 360^\circ)$, convex vertices occupy the lower half and
 reflex vertices the upper half.
 
-The experimental method, {py:func}`combra.experimental.vertex_angles`, uses in
+The other version, {py:func}`combra.angles.vertex_angles.v2`, uses in
 place of the chords the directions of two lines fitted to the boundary on
 either side of the vertex, $\mathbf{u}_1 = -\mathbf{d}_{k-1}$ and
 $\mathbf{u}_2 = \mathbf{d}_k$, with the convex test
 $\det(\mathbf{u}_1, \mathbf{u}_2) > 0$ for the orientation its contours are
-traced in; see {doc}`experimental`.
+traced in; see {doc}`angles_v2`.
 
 :::{important}
 **The angle domain is an interval, not a circle.** $\alpha = 1^\circ$ is a
@@ -140,9 +140,9 @@ $a = h_\ast \sigma \sqrt{2\pi}$ to grow with $\sigma$: fitted
 $\sigma = 10^5$ degrees with $a = 2 \times 10^3$ against an expected 5 have
 been observed. Both are why §5 screens every fit before it is read.
 
-{py:mod}`combra.experimental` holds the truncated variant, each mode divided by
-its $Z_i$ and the two amplitudes replaced by one mass share; see
-{doc}`experimental`.
+`combra.fitting.fit_bimodal_share` fits the truncated variant, each mode
+divided by its $Z_i$ and the two amplitudes replaced by one mass share; see
+{doc}`angles_v2`.
 
 ## 4. The estimator
 
@@ -206,7 +206,7 @@ The start is fixed, $(\mu_1, \mu_2, \sigma_1, \sigma_2, a_1, a_2)^{(0)} =
 scale of §2. From it a curve that does not sum to one (raw counts, or peak
 heights of one) can send the means thousands of degrees out of the domain. On a
 density with a weak reflex mode over a heavy baseline, a broad pedestal is a
-genuine competing minimum from this start; the experimental variant reads its
+genuine competing minimum from this start; the mass-share variant reads its
 start off the data instead. With fewer than six bins the problem is
 undetermined, and every parameter is returned as $\text{nan}$.
 

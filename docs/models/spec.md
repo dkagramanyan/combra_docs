@@ -404,11 +404,19 @@ What a dataset yields is part of the API, identical in all four repos:
   class-sorted, so a first-N slice is class-biased (today EDM2-v2 takes the
   first N while its fakes draw classes uniformly — the two sides of the FID
   that drives `best_model.pt` don't even share a class distribution).
-- **Uniform keys**: `Metrics/combra_fid`, `Metrics/combra_cmmd`,
-  `Metrics/combra_fd_dinov2`, the angle-density metrics, and
-  `Metrics/combra_fid_best` — all mirrored to `stats.jsonl`. Both sinks are
-  required: a run whose metrics reach TensorBoard alone loses its entire history
-  with the tfevents file.
+- **Uniform keys**, in three sections (combra ≥ 0.25.0): the image metrics
+  `Metrics/combra_fid`, `Metrics/combra_cmmd`, `Metrics/combra_fd_dinov2`,
+  `Metrics/combra_num_fid_samples` and `Metrics/combra_fid_best`; the angle-density
+  metrics of {py:func}`combra.angles.vertex_angles.v1` as
+  `Metrics_v1/combra_<key>`; those of {py:func}`combra.angles.vertex_angles.v2`
+  as `Metrics_v2/combra_<key>`. `<key>` is one of `w1`, `w2`, `circular_w1`,
+  `circular_w2`, `mu1`, `mu2`, `sigma1`, `sigma2` and, for v1 (amplitude fit),
+  `amp1`, `amp2`; for v2 (mass-share fit, `combra.fitting.fit_bimodal_share`),
+  `pi`. The two angle versions measure different things and are never compared
+  with each other.
+  All of them are mirrored to `stats.jsonl`. Both sinks are required: a run
+  whose metrics reach TensorBoard alone loses its entire history with the
+  tfevents file.
 
   ```{note}
   Metric keys are bare and the sample count is its own scalar,
@@ -435,7 +443,7 @@ One eval pass per snapshot tick, identical in all four repos:
    breaks cross-repo comparability, and StyleSwin-v2
    flip-doubles the reference) — InceptionV3 features
    (FID), CLIP embeddings (CMMD), DINOv2 features (FD-DINOv2) and pooled
-   vertex angles — via combra's split APIs
+   vertex angles of both versions, v1 and v2 — via combra's split APIs
    ({py:func}`combra.metrics.fid_features`, `cmmd_features`,
    `fd_dinov2_features`, {py:func}`combra.metrics.images_to_pooled_angles`).
    The gathered reference features are cached on rank 0 for the whole run.
@@ -446,21 +454,25 @@ One eval pass per snapshot tick, identical in all four repos:
    extracts the same features from its own shard.
 3. **Distances (rank 0).** Only the small feature rows and pooled-angle
    arrays are gathered; rank 0 computes the Fréchet distances (`fid`,
-   `fd_dinov2`), the CLIP MMD (`cmmd`) and the angle-density metrics
-   (Wasserstein `w1`/`w2`/`circular_*` + bimodal-Gaussian fit errors) against
-   the cached reference
+   `fd_dinov2`), the CLIP MMD (`cmmd`) and, once per angle version, the
+   angle-density metrics (Wasserstein `w1`/`w2`/`circular_*` + bimodal-Gaussian
+   fit errors) against the cached reference
    ({py:func}`combra.metrics.frechet_from_features` for both Fréchet metrics,
    {py:func}`combra.metrics.cmmd_from_features` for CMMD, and
    {py:func}`combra.metrics.angle_density_metrics_from_pooled` over the gathered
    {py:func}`combra.metrics.images_to_pooled_angles` arrays).
-4. **Logging.** Results land in TensorBoard as `Metrics/combra_*` and in
-   `stats.jsonl`. A metric whose backend is unavailable (e.g. no network for
+4. **Logging.** Results land in TensorBoard as `Metrics/combra_*`,
+   `Metrics_v1/combra_*` and `Metrics_v2/combra_*`, and in `stats.jsonl` under
+   the same keys. A metric whose backend is unavailable (e.g. no network for
    DINOv2 weights) records `nan`; a missing combra package prints a startup
    warning and training continues without eval.
 
 Because feature extraction is per-image and angle pooling is concatenation,
-the sharded result is **exact** — numerically identical to a single-GPU
-{py:func}`combra.metrics.compute_all_metrics` call over the full batches.
+the sharded result is **exact** — numerically identical to single-GPU
+{py:func}`combra.metrics.compute_all_metrics` calls over the full batches, one
+per angle version (`angle_kw={'method': 'v1'}` and `{'method': 'v2'}`). The
+image metrics agree to the numerics of the backbones: TF32, which the training
+scripts enable by default, moves them in the fourth or fifth digit.
 
 **Failing safely across ranks.** Every step above puts local work that can fail on one
 rank in front of a collective the other ranks are already entering, so the rule is:
@@ -525,9 +537,13 @@ exists.
 **Console / `.log` format — identical in all four.** The `.log` opens with the
 `Training options:` dump (printed once, after the rank-0 file logger exists) and one
 header line
-`[startup] torch <v> | cuda <v> | gpus <N> | device <name> | K=V ...` (the set
+`[startup] torch <v> | cuda <v> | combra <v> | gpus <N> | device <name> | K=V ...` (the set
 ones of `CUDA_VISIBLE_DEVICES`, `TORCH_CUDA_ARCH_LIST`, `HF_HUB_OFFLINE`,
-`TRANSFORMERS_OFFLINE`). Only rank 0 prints progress; other ranks print only
+`TRANSFORMERS_OFFLINE`). The `combra <v>` field (since the v0.8.0 model releases;
+`combra not installed` without it) matters: the version decides which angle method
+each section measured, and a run killed before its HPARAMS summary has no other
+record of it.
+Only rank 0 prints progress; other ranks print only
 errors, rank-tagged. Then, per tick, one line:
 
 ```text
@@ -535,9 +551,17 @@ tick 12    kimg 403.2     time 1h 02m 05s   sec/tick 61.3     sec/kimg 15.33    
 ```
 
 (model extras such as san-v2's `augment` go at the end). An eval tick adds
-`Evaluating combra metrics (<N> samples, <G> GPUs)...` and one
-`Metrics: combra_fid 12.3456  combra_cmmd 0.1234  ...` line with the logged keys
-(`{v:.4f}`, two spaces apart; a failure prints `combra metrics failed: <error>`);
+`Evaluating combra metrics (<N> samples, <G> GPUs)...` and three lines, one per
+section, with the logged keys (`{v:.4f}`, two spaces apart):
+
+```text
+Metrics: combra_fid 12.3456  combra_cmmd 0.1234  combra_fd_dinov2 210.5432  combra_num_fid_samples 10000.0000  combra_fid_best 11.9876
+Metrics v1: combra_w1 1.2345  combra_w2 2.3456  ...  combra_amp2 -0.0456
+Metrics v2: combra_w1 1.3456  combra_w2 2.4567  ...  combra_pi 0.0123
+```
+
+(a failure prints `combra metrics failed: <error>`; combra's own warnings, such
+as why a bimodal-Gaussian key is `nan`, reach the run log too);
 every snapshot file prints `Saved <basename>` once written; the last line is
 `Training complete.`
 
@@ -558,7 +582,8 @@ sizes, GPU counts and repos:
 | `LearningRate/*` | effective learning rates (`G`/`D`, or `lr`) | every tick |
 | `Timing/*` | sec/tick, sec/kimg; `Timing/eval_sec` on eval ticks only | every tick |
 | `Resources/*` | GPU / CPU memory | every tick |
-| `Metrics/combra_*` | the §6 combra metrics, at `global_step = cur_nimg` like every other tag (until 2026-08-27 EDM2-v2 stamped them at kimg, putting the metric curves on a different x-axis from its losses) | every snapshot tick; **not** step-held |
+| `Metrics/combra_*` | the §6 image metrics, at `global_step = cur_nimg` like every other tag (until 2026-08-27 EDM2-v2 stamped them at kimg, putting the metric curves on a different x-axis from its losses) | every snapshot tick; **not** step-held |
+| `Metrics_v1/combra_*`, `Metrics_v2/combra_*` | the §6 angle metrics of the two angle versions (combra ≥ 0.25.0; earlier runs logged one version under `Metrics/combra_*`) | every snapshot tick; **not** step-held |
 | `Fakes` | EMA sample grid (image) | every snapshot tick |
 
 TensorBoard scalars carry **no `walltime=` argument** (seconds-since-start there
@@ -568,8 +593,8 @@ event file (combra ≥ 0.15.3; earlier versions opened a second, unsuffixed file
 the writer is then closed. There is no `add_text`.
 
 ```{note}
-**`Metrics/combra_*` are never step-held.** A tick with no eval writes no combra
-columns. Repeating the previous tick's values at a new step turns the metric
+**`Metrics/combra_*` and `Metrics_v*/combra_*` are never step-held.** A tick
+with no eval writes no combra columns. Repeating the previous tick's values at a new step turns the metric
 curves into step functions and lets post-hoc snapshot selection resolve to a kimg
 that was never evaluated.
 ```

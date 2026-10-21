@@ -1,31 +1,29 @@
 """
-Experimental methods
-====================
+Angle version v2
+================
 
-Run P6 on a bundled image, inspect its regions, compare its angles with P0,
-the method of :mod:`combra.angles`, and fit a density with the mass-share
-model.
+Run version v2 (P6) on a bundled image, inspect its regions, compare its angles
+with version v1 (P0), and fit a density with the mass-share model.
 
-For what the stages do, see :doc:`/user_guide/experimental`; for the entry
-point, see :func:`combra.experimental.vertex_angles`. The module is
-experimental: its API and output may change without a deprecation period.
+For what the stages do, see :doc:`/user_guide/angles_v2`; for the entry point,
+see :func:`combra.angles.vertex_angles.v2`.
 """
 
 # %%
 # Extract
 # -------
 #
-# :func:`~combra.experimental.vertex_angles` takes the image directly and
+# :func:`~combra.angles.vertex_angles.v2` takes the image directly and
 # returns the angles with one sub-pixel polygon per region.
 
 import numpy as np
 import plotly.graph_objects as go
 import plotly.io as pio
 
-from combra import data, experimental
+from combra import angles, data
 
 image = data.load_microstructure().images[0]
-angles_p6, polygons = experimental.vertex_angles(image)
+angles_p6, polygons = angles.vertex_angles.v2(image)
 print(angles_p6.dtype, polygons[0].shape[1])
 print(angles_p6.min(), angles_p6.max())
 
@@ -33,10 +31,10 @@ print(angles_p6.min(), angles_p6.max())
 # Inspect the regions
 # -------------------
 #
-# :func:`~combra.experimental.pool_regions` returns the detection mask and, for
+# ``combra.angles.pool_regions`` returns the detection mask and, for
 # every region, the sub-pixel contour, the polygon and its angles:
 
-mask, regions = experimental.pool_regions(image)
+mask, regions = angles.pool_regions(image)
 print(mask.dtype, len(regions))
 r = max(regions, key=lambda r: len(r.contour))  # the longest boundary
 print(len(r.polygon) == len(r.angles))
@@ -69,30 +67,28 @@ pio.show(fig)
 #
 # Three settings are lengths in pixels. ``scale``, the image pixels per native
 # micrograph pixel, makes them follow the resolution;
-# :func:`~combra.experimental.settings_for_scale` shows the values it selects:
+# :func:`~combra.angles.settings_for_scale` shows the values it selects:
 
-print(experimental.settings_for_scale(512 / 1536))
-print(experimental.settings_for_scale(1.0))
+print(angles.settings_for_scale(512 / 1536))
+print(angles.settings_for_scale(1.0))
 
 # %%
 # The scale is part of a result's name.
-# :func:`~combra.experimental.output_directory` builds the folder P6 parquets
+# ``combra.angles.output_directory.v2`` builds the folder P6 parquets
 # are kept in:
 
-print(experimental.output_directory("./data/angles", "./data/h5/gen_san_N10000.h5", scale=0.25))
+print(angles.output_directory.v2("./data/angles", "./data/h5/gen_san_N10000.h5", scale=0.25))
 
 # %%
-# Compare with P0
+# Compare with v1
 # ---------------
 #
-# P0, :func:`combra.angles.vertex_angles`, reads the preprocessed map. P6 takes
+# v1 (P0), :func:`combra.angles.vertex_angles.v1`, reads the preprocessed map. P6 takes
 # the image itself, finds the faint pools that Otsu's threshold alone misses,
 # and puts a vertex on many more true corners, so it returns far more angles
 # from the same image:
 
-from combra import angles
-
-angles_p0, _ = angles.vertex_angles(angles.preprocess_image(image), min_segment_len=10.0)
+angles_p0, _ = angles.vertex_angles.v1(angles.preprocess_image(image))
 print(len(angles_p0), "<", len(angles_p6))
 print(f"reflex share: P0 {(angles_p0 > 180).mean():.2f}, P6 {(angles_p6 > 180).mean():.2f}")
 
@@ -110,7 +106,7 @@ pio.show(fig)
 
 # %%
 # The two densities are different measurements, so compare images only within
-# one method. :func:`~combra.experimental.extract_polygons` gives P6 in the form
+# one version. ``combra.angles.extract_polygons.v2`` gives P6 in the form
 # :func:`combra.synth.benchmark` scores; see :doc:`synth` for the comparison on
 # synthetic images.
 
@@ -118,18 +114,18 @@ pio.show(fig)
 # The mass-share fit
 # ------------------
 #
-# :func:`~combra.experimental.fit_bimodal_gaussian` fits a density with one
+# ``combra.fitting.fit_bimodal_share`` fits a density with one
 # mass share in place of the two amplitudes of
-# :func:`combra.fitting.fit_bimodal_gaussian`. Both on the P0 angles of all
+# :func:`combra.fitting.fit_bimodal_gaussian`. Both on the v1 angles of all
 # five bundled images:
 
 from combra import fitting, stats
 
 pooled = np.concatenate(
-    [angles.vertex_angles(angles.preprocess_image(im))[0] for im in data.load_microstructure().images]
+    [angles.vertex_angles.v1(angles.preprocess_image(im))[0] for im in data.load_microstructure().images]
 )
 x, y = stats.density_histogram(pooled, 5.0)
-share_fit = experimental.fit_bimodal_gaussian(x, y)
+share_fit = fitting.fit_bimodal_share(x, y)
 amp_fit = fitting.fit_bimodal_gaussian(x, y)
 print("share fit:", np.round(share_fit.mus, 1), np.round(share_fit.shares, 3), round(share_fit.total, 3))
 print("amplitude fit:", np.round(amp_fit.mus, 1), np.round(amp_fit.amps, 3))

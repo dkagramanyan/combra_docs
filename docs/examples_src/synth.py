@@ -41,11 +41,11 @@ print(round(float((truth > 180).mean()), 3))
 # ------------------------------
 #
 # A method is any function that returns ``(mask, polygons)`` for an image.
-# :func:`combra.experimental.extract_polygons` is P6 in that form:
+# ``combra.angles.extract_polygons.v2`` is P6 in that form:
 
-from combra import experimental
+from combra import angles
 
-score = synth.score_canvas(*experimental.extract_polygons(img), cv)
+score = synth.score_canvas(*angles.extract_polygons.v2(img), cv)
 summary, by_bin = synth.summarize([score])
 print(f"found {summary['found']:.3f}, IoU {summary['iou_truth']:.3f}")
 print(f"RMS edge error {summary['rms']:.2f} px")
@@ -62,8 +62,8 @@ print(list(by_bin)[:3])
 from combra import angles
 
 methods = {
-    "P0": angles.extract_polygons,
-    "P6": experimental.extract_polygons,
+    "P0": angles.extract_polygons.v1,
+    "P6": angles.extract_polygons.v2,
 }
 results = {name: synth.benchmark(m, seeds=[0]) for name, m in methods.items()}
 recovery = {name: r.summary["corner_recovery"] for name, r in results.items()}
@@ -80,7 +80,7 @@ pio.show(fig)
 # To score a variant of a method, wrap it so it keeps the same signature. Here
 # P6 runs at a coarser simplification tolerance, and recovers fewer corners:
 
-coarse = synth.benchmark(lambda im: experimental.extract_polygons(im, tol=3.0), seeds=[0])
+coarse = synth.benchmark(lambda im: angles.extract_polygons.v2(im, tol=3.0), seeds=[0])
 print(round(coarse.summary["corner_recovery"], 3), "<", round(recovery["P6"], 3))
 
 # %%
