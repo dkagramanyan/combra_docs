@@ -93,6 +93,7 @@ TensorBoard.
    :toctree: generated/
    :nosignatures:
 
+   require_backbones
    self_test
    distributed.precompute_reference
    distributed.gather_generated

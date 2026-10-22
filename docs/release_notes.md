@@ -7,6 +7,18 @@ combra's changelog, and pointers to the four model repos' own.
 The authoritative copy is `CHANGELOG.md` in the combra repository; the highlights
 below track what changes for a *user* of the library.
 
+### 0.25.1
+
+- New {py:func}`combra.metrics.require_backbones`: checks that the FID, CMMD and
+  FD-DINOv2 backbone weights are in the local caches, without loading them or using
+  the network, and raises listing every missing file. The model repositories call it
+  first at training start; their `download_models.sh` is where the weights come from.
+- The image-feature metrics no longer touch the network when the weights are cached.
+  DINOv2 was loaded without a branch name, so torch.hub first asked github.com for the
+  default branch, with no timeout; on an offline cluster node that stalled a training
+  start for over 10 minutes. With `HF_HUB_OFFLINE=1` a missing DINOv2 or Inception file
+  now raises at once instead of starting a download that hangs.
+
 ### 0.25.0
 
 The two angle methods are now two versions of one function, and the training-time
