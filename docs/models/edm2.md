@@ -104,23 +104,9 @@ always ends in a usable model.
    ```
 
    Each run gets a **fresh** directory under `--outdir`, named
-   `<id:05d>-<cfg>-gpus<N>-batch<B>[-desc]` (e.g.
-   `runs/00000-edm2-img256-s-gpus2-batch128/`).
-
-   Each snapshot tick (and the last tick) writes EMA-only **`.pt` state-dict**
-   inference snapshots `edm2-snapshot-<kimg:06d>-<ema_std>-inference.pt` (one per EMA
-   std, e.g. `edm2-snapshot-000200-0.100-inference.pt`; all files of one kimg count
-   as one snapshot). After each snapshot tick's combra eval the run keeps the newest
-   `--snapshot-keep-last` snapshots (default 1, `0` = keep all) **plus** the best by
-   each of `combra_fid`, `combra_fd_dinov2` and `combra_cmmd` (lower is better, `nan`
-   skipped, ties keep the earlier; best snapshots are never pruned, and one snapshot
-   may serve several roles), so a default run holds at most 4 snapshots. Each
-   snapshot tick logs
-   `Best snapshots: combra_fid <v> <file>  combra_fd_dinov2 <v> <file>  combra_cmmd <v> <file>`.
-   Every snapshot carries self-describing
-   `{n_classes, resolution, class_names, cur_nimg}` metadata, so loading rebuilds the
-   model from current code. The newest snapshot *is* the final model — snapshots are
-   the only checkpoint kind the run writes.
+   `<id:05d>-<cfg>-<dataset>-gpus<N>-batch<B>[-desc]` (e.g.
+   `runs/00000-edm2-img256-s-wc_co_256x256-gpus2-batch128/`); its layout and the
+   checkpoint names are under [Logging](#logging).
 
 ### Quick example (single-GPU smoke test)
 
@@ -171,18 +157,34 @@ snapshot cadence mean the same amount of training as before.
 
 ### Logging
 
-Every run directory contains exactly these artifacts:
+Every run writes one folder,
+`<outdir>/<id:05d>-<model>[-<cfg>]-<dataset>-gpus<G>-batch<B>[-desc]` (`<dataset>` is
+the `--data` zip name without `.zip`), laid out as in {doc}`spec` §7: the two logs
+`<run>-train.log` / `<run>-console.log`, `stats.jsonl`, the TensorBoard event file,
+`checkpoints/` and `samples/`.
 
-| file | contents |
+A checkpoint is an **EMA-only `.pt` state dict** with self-describing metadata
+(`n_classes`, `resolution`, `class_names`, `cur_nimg`, and `metrics`: that
+snapshot's `combra_fid` / `combra_fd_dinov2` / `combra_cmmd`). A snapshot is taken every
+`--snap` ticks **and always at the last tick**, scored by the combra eval, then written
+**atomically** into `<run>/checkpoints/` under the names `--snapshots` keeps:
+
+| `--snapshots` | kept |
 | --- | --- |
-| `training_options.json` | the resolved launch config |
-| `<id>-<cfg>-gpus<N>-batch<B>[-desc].log` | rank-0 console transcript, one `[YYYY-MM-DD HH:MM:SS]` timestamp per line |
-| `stats.jsonl` | machine-readable scalars + combra metrics — **scalar rows only** |
-| `events.out.tfevents.*` | TensorBoard scalars, image grids and text (rank 0 only; run name as `filename_suffix`) |
-| `reals.png`, `fakes_init.png`, `fakes<kimg>.png` | class-sorted sample grids (reals are raw dataset pixels) |
+| `best` (default) | `edm2-best-fid-ema<std>.pt`, `edm2-best-fd_dinov2-ema<std>.pt`, `edm2-best-cmmd-ema<std>.pt` — the best snapshot by each metric (lower is better, `nan` skipped, ties keep the earlier). `edm2-last-ema<std>.pt` (the newest) only while no best exists: combra off, before the first eval, or every eval `nan` |
+| `best+last` | the bests plus `edm2-last-ema<std>.pt`, always |
+| `all` | the bests plus `edm2-kimg<k:06d>-ema<std>.pt` for every snapshot |
 
-Scalars live in the tfevents file and `stats.jsonl`; the console transcript is
-rank-0-only. Watch a run with `tensorboard --logdir ./runs`.
+One snapshot that is best by several metrics is one file under several names (hard
+links). Each snapshot tick logs `Saved checkpoints/<file>` per name and
+`Best snapshots: combra_fid <v> kimg<k>  combra_fd_dinov2 <v> kimg<k>  combra_cmmd <v> kimg<k>`;
+`stats.jsonl` keeps every tick's metrics. There is **no resume**: size `--kimg` (or
+split stages) so a run fits its job's time limit.
+
+EDM2 writes one checkpoint per PowerFunctionEMA std (`-ema0.050`, `-ema0.100`); the eval
+scores the first, and both files of the best snapshot are kept. Scalars live in the
+tfevents file and `stats.jsonl`; the training transcript is rank-0-only. Watch a run with
+`tensorboard --logdir ./runs`.
 
 ### Progressive training
 
@@ -250,7 +252,7 @@ class names:
 
 ```bash
 edm2-gen-images \
-    --network=./runs/00000-.../edm2-snapshot-000200-0.100-inference.pt \
+    --network=./runs/00000-.../checkpoints/edm2-best-fid-ema0.050.pt \
     --outdir=./generated/256 \
     --classes=0,1,2 --samples-per-class=1000 \
     --gpus=2 --batch-gpu=32 \

@@ -44,7 +44,7 @@ reference images from ``--data``, builds a ``fn(k)`` per sampler, and calls
 .. code-block:: bash
 
    python compare_samplers.py \\
-       --net ./training-runs/00000-*/edm2-snapshot-<kimg:06d>-0.100-inference.pt \\
+       --net ./runs/00000-*/checkpoints/edm2-best-fid-ema0.050.pt \\
        --data ./datasets/wc_co_256x256.zip \\
        --samplers edm,euler,ddim,dpm++ \\
        --k-values 5,10,20,50,100,250 \\

@@ -868,11 +868,26 @@ convention all four implement.
 
 | repo | current | changelog |
 | --- | --- | --- |
-| san-v2 | 0.6.0 | `CHANGELOG.md` in [san-v2](https://github.com/dkagramanyan/san-v2) |
-| StyleSwin-v2 | 0.6.0 | `CHANGELOG.md` in [StyleSwin-v2](https://github.com/dkagramanyan/StyleSwin-v2) |
-| DiffiT-v2 | 0.6.0 | `CHANGELOG.md` in [DiffiT-v2](https://github.com/dkagramanyan/DiffiT-v2) |
-| EDM2-v2 | 0.6.0 | `CHANGELOG.md` in [edm2-v2](https://github.com/dkagramanyan/edm2-v2) |
+| san-v2 | 0.9.0 | `CHANGELOG.md` in [san-v2](https://github.com/dkagramanyan/san-v2) |
+| StyleSwin-v2 | 0.9.0 | `CHANGELOG.md` in [StyleSwin-v2](https://github.com/dkagramanyan/StyleSwin-v2) |
+| DiffiT-v2 | 0.9.0 | `CHANGELOG.md` in [DiffiT-v2](https://github.com/dkagramanyan/DiffiT-v2) |
+| EDM2-v2 | 0.9.0 | `CHANGELOG.md` in [edm2-v2](https://github.com/dkagramanyan/edm2-v2) |
 
+**v0.9.0 (2026-11-04), all four: one run-folder layout.** Breaking for paths and flags,
+not for combra (still v0.25.1). See {doc}`models/spec` §2, §3, §7, §9.
+
+- Run folder `<id>-<model>[-<cfg>]-<dataset>-gpus<G>-batch<B>[-desc]`, now with the
+  dataset (the `--data` zip name without `.zip`); default `--outdir` `./runs` in all four.
+- Only the best checkpoints are kept by default: `--snapshots best|best+last|all`
+  replaces `--snapshot-keep-last`, and `<run>/checkpoints/<model>-best-fid.pt`,
+  `-best-fd_dinov2.pt`, `-best-cmmd.pt` replace `<model>-snapshot-<kimg>-inference.pt`
+  (EDM2-v2: one file per EMA std, `…-ema0.050.pt`).
+- Everything of a run is in its folder: `<run>-train.log` (was `<run>.log`), the `sh/`
+  launcher's `<run>-console.log` / `.pid` (was `<repo>/logs/`), and sample grids in
+  `samples/` (`reals.png`, `fakes-init.png`, `fakes-kimg<k>.png`).
+- Generated `.h5` files default to `<run>-<role>.h5`, e.g. `<run>-best-fid.h5`.
+
+Earlier cycles:
 The current cycle in all four: the conda environments moved to Python 3.12 (they were
 still 3.11, so `pip install -e .` could not succeed and combra was absent everywhere);
 the sharded eval harness moved into combra; hyperparameters now reach TensorBoard; and

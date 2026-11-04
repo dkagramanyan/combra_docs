@@ -118,7 +118,7 @@ keep `<model>-download-models` as the fallback when it is absent.
   | run control | `--kimg --tick --snap --seed --desc -n/--dry-run --workers` (workers default 3) |
   | data | `--cond` |
   | batch / precision | `--grad-accum --precision --tf32 --bench` |
-  | checkpointing | `--snapshot-keep-last` |
+  | checkpointing | `--snapshots best\|best+last\|all` (default `best`, §3) |
   | combra eval | `--combra-metrics --num-fid-samples --combra-ref-count` |
   | diffusion eval | `--eval-sampler --eval-sampling-steps` |
 
@@ -155,11 +155,18 @@ keep `<model>-download-models` as the fallback when it is absent.
   which rank computes a sample, never which sample exists. EDM2-v2 additionally
   advances the base by `cur_nimg` each tick; the other three score the same
   latents every tick.
-- Run directory: `<outdir>/<id:05d>-<cfg>-gpus<G>-batch<B>[-desc]`, where
-  `B` is the **total** batch and the name after the id is exactly
-  `<cfg>-gpus<G>-batch<B>` — no dataset name spliced in (today san-v2 and
-  StyleSwin-v2 embed the dataset basename). A **fresh id is always
-  allocated**: existing directories are never reused (today EDM2-v2 and
+- Run directory: `<outdir>/<id:05d>-<model>[-<cfg>]-<dataset>-gpus<G>-batch<B>[-desc]`
+  (since the v0.9.0 model releases), where `B` is the **total** batch,
+  `<model>` is prefixed only when the cfg does not already start with it (san-v2's
+  `stylegan3-r` does not), and `<dataset>` is the `--data` zip name without
+  `.zip`, with every character other than letters, digits, `.` and `_` turned
+  into `_` (so the dashes only separate fields), e.g.
+  `00003-san-stylegan3-r-imagenet_9to4_1024x1024_256x256-gpus2-batch84` or
+  `00003-edm2-img256-s-imagenet_9to4_1024x1024_256x256-gpus2-batch128`. One
+  module, `run_layout.py` (identical in all four repos: `torch_utils/` in
+  san-v2, EDM2-v2 and StyleSwin-v2, `diffit/` in DiffiT-v2), builds the name and
+  every path below. The default `--outdir` of the launch scripts is `./runs` in
+  all four. A **fresh id is always allocated**: existing directories are never reused (today EDM2-v2 and
   san-v2 re-enter a matching directory to resume — san-v2's reuse branch is
   permanently active because `--restart_every` defaults to 999999999, and
   each re-entry truncates `stats.jsonl` **and overwrites
@@ -169,51 +176,54 @@ keep `<model>-download-models` as the fallback when it is absent.
 
 ### 3. Checkpoint contract
 
-Exactly one artifact kind — no resume, no separate best-model or final
-checkpoint:
+One artifact kind — EMA-only weights — kept under the names that say what each
+file is; no resume, no optimizer state:
 
-| artifact | rule |
+| artifact (in `<run>/checkpoints/`) | rule |
 |---|---|
-| `<model>-snapshot-<kimg:06d>-inference.pt` | EMA-only weights; written every snapshot tick **and always at the last tick**, so the newest snapshot *is* the final model; retention keeps the `--snapshot-keep-last` newest (default 1, `0` = keep all) **plus** the single best by each of `combra_fid`, `combra_fd_dinov2`, `combra_cmmd` (below). `<model>` is the literal repo name (`san`, `styleswin`, `diffit`, `edm2`). EDM2-v2 alone writes one file per PowerFunctionEMA std — `edm2-snapshot-<kimg:06d>-<std:.3f>-inference.pt` — and counts all files of one kimg as one snapshot; that suffix is inherent to its per-family EMA (below), not tooling drift |
+| `<model>-best-fid.pt`, `<model>-best-fd_dinov2.pt`, `<model>-best-cmmd.pt` | the best snapshot by `combra_fid`, `combra_fd_dinov2`, `combra_cmmd` (below) — the only files a run keeps by default (`--snapshots best`) |
+| `<model>-last.pt` | the newest snapshot; kept with `--snapshots best+last`, and in `best` mode only while no best exists (combra off, before the first eval, or every eval `nan`), so a run always ends with a model |
+| `<model>-kimg<k:06d>.pt` | every snapshot, with `--snapshots all` |
+
+`<model>` is the literal repo name (`san`, `styleswin`, `diffit`, `edm2`).
+EDM2-v2 alone writes one file per PowerFunctionEMA std, with the std as a
+suffix — `edm2-best-fid-ema0.050.pt`, `edm2-best-fid-ema0.100.pt`, … — and the
+eval scores the first one (std 0.050); that suffix is inherent to its
+per-family EMA (below), not tooling drift. The `<model>-snapshot-<kimg>-inference.pt`
+names of the v0.8.x releases are gone.
 
 - **Runs go start-to-finish.** A run's whole lifecycle is launch → `--kimg` →
   stop; recovering from an interruption means launching a fresh run.
-- **Writes are atomic — MUST.** Every snapshot is written to a temp file in
-  the run directory and moved into place with `os.replace`, so a snapshot
-  that exists under its final name is always complete (today **no repo does
-  this fully**: EDM2-v2 is atomic for its `.pt` checkpoints only — the
-  per-tick inference `.pkl` is a plain in-place `pickle.dump`; DiffiT-v2
-  writes its `-inference.pt` files — exactly what generation loads — in
-  place, and its pruning can then delete the last good snapshot while
-  keeping a corrupt newest; san-v2 and StyleSwin-v2 stream every checkpoint
-  in place, so a walltime kill mid-dump corrupts the very file resume
-  depends on).
+- **Writes are atomic — MUST.** Every snapshot is written once to a temp file
+  in `checkpoints/` and then linked into place under each of its names (a
+  hard link, a copy where the filesystem has none, each moved into place with
+  `os.replace`), so a checkpoint that exists under its final name is always
+  complete and a name only ever moves to a newer, complete file.
 - **The last tick always snapshots — MUST**, even when `--kimg` is not a
-  multiple of the snapshot cadence (today EDM2-v2 never snapshots the final
-  partial interval), so the newest snapshot is always the final model.
+  multiple of the snapshot cadence: the final weights are always evaluated and
+  compete for best (in `best` mode they are kept only if they are a best, or
+  as `<model>-last.pt` when no best exists).
 - **Only EMA weights ever touch disk** — raw (non-EMA) model weights,
   discriminators and optimizer state are never saved.
-- **Best snapshots are kept, not copied — no `best_model.*`.** Retention
-  keeps the `--snapshot-keep-last N` newest snapshots plus the best one by each
-  of `combra_fid`, `combra_fd_dinov2` and `combra_cmmd`: lower is better, `nan`
-  or missing values are skipped, a tie keeps the earlier snapshot, and a best
-  snapshot is replaced only by a strictly better one, so it is never pruned.
-  One file may serve several roles, so at most `N + 3` remain (4 at the
-  default `N = 1`); `0` keeps all. Pruning runs after the tick's combra eval
-  has scored the new snapshot (same `cur_nimg`). Each snapshot tick logs
-  `Best snapshots: combra_fid <v> <file>  combra_fd_dinov2 <v> <file>  combra_cmmd <v> <file>`.
-  The full per-tick history stays in `stats.jsonl` (the §6 rule that combra
-  metrics are mirrored there — today san-v2 and StyleSwin-v2 write them to
-  TensorBoard only, so post-hoc selection is impossible for their existing
-  runs).
+- **Best selection.** Each snapshot tick first runs the combra eval, then saves
+  the snapshot under every name it earns: `<model>-best-<metric>.pt` for each
+  of `combra_fid`, `combra_fd_dinov2`, `combra_cmmd` it improves (lower is
+  better, `nan` or missing values are skipped, a tie keeps the earlier
+  snapshot, so a best is replaced only by a strictly better one). One snapshot
+  that is best by several metrics is one file under several names, so a
+  `best` run holds at most 3 files (6 for EDM2-v2's two EMAs). A tick that
+  improves nothing writes nothing in `best` mode. Each snapshot tick logs
+  `Saved checkpoints/<file>` per name written and
+  `Best snapshots: combra_fid <v> kimg<k>  combra_fd_dinov2 <v> kimg<k>  combra_cmmd <v> kimg<k>`.
+  The full per-tick metric history stays in `stats.jsonl`.
 - **EMA stays per-family** (like samplers): classic half-life EMA in the
   GANs, `--ema-rate` in DiffiT-v2, PowerFunctionEMA in EDM2-v2 — the
   algorithms are genuinely different and are documented, not unified.
 - **Progressive stages still work**: san-v2's `--path-stem` and DiffiT-v2's
   `--init-weights` are **weights-only warm starts** from a previous stage's
-  snapshot (§2) — initialization, not resume. The next stage's `PATH_STEM`
-  (san-v2) / `INIT_WEIGHTS` (DiffiT-v2) is the previous stage's best-FID
-  snapshot, the `combra_fid` file on its last `Best snapshots:` line.
+  checkpoint (§2) — initialization, not resume. The next stage's `PATH_STEM`
+  (san-v2) / `INIT_WEIGHTS` (DiffiT-v2) is the previous stage's
+  `<run>/checkpoints/<model>-best-fid.pt`, taken once that stage has finished.
 - **Format: `.pt` state dicts only** — a state dict stores only weight
   tensors keyed by parameter name, so loading rebuilds the model from current
   code instead of unpickling stored classes. No pickled-module saving.
@@ -223,7 +233,8 @@ checkpoint:
   requires `timm` (or any particular `timm` version); `timm` remains a
   train-time-only dependency of the GAN discriminators.
 - **Self-describing metadata** in every checkpoint:
-  `{n_classes, resolution, class_names, cur_nimg}` — downstream code reads
+  `{n_classes, resolution, class_names, cur_nimg, metrics}` (`metrics`: that
+  snapshot's `combra_fid` / `combra_fd_dinov2` / `combra_cmmd`) — downstream code reads
   grain-class *names* from the checkpoint instead of guessing integer
   conventions (the full label contract is §5). `class_names` is stored exactly
   as the dataset zip reports it — `None` when the zip predates the contract —
@@ -500,20 +511,34 @@ four repos.
 
 ### 7. Logging & TensorBoard contract
 
-Every run directory contains the same five artifacts — no more, no fewer.
-One console log, one scalar stream, one TensorBoard event file:
+Every run writes **one folder** (§2), the same in all four repos; nothing of a
+run lives anywhere else. `<run>` is the folder name:
+
+```text
+<outdir>/<run>/
+├── training_options.json
+├── <run>-train.log
+├── <run>-console.log
+├── <run>-console.pid
+├── stats.jsonl
+├── events.out.tfevents.*.<run>
+├── checkpoints/   <model>-best-fid.pt  <model>-best-fd_dinov2.pt  <model>-best-cmmd.pt  (§3)
+└── samples/       reals.png  fakes-init.png  fakes-kimg<k:06d>.png
+```
 
 | file | contents |
 |---|---|
 | `training_options.json` | the resolved launch config |
-| `<id:05d>-<cfg>-gpus<G>-batch<B>[-desc].log` | rank-0 console transcript, named after the run directory; every line prefixed exactly once `[YYYY-MM-DD HH:MM:SS]`; format below |
+| `<run>-train.log` | rank-0 training transcript; every line prefixed exactly once `[YYYY-MM-DD HH:MM:SS]`; format below (named `<run>.log` before the v0.9.0 model releases) |
+| `<run>-console.log`, `<run>-console.pid` | the whole raw output of the `sh/` launch script (its `Run settings:` block, conda activation, every rank's output, tracebacks) and the pid of a detached launch — only for launches through `sh/` (§9) |
 | `stats.jsonl` | **the machine-readable source of truth**: exactly one JSON line per tick holding every scalar (same keys as the TensorBoard tags; an eval tick's `Metrics/*` and `Timing/eval_sec` in that same line), `Progress/kimg`, `Progress/tick` (int), and `timestamp` (epoch s) / `wall_time` (s since start) / `datetime` columns — **scalar rows only**, strict JSON: full float precision, non-finite values written as `null` (`json.dumps(row, allow_nan=False)`), a scalar not reported this tick left out rather than repeated. Archived DiffiT-v2 runs before 2026-08 interleave `{"kind": "text", ...}` records (run 00018: 2 607 text lines among 2 395 scalar rows), so a reader of old runs must still shape-filter |
 | `events.out.tfevents.*.<id:05d>-<cfg>-gpus<G>-batch<B>[-desc]` | TensorBoard scalars, image grids and the HPARAMS summary — written by rank 0 only, the only event file in the run; the run name is appended via `SummaryWriter(filename_suffix=...)` |
-| `reals.png`, `fakes_init.png`, `fakes<kimg>.png` | sample grids (see below) |
+| `checkpoints/` | the checkpoints `--snapshots` keeps (§3) |
+| `samples/reals.png`, `samples/fakes-init.png`, `samples/fakes-kimg<k:06d>.png` | sample grids (see below) |
 
 The event file is written **directly in the run directory** — never in a
 `tb/` or `logs/` subfolder — so the TensorBoard run name is exactly the run
-directory name (`<id:05d>-<cfg>-gpus<G>-batch<B>[-desc]`). Point TensorBoard
+directory name. Point TensorBoard
 at the parent: `tensorboard --logdir <outdir>` and every run appears under
 its training-folder name. The event file also carries the run name as a
 **`filename_suffix`**: TensorBoard's writer generates the
@@ -521,20 +546,26 @@ its training-folder name. The event file also carries the run name as a
 renamed outright, but the suffix makes a copied event file self-identifying
 — the `wc_cv/ml/` analysis folders hold bare tfevents files copied out of
 their run dirs, identifiable today only by the folder they were copied
-into. The `.log` file carries the same name, so a run's log, its folder,
-its event file and its TensorBoard curve are all found by one string.
+into. The two logs carry the same name, so a run's logs, its folder, its
+event file and its TensorBoard curve are all found by one string. Files
+generated from a checkpoint in `<run>/checkpoints/` are named after the run too:
+the generators' default `--desc` is `<run>-<role>` (e.g. `<run>-best-fid.h5`).
 
-**What the run log does and does not capture.** The `.log` file starts when
-the training process installs its logger — which the trainer must do **first
-thing in `main()`**, and immediately write a startup header (torch / CUDA
-versions, GPU names, the relevant env vars) so the log is self-sufficient.
-Anything printed *before* that is not in it: the `sh/` launch script's own
-output (conda activation, env setup) and early failures (import errors, CUDA
-init crashes). Under SLURM that output lands in `slurm-<jobid>.out` — keep it
-as the debugging fallback for launches that die before the run directory
-exists.
+**What each log captures.** `<run>-train.log` starts when the training
+process installs its logger — which the trainer must do **first thing in
+`main()`**, and immediately write a startup header (torch / CUDA versions, GPU
+names, the relevant env vars) so the log is self-sufficient. Anything printed
+before that (conda activation, env setup, import errors, CUDA init crashes)
+and every non-zero rank's output is in `<run>-console.log` instead: the `sh/`
+script writes its whole output to `<outdir>/.launch/<model>-train_<res>-<date>.log`
+(with a `.pid` beside it for a detached launch), and the launcher moves both
+into the run folder as `<run>-console.log` / `<run>-console.pid` right after
+creating it; the writers keep their open file, so the output keeps arriving
+(and `tail -f` keeps following). A launch that dies before the run folder
+exists leaves its log in `<outdir>/.launch/`. Under SLURM the same output also
+lands in `slurm-<jobid>.out`.
 
-**Console / `.log` format — identical in all four.** The `.log` opens with the
+**Console / `-train.log` format — identical in all four.** The log opens with the
 `Training options:` dump (printed once, after the rank-0 file logger exists) and one
 header line
 `[startup] torch <v> | cuda <v> | combra <v> | gpus <N> | device <name> | K=V ...` (the set
@@ -562,14 +593,16 @@ Metrics v2: combra_w1 1.3456  combra_w2 2.4567  ...  combra_pi 0.0123
 
 (a failure prints `combra metrics failed: <error>`; combra's own warnings, such
 as why a bimodal-Gaussian key is `nan`, reach the run log too);
-every snapshot file prints `Saved <basename>` once written; the last line is
-`Training complete.`
+every file written prints `Saved <subfolder>/<name>` (e.g.
+`Saved checkpoints/san-best-fid.pt`, `Saved samples/fakes-kimg000400.png`); the
+last line is `Training complete.`
 
 **Sample grids follow one scheme** (san-v2's implementation is the
 reference): fixed latents seeded once at startup, class-sorted rows for
-labeled data, resolution-adaptive grid size; `reals.png` built once from raw
-dataset samples, `fakes_init.png` at start, `fakes<kimg>.png` every snapshot
-tick, and the same grid logged to TensorBoard under the `Fakes` tag (`Reals` at step 0,
+labeled data, resolution-adaptive grid size; `samples/reals.png` built once
+from raw dataset samples, `samples/fakes-init.png` at start,
+`samples/fakes-kimg<k:06d>.png` every snapshot tick (`fakes_init.png` /
+`fakes<kimg>.png` in the run folder itself before the v0.9.0 model releases), and the same grid logged to TensorBoard under the `Fakes` tag (`Reals` at step 0,
 `Fakes` at step 0 and every snapshot tick, HWC `uint8`).
 
 TensorBoard tag schema — identical namespaces in all four, with the global
@@ -652,7 +685,12 @@ Rules:
   SLURM specifics are supplied at submission time:
   `sbatch --account=<proj> --partition=rocky --gpus=2 sh/train_256.sh`.
 - The same script runs unmodified on a workstation:
-  `bash sh/train_256.sh`.
+  `bash sh/train_256.sh` (it detaches; `FOREGROUND=1` stays attached).
+- **The train scripts' output goes into the run folder** (§7): every knob is an
+  env var with a default (`OUTDIR=./runs`, `SNAPSHOTS=best`, …); the script
+  writes its whole output to `$OUTDIR/.launch/` until the trainer moves it into
+  the run folder as `<run>-console.log`. There is no `<repo>/logs/` folder
+  (before the v0.9.0 model releases the logs stayed there).
 
 ### 10. Repository infrastructure
 

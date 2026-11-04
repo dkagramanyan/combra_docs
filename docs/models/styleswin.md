@@ -91,7 +91,7 @@ styleswin-prepare-data convert --source /path/to/wc_co_source \
 `styleswin-train` is the primary entry point — the shared-convention `click` CLI
 (`--outdir/--data/--gpus/--batch-gpu/--cfg/--cond/--kimg/--tick/--snap`, the
 `--precision/--tf32/--bench` scheme, `--grad-accum`,
-`--combra-metrics/--num-fid-samples/--combra-ref-count/--snapshot-keep-last`) plus StyleSwin's own
+`--combra-metrics/--num-fid-samples/--combra-ref-count/--snapshots`) plus StyleSwin's own
 model flags. `--augment True` (default) applies a uniformly random element of the dihedral group
 (rot90 by k ∈ {0,1,2,3} and a horizontal flip with p = 0.5) to every training image, on the raw
 uint8 image in the training loader, before ImageNet normalization; the draws come from the per-rank
@@ -103,10 +103,10 @@ trained independently** (no stage-to-stage resume chain). Pick the resolution wi
 preset:
 
 ```bash
-styleswin-train --outdir=./runs/wc-cv \
+styleswin-train --outdir=./runs \
         --cfg styleswin-256 \
         --data=./datasets/imagenet_9to4_1024x1024_256x256.zip \
-        --gpus=2 --cond True --combra-metrics True --snapshot-keep-last 1 \
+        --gpus=2 --cond True --combra-metrics True --snapshots best \
         --kimg 25000 --snap 50
 ```
 
@@ -139,30 +139,40 @@ bash sh/train_256.sh                                                 # same scri
 
 ### Checkpoints
 
-The run follows the **checkpoint contract**: exactly one artifact kind,
-`styleswin-snapshot-<kimg:06d>-inference.pt`, holding **only `G_ema`** plus self-describing metadata
-(`n_classes`, `resolution`, `class_names`, `cur_nimg`, and the `arch` hyperparameters needed to
-rebuild the generator). It is written **atomically** (temp file + `os.replace`) every snapshot
-tick **and always at the last tick**, so the newest snapshot *is* the final model. After each
-snapshot tick's combra eval the run keeps the `--snapshot-keep-last` newest snapshots (default
-`1`; `0` = keep all) **plus** the single best by each of `combra_fid`, `combra_fd_dinov2` and
-`combra_cmmd` (lower is better, `nan` skipped, ties keep the earlier; best snapshots are never
-pruned, and one file may serve several roles), so a default run holds at most 4 files. Each
-snapshot tick logs
-`Best snapshots: combra_fid <v> <file>  combra_fd_dinov2 <v> <file>  combra_cmmd <v> <file>`.
-There is **no resume, no rolling `latest`, and no `best_model.pt`**. Because runs are unrecoverable by design, size `--kimg`
-(or split stages) to fit the job's time limit.
+Every run writes one folder,
+`<outdir>/<id:05d>-<model>[-<cfg>]-<dataset>-gpus<G>-batch<B>[-desc]` (`<dataset>` is
+the `--data` zip name without `.zip`), laid out as in {doc}`spec` §7: the two logs
+`<run>-train.log` / `<run>-console.log`, `stats.jsonl`, the TensorBoard event file,
+`checkpoints/` and `samples/`.
+
+A checkpoint is an **EMA-only `.pt` state dict** with self-describing metadata
+(`n_classes`, `resolution`, `class_names`, `cur_nimg`, the `arch` hyperparameters needed to rebuild the generator, the eval settings `styleswin-eval` reuses, and `metrics`: that
+snapshot's `combra_fid` / `combra_fd_dinov2` / `combra_cmmd`). A snapshot is taken every
+`--snap` ticks **and always at the last tick**, scored by the combra eval, then written
+**atomically** into `<run>/checkpoints/` under the names `--snapshots` keeps:
+
+| `--snapshots` | kept |
+| --- | --- |
+| `best` (default) | `styleswin-best-fid.pt`, `styleswin-best-fd_dinov2.pt`, `styleswin-best-cmmd.pt` — the best snapshot by each metric (lower is better, `nan` skipped, ties keep the earlier). `styleswin-last.pt` (the newest) only while no best exists: combra off, before the first eval, or every eval `nan` |
+| `best+last` | the bests plus `styleswin-last.pt`, always |
+| `all` | the bests plus `styleswin-kimg<k:06d>.pt` for every snapshot |
+
+One snapshot that is best by several metrics is one file under several names (hard
+links). Each snapshot tick logs `Saved checkpoints/<file>` per name and
+`Best snapshots: combra_fid <v> kimg<k>  combra_fd_dinov2 <v> kimg<k>  combra_cmmd <v> kimg<k>`;
+`stats.jsonl` keeps every tick's metrics. There is **no resume**: size `--kimg` (or
+split stages) so a run fits its job's time limit.
 
 ## Metrics
 
-Training runs a **kimg/tick** loop: a per-run `<runname>.log` (rank-0 only), `stats.jsonl`,
+Training runs a **kimg/tick** loop: a per-run `<run>-train.log` (rank-0 only), `stats.jsonl`,
 TensorBoard events and the `tick … kimg … sec/tick …` status line. Reported **every tick** and
 written to `stats.jsonl` + TensorBoard: the generator/discriminator losses and R1 (`Loss/*`),
 timing (`Timing/*`), CPU/GPU memory (`Resources/*`) and the effective learning rates
 (`LearningRate/G`, `LearningRate/D`). The **combra metrics** are computed **every snapshot tick**
 (step-held between); the global step is `cur_nimg`. Each snapshot also logs the class-sorted
-`G_ema` sample grid to TensorBoard (tag `Fakes`) alongside the on-disk `fakes<kimg>.png`, and the
-run writes `reals.png` + `fakes_init.png` once at startup.
+`G_ema` sample grid to TensorBoard (tag `Fakes`) alongside the on-disk `samples/fakes-kimg<k>.png`, and the
+run writes `samples/reals.png` + `samples/fakes-init.png` once at startup.
 
 combra uses the **whole training set** as the reference (raw uint8 pixels; a
 `--combra-ref-count` cap takes a **seeded random** subset of originals, never the first N). With
@@ -203,7 +213,7 @@ pipeline consumes (per-class `images` as uint8 NHWC + `seeds`, root `format`/`sc
 
 ```bash
 styleswin-gen-images \
-  --network=./runs/wc-cv/00000-styleswin-256-gpus2-batch128-cond/styleswin-snapshot-025000-inference.pt \
+  --network=./runs/00000-styleswin-256-wc_co_256-gpus2-batch128/checkpoints/styleswin-best-fid.pt \
   --outdir=./generated/256x256 \
   --save-mode hdf5 \
   --classes Ultra_Co11,Ultra_Co25,Ultra_Co6_2 \

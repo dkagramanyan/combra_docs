@@ -90,7 +90,7 @@ fresh optimizer). Runs go start-to-finish (see Checkpoints).
 
    ```bash
    # 256² from scratch (no --init-weights → random init)
-   diffit-train --outdir=./training-runs \
+   diffit-train --outdir=./runs \
        --cfg=diffit-256 \
        --data=./datasets/wc_co_256x256.zip \
        --gpus 2 \
@@ -119,13 +119,13 @@ long job. It uses one GPU, a tiny `--kimg` budget, and `--num-fid-samples 0` to 
 evaluation entirely (so it needs neither combra nor InceptionV3):
 
 ```bash
-diffit-train --outdir ./training-runs --cfg diffit-256 \
+diffit-train --outdir ./runs --cfg diffit-256 \
     --data ./datasets/wc_co_256x256.zip \
     --gpus 1 --batch-gpu 8 \
     --kimg 200 --tick 5 --snap 5 --num-fid-samples 0
 ```
 
-Watch it in TensorBoard with `tensorboard --logdir ./training-runs`. Add `-n` /
+Watch it in TensorBoard with `tensorboard --logdir ./runs`. Add `-n` /
 `--dry-run` to print the resolved options and exit without training (see the Dry run
 section below). Drop `--num-fid-samples 0` to re-enable the combra/FID eval (DDIM by
 default).
@@ -134,41 +134,44 @@ default).
 
 Each higher-resolution stage warm-starts from the previous stage's EMA snapshot
 via `--init-weights` (weights only, fresh optimizer — not a resume). Use the
-previous stage's best-by-`combra_fid` snapshot, the file named for `combra_fid` on
-the last `Best snapshots:` line of that run's log (also what `INIT_WEIGHTS` takes in
-`sh/train_*.sh`):
+previous stage's best-FID checkpoint, `<run>/checkpoints/diffit-best-fid.pt`, once that
+stage has finished (also what `INIT_WEIGHTS` takes in `sh/train_*.sh`):
 
 ```bash
 # 256² → 512² finetune
-diffit-train --outdir=./training-runs \
+diffit-train --outdir=./runs \
     --cfg=diffit-512 \
     --data=./datasets/wc_co_512x512.zip \
     --gpus 2 --batch-gpu 64 \
-    --init-weights ./training-runs/00000-diffit-256-*/diffit-snapshot-<best-FID kimg>-inference.pt \
+    --init-weights ./runs/00000-diffit-256-*/checkpoints/diffit-best-fid.pt \
     --lr 5e-5 --lr-warmup 500 --kimg 100000
 ```
 
 ### Checkpoints
 
-There is exactly one checkpoint kind — no resume, no separate best-model or
-final checkpoint:
+Every run writes one folder,
+`<outdir>/<id:05d>-<model>[-<cfg>]-<dataset>-gpus<G>-batch<B>[-desc]` (`<dataset>` is
+the `--data` zip name without `.zip`), laid out as in {doc}`spec` §7: the two logs
+`<run>-train.log` / `<run>-console.log`, `stats.jsonl`, the TensorBoard event file,
+`checkpoints/` and `samples/`.
 
-| File | Contents | Cadence |
-| --- | --- | --- |
-| `diffit-snapshot-<kimg>-inference.pt` | EMA weights only + self-describing metadata (`n_classes`, `resolution`, `class_names`, `cur_nimg`) | every `--snap` ticks **and always at the last tick**; kept: the newest `--snapshot-keep-last` (default 1, `0` = keep all) **plus** the best by each of `combra_fid`, `combra_fd_dinov2`, `combra_cmmd` |
+A checkpoint is an **EMA-only `.pt` state dict** with self-describing metadata
+(`n_classes`, `resolution`, `class_names`, `cur_nimg`, and `metrics`: that
+snapshot's `combra_fid` / `combra_fd_dinov2` / `combra_cmmd`). A snapshot is taken every
+`--snap` ticks **and always at the last tick**, scored by the combra eval, then written
+**atomically** into `<run>/checkpoints/` under the names `--snapshots` keeps:
 
-Only EMA weights ever touch disk — raw model weights and optimizer state are
-never saved. Every snapshot is written **atomically** (temp file + `os.replace`),
-so a snapshot present under its final name is always complete, and the last tick
-always snapshots, so the newest snapshot *is* the final model. Runs are
-unrecoverable by design (a crash or SLURM walltime kill cannot be resumed) — size
-`--kimg` (or split into progressive stages via `--init-weights`) so a run fits its
-job's time limit. Pruning runs after the tick's combra eval has scored the newest
-snapshot; lower is better, `nan` is skipped, ties keep the earlier snapshot, best
-snapshots are never pruned and one file may serve several roles, so a default run
-holds at most 4 files. Each snapshot tick logs
-`Best snapshots: combra_fid <v> <file>  combra_fd_dinov2 <v> <file>  combra_cmmd <v> <file>`;
-`stats.jsonl` keeps every tick's metrics.
+| `--snapshots` | kept |
+| --- | --- |
+| `best` (default) | `diffit-best-fid.pt`, `diffit-best-fd_dinov2.pt`, `diffit-best-cmmd.pt` — the best snapshot by each metric (lower is better, `nan` skipped, ties keep the earlier). `diffit-last.pt` (the newest) only while no best exists: combra off, before the first eval, or every eval `nan` |
+| `best+last` | the bests plus `diffit-last.pt`, always |
+| `all` | the bests plus `diffit-kimg<k:06d>.pt` for every snapshot |
+
+One snapshot that is best by several metrics is one file under several names (hard
+links). Each snapshot tick logs `Saved checkpoints/<file>` per name and
+`Best snapshots: combra_fid <v> kimg<k>  combra_fd_dinov2 <v> kimg<k>  combra_cmmd <v> kimg<k>`;
+`stats.jsonl` keeps every tick's metrics. There is **no resume**: size `--kimg` (or
+split stages) so a run fits its job's time limit.
 
 During training, at each evaluation tick (every `--snap` ticks) the loop
 generates a batch of images from the EMA model by running the configured
@@ -247,7 +250,7 @@ with `--eval-sampling-steps` (per-sampler defaults: `dpm++`=25, `ddim`=100,
 `ddpm`=250):
 
 ```bash
-diffit-train --outdir=./training-runs --cfg=diffit-256 \
+diffit-train --outdir=./runs --cfg=diffit-256 \
     --data=./datasets/wc_co_256.zip --gpus 2 --batch-gpu 128 \
     --eval-sampler ddim --eval-sampling-steps 100
 ```
@@ -262,7 +265,7 @@ To validate the config and data wiring without starting a real run, pass `-n` /
 count, etc.) and exits before training:
 
 ```bash
-diffit-train --outdir=./training-runs \
+diffit-train --outdir=./runs \
     --cfg=diffit-256 \
     --data=./datasets/wc_co_256x256.zip \
     --gpus 1 --batch-gpu 4 \
@@ -279,7 +282,7 @@ generation contract (it carries no contract guarantees):
 
 ```bash
 torchrun --nproc_per_node=4 -m scripts.sample \
-    --model-path ./training-runs/00000-diffit-256-*/diffit-snapshot-000400-inference.pt \
+    --model-path ./runs/00000-diffit-256-*/checkpoints/diffit-best-fid.pt \
     --outdir ./samples/256 --image-size 256 \
     --cfg-scale 4.4 --num-samples 50000 \
     --sampler ddim --num-sampling-steps 250 --cfg-cond
@@ -324,7 +327,7 @@ runs the same completeness check on the shards it leaves behind:
 
 ```bash
 diffit-gen-images \
-    --network ./training-runs/00000-diffit-256-*/diffit-snapshot-000400-inference.pt \
+    --network ./runs/00000-diffit-256-*/checkpoints/diffit-best-fid.pt \
     --outdir ./generated/ \
     --image-size 256 \
     --samples-per-class 1000 \
