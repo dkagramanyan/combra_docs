@@ -103,5 +103,33 @@ inverse variance of $\log p$, which keeps the sparse far-tail bins from setting 
 slope. {py:func}`~combra.metrics.semiaxis_metrics` compares two such fits (see
 {doc}`metrics`).
 
+The semi-axes are lengths in pixels, so two sets compare only at the same physical
+size of a pixel. A set of full frames resized to 256 px and a set of crops of
+two thirds of the frame resized to 256 px show the same grain 1.5 times smaller in
+the first: the fitted slopes then differ by about a third, with nothing wrong in
+either set. Compare a generator with the images it was trained on, at their scale.
+
+{py:func}`~combra.ellipse.plot_semiaxis_grid` draws the distributions the way
+{py:func}`~combra.angles.plot_density_grid` draws the angles: a grid of cells (e.g.
+resolution by grain class), each overlaying the sources as histogram points and
+their fitted tails on a log density axis, with a legend in the upper right corner.
+The trace key `scale` (the length of one pixel) puts the axis in physical units, and
+`tag` writes a short text at the end of a group of lines, e.g. `A` and `B` when the
+big and the small semi-axis of each source share a cell:
+
+```python
+from combra import ellipse
+
+um_per_px = 0.0499 * 1024 / 256  # native 0.0499 um/px, 1024 px crops at 256 px
+cell = [dict(values=values[source][axis], scale=um_per_px, label=source,
+             color=color, marker=marker + ('' if axis == 'A' else '-open'),
+             dash='solid' if axis == 'A' else 'dash', tag=axis)
+        for axis in ('A', 'B')
+        for source, color, marker in (('real', 'blue', 'circle'),
+                                      ('SAN', 'orange', 'square'))]
+fig = ellipse.plot_semiaxis_grid([[cell]], ['256×256'], ['small grains'],
+                                 x_title='semi-axis length, µm', start=3, min_count=10)
+```
+
 [^khachiyan]: L. G. Khachiyan, *Rounding of polytopes in the real number model of
     computation*, Mathematics of Operations Research 21(2), 1996, 307–320.
