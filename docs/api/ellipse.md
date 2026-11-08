@@ -51,4 +51,5 @@ detection mask of {py:func}`combra.angles.vertex_angles.v2`.
 
    plot_beam_lengths
    plot_beam_compare
+   plot_semiaxis_grid
 ```
