@@ -7,6 +7,32 @@ combra's changelog, and pointers to the four model repos' own.
 The authoritative copy is `CHANGELOG.md` in the combra repository; the highlights
 below track what changes for a *user* of the library.
 
+### 0.28.0
+
+The angle Wasserstein distances compare the bimodal fits, not the histograms, as the
+semi-axis $W_2$ compares the fitted exponential tails. **Changed values:** every angle
+`w1`, `w2`, `circular_w1` and `circular_w2`; on the WC-Co sets $W_2$ is 15 – 30 %
+smaller than before.
+
+**Changed**
+
+- {py:func}`~combra.metrics.compute_all_metrics`,
+  {py:func}`~combra.metrics.compute_wasserstein_metrics` and the parquet comparisons
+  compute the distances between the two fitted curves. A fit that fails outright
+  gives `nan`; a fit only screened as degenerate still has a distance. See
+  {doc}`user_guide/angle_fit`.
+- {py:func}`~combra.metrics.self_test` with `images` fails when an angle version
+  finds no vertex, instead of requiring finite distances.
+
+**Added**
+
+- {py:func}`~combra.metrics.plot_consistency_table`: the Kendall $\tau_b$ table of
+  {py:func}`~combra.metrics.training_metric_consistency` in the layout of
+  {py:func}`~combra.metrics.plot_convergence_table`, which gains `metric_groups`
+  (bracketed, named row groups) and is sized by its font for a two-column page.
+- {py:func}`~combra.ellipse.plot_semiaxis_grid`: semi-axis densities with their
+  fitted exponential tails, the counterpart of `angles.plot_density_grid`.
+
 ### 0.27.0
 
 The semi-axis tail is written $p(x) = a \, e^{k (x - x_0)}$. **Breaking:** the keys

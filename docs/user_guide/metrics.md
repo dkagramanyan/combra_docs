@@ -7,8 +7,9 @@ metric takes the reference first.
 
 ## The three families
 
-**Distribution distances** compare two {term}`angle density` curves directly.
-{py:func}`~combra.metrics.compute_wasserstein_metrics` returns four numbers: the
+**Distribution distances** compare the bimodal fits (below) of two
+{term}`angle density` curves. {py:func}`~combra.metrics.compute_wasserstein_metrics`
+returns four numbers: the
 1- and 2-Wasserstein distances, and their circular variants. For one-dimensional
 distributions the $p$-Wasserstein distance has the closed form
 
@@ -17,7 +18,9 @@ $$W_p(u, v) = \left( \int_0^1 \left| F_u^{-1}(q) - F_v^{-1}(q) \right|^p \, \mat
 where $F^{-1}$ is the quantile function. The circular variants apply the same
 formula on the circle, which is the correct geometry for angles: on the line,
 mass at 1° and mass at 359° appear maximally far apart instead of 2° apart.
-These metrics are defined for any pair of densities, at any sample size.
+Since 0.28.0 the distances are taken between the fitted curves, not the
+histograms: like the semi-axis $W_2$ between the fitted exponential tails, they
+compare the two models, and they are undefined where a fit fails outright.
 
 **Parametric errors** fit a bimodal Gaussian to each density and compare the
 fitted parameters, giving the per-mode relative error
@@ -111,8 +114,9 @@ Small samples say so
 
 `nan` is a signal about the generator
 : Early in training, samples whose grains are near-convex have no reflex mode.
-  Use the Wasserstein keys, which are defined unconditionally, until the
-  parametric keys come back.
+  Use the Wasserstein keys until the parametric keys come back: they compare the
+  fitted curves, which exist even when a fit is screened as degenerate, and are
+  `nan` only when a fit fails outright (fewer bins than parameters).
 
 ## Reading an N-sweep
 

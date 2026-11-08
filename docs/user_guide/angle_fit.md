@@ -88,8 +88,7 @@ spaced.
 :::{note}
 $y_k$ is a **bin probability, not a density per degree**. Its scale therefore
 depends on $h$: the density per degree is $y_k / h$, and
-$\sum_k y_k h = h$ is the "area" the fitted curve of §3 matches. This convention
-is what the Wasserstein distances of §6 consume directly, as transport masses.
+$\sum_k y_k h = h$ is the "area" the fitted curve of §3 matches.
 :::
 
 Bin occupancy sets the noise floor. With $n_k \approx n h / 360$ counts in a bin,
@@ -295,9 +294,10 @@ when the physical fraction is what is wanted.
 
 ### Transport distances
 
-{py:func}`combra.metrics.wasserstein_density_metrics` compares the two densities
-directly, with no fit and therefore no screening. For one-dimensional
-distributions,
+{py:func}`combra.metrics.wasserstein_density_metrics` compares two densities. The
+angle metrics pass it the two fitted curves of §3, so the distances compare the
+models (since 0.28.0; before, the histograms, which gave values 15 – 30 % larger
+on the WC-Co sets). For one-dimensional distributions,
 
 $$
 W_p(u, v) = \left( \int_0^1
@@ -305,9 +305,7 @@ W_p(u, v) = \left( \int_0^1
 $$
 
 evaluated after both densities are linearly interpolated onto one 1024-point
-grid spanning their supports and renormalized, as in June 2026. The
-interpolation turns an empty bin between two occupied ones into a linear ramp,
-so the distances depend on how sparse a histogram is as well as on its shape.
+grid spanning their supports and renormalized, as in June 2026.
 The circular variants apply the same construction on $\mathbb{R} / 360\mathbb{Z}$,
 minimizing over the rotation offset, and are reported in degrees.
 
@@ -318,9 +316,10 @@ points. On the 1024-point grid a smooth two-mode pair $8.35^\circ$ apart reads
 `circular_w1` $= 355.4^\circ$. None of 528 pairs of stored real angle densities
 is affected; a circular value above $180^\circ$ is this fault, not a distance.
 ::: Four keys result: `w1`, `w2`,
-`circular_w1`, `circular_w2`. Unlike the parametric errors above these are defined at
-any sample size, which makes them the ones to watch while a generator is still
-producing near-convex grains.
+`circular_w1`, `circular_w2`. They need both fitted curves, so they are `nan` when
+a fit fails outright (fewer bins than parameters), but not when a fit is only
+screened as degenerate: while a generator still produces near-convex grains they
+stay defined where the parametric errors do not.
 
 ### Convergence
 

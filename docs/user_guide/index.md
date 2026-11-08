@@ -61,8 +61,8 @@ bimodal-Gaussian fit carries most of the interpretive weight: its two means,
 widths and amplitudes summarize a microstructure in six numbers.
 
 **Comparison.** {doc}`metrics` scores a generated distribution against a
-reference one — Wasserstein distances on the densities, relative errors on the
-fitted parameters, and Fréchet distances on deep image features.
+reference one — Wasserstein distances between the fitted densities, relative
+errors on the fitted parameters, and Fréchet distances on deep image features.
 
 **Ground truth.** {py:mod}`combra.synth` generates pools whose
 vertices are known, renders them like the micrographs and scores a method

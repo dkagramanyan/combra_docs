@@ -144,8 +144,8 @@ Raw angles are reduced to a density by
 ```
 
 Note that `y` sums to 1 over *bins*: these are bin probabilities, not a density
-per degree, so their scale depends on `step`. The Wasserstein distances take them
-as transport masses in exactly this form.
+per degree, so their scale depends on `step`. The bimodal fit takes them in
+exactly this form, and the Wasserstein distances compare the fitted curves.
 
 Each bin width is then fitted independently by
 {py:func}`~combra.fitting.fit_bimodal_gaussian`, from the same fixed start at
@@ -214,9 +214,9 @@ and a total fixed by the data; see {doc}`angles_v2`.
 
 A single 128×128 image yields on the order of 20 vertex angles — enough to plot,
 far too few to fit two modes to. Pool on the order of 1000 angles, roughly 48 such
-images, before reporting a bimodal fit or any metric derived from one. The
-Wasserstein distances in {doc}`metrics` are defined at any sample size, but they
-too are noisy on small samples; the N-sweep described there is how that noise is
+images, before reporting a bimodal fit or any metric derived from one, including
+the Wasserstein distances in {doc}`metrics`, which compare the fits. They are noisy
+on small samples too; the N-sweep described there is how that noise is
 distinguished from real bias.
 
 ## Batch extraction
