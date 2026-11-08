@@ -149,6 +149,23 @@ table = convergence_table(df, ['w2', 'mu1', 'semi_major_w2', 'semi_major_k'], n_
 plot_convergence_table(table, decimal=',', save_path='table.png')
 ```
 
+{py:func}`~combra.metrics.plot_consistency_table` draws, in the same layout, the
+Kendall $\tau_b$ between the angle statistics and the image metrics over a training
+run ({py:func}`~combra.metrics.training_metric_consistency`): one column per image
+metric, a cell shaded when its $\tau_b$ is significant and $|\tau_b| \ge 0.5$ (blue:
+the statistic improves with the image metric, red: they move apart):
+
+```python
+import pandas as pd
+from combra.io import read_tb_scalars
+from combra.metrics import plot_consistency_table, training_metric_consistency
+
+table = pd.concat([
+    training_metric_consistency(read_tb_scalars(path), kimg_tag).assign(kind=kind, resolution=res)
+    for kind, res, path, kimg_tag in runs])
+plot_consistency_table(table, decimal=',', save_path='kendall.png')
+```
+
 ## Sample size and step must match
 
 Two results are comparable only when produced the same way. Both the

@@ -74,6 +74,7 @@ evaluations of one training run, from its TensorBoard event file.
 
    plot_wdist_convergence_grid
    plot_convergence_table
+   plot_consistency_table
    plot_metrics_overlay
    plot_sampler_comparison
 ```
