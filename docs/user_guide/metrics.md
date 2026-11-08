@@ -49,12 +49,15 @@ on a single image.
 ({doc}`beams`). Past its mode, the distribution of a semi-axis $x$ decays
 exponentially, so its tail is fitted as
 
-$$p(x) = p_0 \, e^{kx}, \qquad x \ge x_0,$$
+$$p(x) = a \, e^{k (x - x_0)}, \qquad x \ge x_0,$$
 
-for the big semi-axis $a$ and the small semi-axis $b$ of each side.
+for the big semi-axis $A$ and the small semi-axis $B$ of each side, with $x_0$ the
+mode of the histogram, $k < 0$ the decay rate and $a = p(x_0)$ the density where the
+tail starts. Written as $a \, e^{kx + b}$, the shift is $b = -k x_0$, fixed by $x_0$:
+$a$ and $b$ are not separately determined by the data.
 {py:func}`~combra.metrics.semiaxis_metrics` reports, per semi-axis, the
-2-Wasserstein distance between the two fitted tails and the relative errors of the
-decay rate $k$ and the amplitude $p_0$.
+2-Wasserstein distance between the two fitted tails and the relative errors of $k$
+and $a$.
 
 {py:func}`~combra.metrics.compute_all_metrics` runs the first two families and the
 semi-axis errors always, and the image-feature family when `image_metrics=True`.

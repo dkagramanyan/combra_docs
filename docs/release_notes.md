@@ -7,6 +7,23 @@ combra's changelog, and pointers to the four model repos' own.
 The authoritative copy is `CHANGELOG.md` in the combra repository; the highlights
 below track what changes for a *user* of the library.
 
+### 0.27.0
+
+The semi-axis tail is written $p(x) = a \, e^{k (x - x_0)}$. **Breaking:** the keys
+`semi_major_amp` / `semi_minor_amp` are now `semi_major_a` / `semi_minor_a`, and
+`TailFit.amp` is `TailFit.a`.
+
+**Changed**
+
+- {py:func}`~combra.metrics.fit_exponential_tail` returns $a = p(x_0)$, the fitted
+  density at the start of the tail, where 0.26.0 returned the line extrapolated to
+  $x = 0$. Its relative error is the new `semi_major_a` / `semi_minor_a` key of
+  {py:func}`~combra.metrics.semiaxis_metrics` and
+  {py:func}`~combra.metrics.compute_all_metrics`; $k$, $x_0$ and `w2` are unchanged.
+  See {doc}`user_guide/metrics`.
+- {py:func}`~combra.metrics.plot_convergence_table` labels the big and small
+  semi-axis $A$ and $B$ ($W_2(A)$, $\delta k_A$, $\delta a_A$, ...).
+
 ### 0.26.0
 
 MVEE semi-axis metrics in {py:func}`~combra.metrics.compute_all_metrics`, and the

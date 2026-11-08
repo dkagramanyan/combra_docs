@@ -87,7 +87,7 @@ See {py:mod}`combra.ellipse` for the plotting functions and
 
 ## Semi-axes as a metric
 
-`combra.ellipse.semiaxes` returns the big ($a$) and small ($b$) semi-axis of
+`combra.ellipse.semiaxes` returns the big ($A$) and small ($B$) semi-axis of
 every ellipse in an image, in two versions like the vertex angles:
 {py:func}`~combra.ellipse.semiaxes.v1` on the map
 {py:func}`~combra.angles.preprocess_image` returns, as `generate_beams` does, and
