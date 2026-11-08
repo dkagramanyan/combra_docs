@@ -7,6 +7,34 @@ combra's changelog, and pointers to the four model repos' own.
 The authoritative copy is `CHANGELOG.md` in the combra repository; the highlights
 below track what changes for a *user* of the library.
 
+### 0.26.0
+
+MVEE semi-axis metrics in {py:func}`~combra.metrics.compute_all_metrics`, and the
+N-sweep convergence table. Angle and image-feature values are unchanged.
+
+**Added**
+
+- **`combra.ellipse.semiaxes`**, two versions like the vertex angles:
+  {py:func}`~combra.ellipse.semiaxes.v1` gives the big and small MVEE semi-axis of
+  every grain in the {py:func}`~combra.angles.preprocess_image` map,
+  {py:func}`~combra.ellipse.semiaxes.v2` the same on the v2 detection mask. See
+  {doc}`user_guide/beams`.
+- **Exponential-tail semi-axis metrics.** {py:func}`~combra.metrics.fit_exponential_tail`
+  fits $p(x) = p_0 e^{kx}$ to a semi-axis distribution from its mode on, by least
+  squares on $\log p$ weighted by the bin counts (unweighted, the slope drifted with
+  the sample size). {py:func}`~combra.metrics.semiaxis_metrics` compares two samples
+  per semi-axis: the 2-Wasserstein distance between the fitted tails and the relative
+  errors of $k$ and $p_0$.
+- {py:func}`~combra.metrics.compute_all_metrics` returns `semi_major_w2`,
+  `semi_major_k`, `semi_major_amp`, `semi_minor_w2`, `semi_minor_k` and
+  `semi_minor_amp`, from v1 semi-axes unless `semiaxis_kw={'method': 'v2'}`. The
+  distributed training metrics do not compute them.
+- **{py:func}`~combra.metrics.convergence_table`** and
+  **{py:func}`~combra.metrics.plot_convergence_table`**: an N-sweep as one row per
+  kind, resolution and metric — the $m_\infty + b N^{-1/2}$ fit at two sample sizes,
+  the change between them, and a Kendall $\tau_N$ trend test — drawn as a shaded
+  table. See {doc}`user_guide/metrics`.
+
 ### 0.25.1
 
 - New {py:func}`combra.metrics.require_backbones`: checks that the FID, CMMD and

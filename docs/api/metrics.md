@@ -6,8 +6,8 @@
 ```
 
 Scores of a generated microstructure against a real reference: transport
-distances and bimodal-Gaussian errors between angle densities, and FID / CMMD /
-FD-DINOv2 between image features. Every metric takes the reference first. See
+distances and bimodal-Gaussian errors between angle densities, exponential-tail
+errors of the MVEE semi-axes, and FID / CMMD / FD-DINOv2 between image features. Every metric takes the reference first. See
 {doc}`/user_guide/metrics`.
 
 ```python
@@ -35,6 +35,21 @@ from combra import metrics
 
    convergence_stats
    print_convergence_report
+   convergence_table
+```
+
+## Semi-axis metrics
+
+The exponential tail of the MVEE semi-axis distribution, and its comparison between
+two samples; {py:func}`compute_all_metrics` reports these for image batches.
+
+```{eval-rst}
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   fit_exponential_tail
+   semiaxis_metrics
 ```
 
 ## Consistency over training
@@ -58,6 +73,7 @@ evaluations of one training run, from its TensorBoard event file.
    :nosignatures:
 
    plot_wdist_convergence_grid
+   plot_convergence_table
    plot_metrics_overlay
    plot_sampler_comparison
 ```

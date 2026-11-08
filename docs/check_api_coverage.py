@@ -40,6 +40,7 @@ SUBMODULES = [
     "contours",
     "data",
     "ellipse",
+    "ellipse.semiaxes",
     "fitting",
     "graph",
     "image",

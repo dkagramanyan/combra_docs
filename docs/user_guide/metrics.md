@@ -45,8 +45,21 @@ distances need at least two images per side,
 since each estimates a per-side covariance; the angle-based families are defined
 on a single image.
 
-{py:func}`~combra.metrics.compute_all_metrics` runs the first two families
-always, and the third when `image_metrics=True`.
+**Semi-axis tail errors** compare the grains' minimum-volume enclosing ellipses
+({doc}`beams`). Past its mode, the distribution of a semi-axis $x$ decays
+exponentially, so its tail is fitted as
+
+$$p(x) = p_0 \, e^{kx}, \qquad x \ge x_0,$$
+
+for the big semi-axis $a$ and the small semi-axis $b$ of each side.
+{py:func}`~combra.metrics.semiaxis_metrics` reports, per semi-axis, the
+2-Wasserstein distance between the two fitted tails and the relative errors of the
+decay rate $k$ and the amplitude $p_0$.
+
+{py:func}`~combra.metrics.compute_all_metrics` runs the first two families and the
+semi-axis errors always, and the image-feature family when `image_metrics=True`.
+The semi-axes come from {py:func}`combra.ellipse.semiaxes.v1` unless
+`semiaxis_kw={'method': 'v2'}`.
 
 (undefined-rather-than-wrong)=
 
@@ -117,6 +130,21 @@ $0$ means no improvement, and negative means the metric grew with $N$.
 
 Curves are grouped by {term}`kind` — the generator being compared — and
 {term}`resolution`. See {py:func}`~combra.metrics.convergence_stats` for the full column list.
+
+For a report, {py:func}`~combra.metrics.convergence_table` condenses a sweep to one
+row per kind, resolution and metric: the plateau fit of the class-mean $|m|$ at
+$N = n_\text{lo}$ and at a larger $N$ (or $N \to \infty$), the relative change
+$\Delta$ between them, and a two-sided Kendall $\tau_N$ test of a trend with $N$.
+{py:func}`~combra.metrics.plot_convergence_table` draws it, shading the rows with a
+significant trend by $\Delta$:
+
+```python
+from combra.metrics import convergence_table, plot_convergence_table
+
+df[['mu1', 'semi_major_k']] *= 100          # relative errors in %
+table = convergence_table(df, ['w2', 'mu1', 'semi_major_w2', 'semi_major_k'], n_lo=1000)
+plot_convergence_table(table, decimal=',', save_path='table.png')
+```
 
 ## Sample size and step must match
 

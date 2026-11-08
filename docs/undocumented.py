@@ -48,6 +48,7 @@ UNDOCUMENTED = frozenset({
     "combra.ellipse.plot_beam_heatmap",
     "combra.ellipse.plot_beam_orientations",
     "combra.ellipse.plot_enclosing_ellipse",
+    "combra.ellipse.Semiaxes",
     # combra.exceptions
     "combra.exceptions.CombraWarning",
     "combra.exceptions.IncompleteShardError",
@@ -126,6 +127,7 @@ UNDOCUMENTED = frozenset({
     "combra.metrics.gauss_relative_errors",
     "combra.metrics.images_to_angle_density",
     "combra.metrics.images_to_pooled_angles",
+    "combra.metrics.images_to_semiaxes",
     "combra.metrics.index_by_name_step",
     "combra.metrics.load_fid_by_kimg",
     "combra.metrics.parquet_has_step",
@@ -133,7 +135,9 @@ UNDOCUMENTED = frozenset({
     "combra.metrics.plot_metric_distribution",
     "combra.metrics.plot_metrics_grid",
     "combra.metrics.plot_training_curve_grid",
+    "combra.metrics.SEMIAXIS_KEYS",
     "combra.metrics.summarize_metric_distribution",
+    "combra.metrics.TailFit",
     "combra.metrics.wasserstein_density_metrics",
     # combra.metrics.distributed
     "combra.metrics.distributed.all_ranks_ok",

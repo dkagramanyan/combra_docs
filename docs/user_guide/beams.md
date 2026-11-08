@@ -85,5 +85,23 @@ a few counts set the slope. The defaults drop the first two and last three bins.
 See {py:mod}`combra.ellipse` for the plotting functions and
 {py:meth}`~combra.data.MicrostructureDataset.generate_beams` for the batch writer.
 
+## Semi-axes as a metric
+
+`combra.ellipse.semiaxes` returns the big ($a$) and small ($b$) semi-axis of
+every ellipse in an image, in two versions like the vertex angles:
+{py:func}`~combra.ellipse.semiaxes.v1` on the map
+{py:func}`~combra.angles.preprocess_image` returns, as `generate_beams` does, and
+{py:func}`~combra.ellipse.semiaxes.v2` on the detection mask of the v2 angles. Only
+the image processing differs, and the two distributions are not comparable.
+
+At the resolution of training images the grains are a few pixels wide, and the
+histogram of a semi-axis rises to a peak at 2 – 4 px before the exponential decay
+sets in: an ellipse around a contour of a few pixels cannot have a semi-axis near
+zero. {py:func}`~combra.metrics.fit_exponential_tail` therefore starts the line at
+the mode rather than at a fixed bin, and weights each bin by its count: the
+inverse variance of $\log p$, which keeps the sparse far-tail bins from setting the
+slope. {py:func}`~combra.metrics.semiaxis_metrics` compares two such fits (see
+{doc}`metrics`).
+
 [^khachiyan]: L. G. Khachiyan, *Rounding of polytopes in the real number model of
     computation*, Mathematics of Operations Research 21(2), 1996, 307–320.
