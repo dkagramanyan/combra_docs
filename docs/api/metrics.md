@@ -52,6 +52,21 @@ two samples; {py:func}`compute_all_metrics` reports these for image batches.
    semiaxis_metrics
 ```
 
+## Cobalt-area metrics
+
+The Weibull fit of the cobalt-region area distribution, and the comparison of the
+areas and the cobalt fraction between two samples; {py:func}`compute_all_metrics`
+reports these for image batches.
+
+```{eval-rst}
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   fit_area_distribution
+   area_metrics
+```
+
 ## Consistency over training
 
 Agreement between the angle statistics and the image metrics across the

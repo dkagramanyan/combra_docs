@@ -25,6 +25,7 @@ numbers are read, and how a function is deprecated and removed.
 | {doc}`combra.io <io>` | Parquet, HDF5 and TensorBoard input and output |
 | {doc}`combra.angles <angles>` | Vertex angles (versions v1 and v2), their density fit and plots |
 | {doc}`combra.ellipse <ellipse>` | Minimum-volume enclosing ellipses and beam-length plots |
+| {doc}`combra.contours <contours>` | Areas of the cobalt regions and the cobalt fraction |
 | {doc}`combra.image <image>` | Measures computed on an image |
 | {doc}`combra.metrics <metrics>` | Real-vs-generated metrics, convergence, training-loop evaluation |
 | {doc}`combra.graph <graph>` | Crack graph and lowest-energy crack paths |
@@ -39,6 +40,7 @@ combra.data <data>
 combra.io <io>
 combra.angles <angles>
 combra.ellipse <ellipse>
+combra.contours <contours>
 combra.image <image>
 combra.metrics <metrics>
 combra.graph <graph>

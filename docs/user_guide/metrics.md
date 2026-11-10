@@ -62,10 +62,38 @@ $a$ and $b$ are not separately determined by the data.
 2-Wasserstein distance between the two fitted tails and the relative errors of $k$
 and $a$.
 
-{py:func}`~combra.metrics.compute_all_metrics` runs the first two families and the
-semi-axis errors always, and the image-feature family when `image_metrics=True`.
-The semi-axes come from {py:func}`combra.ellipse.semiaxes.v1` unless
-`semiaxis_kw={'method': 'v2'}`.
+**Cobalt-area errors** compare the areas of the cobalt regions and the cobalt
+fraction ({py:mod}`combra.contours`). A region is an 8-connected component of the
+cobalt side of the Otsu binary, its area $S$ its pixel count; the cobalt fraction
+$\varphi$ of an image is its share of cobalt pixels. The area histogram peaks at a
+few pixels and decays more slowly than an exponential. From the lower edge $S_0$ of
+the mode bin on, the areas are fitted by maximum likelihood with a Weibull
+distribution truncated at $S_0$,
+
+$$p(S) = \frac{\beta}{\lambda} \left( \frac{S}{\lambda} \right)^{\beta - 1}
+e^{-(S / \lambda)^\beta}, \qquad S \ge S_0,$$
+
+with shape $\beta < 1$ and scale $\lambda$. On the WC-Co training crops it fits
+better than the gamma, lognormal and log-logistic distributions (lowest AIC in four
+of six resolution-class pairs among the two-parameter models, mean KS distance
+0.038); a three-parameter generalized gamma fits slightly better still, but its
+parameters are not stable enough for relative errors.
+{py:func}`~combra.metrics.area_metrics` reports the 2-Wasserstein distance between
+the two fits (`area_w2`), the relative errors of $\beta$ and $\lambda$
+(`area_beta`, `area_lambda`) and the relative error of the mean cobalt fraction
+(`co_fraction`). The cobalt fraction is that of the binary, not the alloy's cobalt
+content: thresholding moves it by several per cent, so only the relative error of
+two samples processed the same way is meaningful.
+
+{py:func}`~combra.metrics.compute_all_metrics` runs the first two families, the
+semi-axis errors and the cobalt-area errors always, and the image-feature family
+when `image_metrics=True`. The semi-axes come from
+{py:func}`combra.ellipse.semiaxes.v1` unless `semiaxis_kw={'method': 'v2'}`, the
+regions from {py:func}`combra.contours.areas.v1` unless
+`area_kw={'method': 'v2'}`.
+
+Lengths and areas are in pixels, so two samples compare only at the same physical
+size of a pixel ({doc}`beams`).
 
 (undefined-rather-than-wrong)=
 

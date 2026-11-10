@@ -38,6 +38,7 @@ SUBMODULES = [
     "angles.output_directory",
     "angles.vertex_angles",
     "contours",
+    "contours.areas",
     "data",
     "ellipse",
     "ellipse.semiaxes",

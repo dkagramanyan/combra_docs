@@ -12,7 +12,6 @@ Modules whose whole public surface is undocumented are listed too, so that a
 """
 
 UNDOCUMENTED_MODULES = frozenset({
-    "combra.contours",
     "combra.fitting",
     "combra.stats",
     "combra.utils",
@@ -38,6 +37,7 @@ UNDOCUMENTED = frozenset({
     "combra.contours.contour_to_binary_mask",
     "combra.contours.draw_contours",
     "combra.contours.find_contours",
+    "combra.contours.Areas",
     # combra.data
     "combra.data.load_crack_annotations",
     "combra.data.load_crack_contours",
@@ -127,6 +127,7 @@ UNDOCUMENTED = frozenset({
     "combra.metrics.gauss_relative_errors",
     "combra.metrics.images_to_angle_density",
     "combra.metrics.images_to_pooled_angles",
+    "combra.metrics.images_to_areas",
     "combra.metrics.images_to_semiaxes",
     "combra.metrics.index_by_name_step",
     "combra.metrics.load_fid_by_kimg",
@@ -135,9 +136,11 @@ UNDOCUMENTED = frozenset({
     "combra.metrics.plot_metric_distribution",
     "combra.metrics.plot_metrics_grid",
     "combra.metrics.plot_training_curve_grid",
+    "combra.metrics.AREA_KEYS",
     "combra.metrics.SEMIAXIS_KEYS",
     "combra.metrics.summarize_metric_distribution",
     "combra.metrics.TailFit",
+    "combra.metrics.AreaFit",
     "combra.metrics.wasserstein_density_metrics",
     # combra.metrics.distributed
     "combra.metrics.distributed.all_ranks_ok",

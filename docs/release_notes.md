@@ -7,6 +7,24 @@ combra's changelog, and pointers to the four model repos' own.
 The authoritative copy is `CHANGELOG.md` in the combra repository; the highlights
 below track what changes for a *user* of the library.
 
+### 0.29.0
+
+The areas of the cobalt regions and the cobalt fraction, as metrics and as a plot.
+Earlier values are unchanged.
+
+**Added**
+
+- {py:mod}`combra.contours` areas: `contours.areas.v1` / `.v2` return the area of
+  every cobalt region of an image and its cobalt fraction.
+- {py:func}`~combra.metrics.fit_area_distribution` (a Weibull distribution past the
+  mode) and {py:func}`~combra.metrics.area_metrics`;
+  {py:func}`~combra.metrics.compute_all_metrics` gains the keys `area_w2`,
+  `area_beta`, `area_lambda` and `co_fraction` (`area_kw` selects the version).
+- {py:func}`~combra.contours.plot_area_grid`: the area densities with their Weibull
+  fits, the counterpart of {py:func}`~combra.ellipse.plot_semiaxis_grid`.
+- {py:func}`~combra.metrics.plot_convergence_table` labels the new rows
+  $W_2(S)$, $\delta\beta$, $\delta\lambda$ and $\delta\varphi$.
+
 ### 0.28.0
 
 The angle Wasserstein distances compare the bimodal fits, not the histograms, as the
