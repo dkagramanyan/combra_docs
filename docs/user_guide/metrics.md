@@ -66,24 +66,27 @@ and $a$.
 fraction ({py:mod}`combra.contours`). A region is an 8-connected component of the
 cobalt side of the Otsu binary, its area $S$ its pixel count; the cobalt fraction
 $\varphi$ of an image is its share of cobalt pixels. The area histogram peaks at a
-few pixels and decays more slowly than an exponential. From the lower edge $S_0$ of
-the mode bin on, the areas are fitted by maximum likelihood with a Weibull
-distribution truncated at $S_0$,
+few pixels and has a long tail. From the lower edge $S_0$ of the mode bin on, the
+areas are fitted by maximum likelihood with a lognormal distribution truncated at
+$S_0$,
 
-$$p(S) = \frac{\beta}{\lambda} \left( \frac{S}{\lambda} \right)^{\beta - 1}
-e^{-(S / \lambda)^\beta}, \qquad S \ge S_0,$$
+$$p(S) = \frac{1}{S \sigma \sqrt{2 \pi}}
+\exp\left[ -\frac{(\ln S - \mu)^2}{2 \sigma^2} \right], \qquad S \ge S_0,$$
 
-with shape $\beta < 1$ and scale $\lambda$. On the WC-Co training crops it fits
-better than the gamma, lognormal and log-logistic distributions (lowest AIC in four
-of six resolution-class pairs among the two-parameter models, mean KS distance
-0.038); a three-parameter generalized gamma fits slightly better still, but its
-parameters are not stable enough for relative errors.
+the distribution materials science uses for grain and particle sizes: $\ln S$ is
+normal with mean $\mu$ and standard deviation $\sigma$, and $S_m = e^\mu$ is the
+median area. On the WC-Co training crops its KS distance to the data is 0.02 - 0.06,
+as close as a Weibull and far closer than an exponential (0.09 - 0.19).
 {py:func}`~combra.metrics.area_metrics` reports the 2-Wasserstein distance between
-the two fits (`area_w2`), the relative errors of $\beta$ and $\lambda$
-(`area_beta`, `area_lambda`) and the relative error of the mean cobalt fraction
-(`co_fraction`). The cobalt fraction is that of the binary, not the alloy's cobalt
-content: thresholding moves it by several per cent, so only the relative error of
-two samples processed the same way is meaningful.
+the two fits (`area_w2`), the relative errors of $S_m$ and $\sigma$
+(`area_median`, `area_sigma`; of the median rather than $\mu$, whose relative error
+would change with the unit of area) and the relative error of the mean cobalt fraction
+(`co_fraction`). The cobalt fraction is that of the binary. With the v1 median at
+0.4 µm of the sample ({ref}`pixel-size`) it is within 2.4 % of the cobalt volume
+fraction of the WC-Co alloys (10, 6 and 6.2 wt.% Co: 16.3, 10.1 and 10.4 vol.%) on the
+256, 512 and 1024 px training crops; the v2 mask, grown for corner detection, is 30 -
+120 % above it. The metric is the relative error of two samples processed the same
+way, so the remaining offset cancels.
 
 {py:func}`~combra.metrics.compute_all_metrics` runs the first two families, the
 semi-axis errors and the cobalt-area errors always, and the image-feature family

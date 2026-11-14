@@ -212,7 +212,8 @@ call {py:func}`combra.metrics.compute_all_metrics`:
 
 ```pycon
 >>> from combra.metrics import compute_all_metrics
->>> results = compute_all_metrics(reference_images, generated_images, image_metrics=True)
+>>> results = compute_all_metrics(reference_images, generated_images, image_metrics=True,
+...                               pixel_size=0.0994)  # um per pixel, combra >= 0.30
 >>> results
 {'w1': ..., 'w2': ..., 'circular_w1': ..., 'circular_w2': ...,
  'mu1': ..., 'mu2': ..., 'sigma1': ..., 'sigma2': ..., 'amp1': ..., 'amp2': ...,
@@ -259,8 +260,8 @@ is self-describing:
 
 | index | grain class | morphology |
 |---|---|---|
-| `0` | `Ultra_Co11` | small grain (мелкие зёрна) |
-| `1` | `Ultra_Co25` | medium grain (средние зёрна) |
+| `0` | `Ultra_Co11` | medium grain (средние зёрна) |
+| `1` | `Ultra_Co25` | small grain (мелкие зёрна) |
 | `2` | `Ultra_Co6_2` | large grain (крупные зёрна) |
 
 ```{warning}

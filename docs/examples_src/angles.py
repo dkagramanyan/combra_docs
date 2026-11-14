@@ -28,7 +28,8 @@ import plotly.io as pio
 from combra import angles, data
 
 image = data.load_microstructure().images[0]
-prep = angles.preprocess_image(image)
+# The pixel size (um per pixel) sets the median filter to 0.4 um of the sample.
+prep = angles.preprocess_image(image, pixel_size=data.SEM_PIXEL_SIZE)
 print(prep.shape, prep.dtype)
 print(np.unique(prep).tolist())
 
@@ -66,6 +67,7 @@ work = Path(tempfile.mkdtemp())  # scratch folder for the parquet
 dataset = data.MicrostructureDataset(
     path=data.microstructure_data_dir(),
     max_per_class=2,  # the bundled sample; None uses every image
+    pixel_size=data.SEM_PIXEL_SIZE,
 )
 # Maps each class directory to the display label used in plot legends.
 class_types = {

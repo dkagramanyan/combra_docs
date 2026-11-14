@@ -65,7 +65,7 @@ and call combra directly:
    >>> samplers = {'dpm++': dpmpp_fn, 'edm': edm_fn, 'ddim': ddim_fn}
    >>> df = compare_samplers(
    ...     real_batch, samplers, k_values=[5, 10, 20, 50, 100, 250],
-   ...     image_metrics=True,
+   ...     image_metrics=True, pixel_size=0.0994,  # um per pixel of the images
    ... )
    >>> df.head()
      sampler    k     fid    cmmd  fd_dinov2      w1   ...
@@ -117,6 +117,7 @@ df = compare_samplers(
     k_values=[5, 10, 20, 50, 100, 250],
     image_metrics=False,  # the angle metrics only; no feature networks
     verbose=False,
+    pixel_size=0.1,  # the toy images have no physical scale; this sets a 4 px median
 )
 print(df[["sampler", "k", "w1", "circular_w1", "mu1"]].round(3))
 

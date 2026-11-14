@@ -54,7 +54,7 @@ two samples; {py:func}`compute_all_metrics` reports these for image batches.
 
 ## Cobalt-area metrics
 
-The Weibull fit of the cobalt-region area distribution, and the comparison of the
+The lognormal fit of the cobalt-region area distribution, and the comparison of the
 areas and the cobalt fraction between two samples; {py:func}`compute_all_metrics`
 reports these for image batches.
 
@@ -101,7 +101,8 @@ sharded evaluation harness, `combra.metrics.distributed`. Every rank calls
 `gather_generated`; rank 0 gates `distributed_metrics` on its result:
 
 ```python
-features, angles = gather_generated(shard_u8, device, rank, world_size)
+reference, ok = precompute_reference(real_u8, device, rank, world_size, pixel_size=px)
+features, angles = gather_generated(shard_u8, device, rank, world_size, pixel_size=px)
 if rank == 0 and angles is not None:
     scores = distributed_metrics(reference, angles, features, device=device)
 ```
@@ -109,7 +110,9 @@ if rank == 0 and angles is not None:
 A model that trains on the original images with a random dihedral augmentation
 (a 90-degree rotation times an optional horizontal flip) builds its reference
 with `precompute_reference(..., dihedral=True)`, which scores against the 8
-dihedral transforms of every real image.
+dihedral transforms of every real image. Since 0.30.0 both calls need the pixel size
+of the images in µm (`px` above), which sets the v1 median radius; without it they
+raise before any collective.
 
 {py:func}`combra.io.write_hparams` records the run's configuration in
 TensorBoard.

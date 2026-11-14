@@ -7,23 +7,57 @@ combra's changelog, and pointers to the four model repos' own.
 The authoritative copy is `CHANGELOG.md` in the combra repository; the highlights
 below track what changes for a *user* of the library.
 
-### 0.29.0
+### 0.30.0
 
-The areas of the cobalt regions and the cobalt fraction, as metrics and as a plot.
-Earlier values are unchanged.
+The v1 median filter is sized on the sample, not in pixels, so v1 needs the pixel
+size. Also the areas of the cobalt regions and the cobalt fraction (0.29.0 was never
+released). **Changed values:** every v1 angle, semi-axis and area result, through
+the new median radius.
+
+**Changed (breaking)**
+
+- {py:func}`~combra.angles.preprocess_image`, `contours.areas.v1` and
+  `angles.extract_polygons.v1` take `pixel_size`, the length of one pixel on the
+  sample in µm, and raise `ValueError` without it (or an explicit `disk`). The
+  median radius is {py:func}`~combra.angles.median_radius` of it: 0.4 µm, so 2, 4 and
+  8 px for the 256, 512 and 1024 px WC-Co crops, where it was 3 px at every size.
+  `disk=3` reproduces earlier results. See {ref}`pixel-size`.
+- The metric functions pass it on: `pixel_size` of
+  {py:func}`~combra.metrics.compute_all_metrics`, `compare_samplers`, `self_test`
+  (with `images`) and the distributed `precompute_reference` / `gather_generated`.
+  {py:class}`~combra.data.MicrostructureDataset`, `sweep_angles`, `compare_folders`
+  and `all_metrics_by_sample_size` read the h5 root attribute `pixel_size_um` when
+  `pixel_size` is not given. v2 does not use it.
+- Prep caches carry the median radius in their name and are rebuilt once.
+
+**Why.** At a fixed 3 px the filter covered 0.6 µm at 256 px but 0.15 µm at 1024 px:
+it erased thin cobalt films in the small images and kept the dark rim of the pools in
+the large ones. The cobalt fraction of the WC-Co training crops then missed the
+alloys' cobalt volume fraction by −15 to +14 %; at 0.4 µm it is within 2.4 % at all
+three sizes.
 
 **Added**
 
+- {py:func}`~combra.angles.median_radius`, `combra.angles.MEDIAN_RADIUS_UM` and
+  `combra.data.SEM_PIXEL_SIZE` (0.049687 µm, the native pixel of the WC-Co
+  micrographs and of the bundled sample).
+
 - {py:mod}`combra.contours` areas: `contours.areas.v1` / `.v2` return the area of
   every cobalt region of an image and its cobalt fraction.
-- {py:func}`~combra.metrics.fit_area_distribution` (a Weibull distribution past the
+- {py:func}`~combra.metrics.fit_area_distribution` (a lognormal distribution past the
   mode) and {py:func}`~combra.metrics.area_metrics`;
   {py:func}`~combra.metrics.compute_all_metrics` gains the keys `area_w2`,
-  `area_beta`, `area_lambda` and `co_fraction` (`area_kw` selects the version).
-- {py:func}`~combra.contours.plot_area_grid`: the area densities with their Weibull
+  `area_median`, `area_sigma` and `co_fraction` (`area_kw` selects the version).
+- {py:func}`~combra.contours.plot_area_grid`: the area densities with their lognormal
   fits, the counterpart of {py:func}`~combra.ellipse.plot_semiaxis_grid`.
 - {py:func}`~combra.metrics.plot_convergence_table` labels the new rows
-  $W_2(S)$, $\delta\beta$, $\delta\lambda$ and $\delta\varphi$.
+  $W_2(S)$, $\delta S_m$, $\delta\sigma$ and $\delta\varphi$.
+
+**Fixed**
+
+- Examples called `Ultra_Co11` the small-grain class and `Ultra_Co25` the
+  medium-grain one; `Ultra_Co25` has the finest grains, `Ultra_Co11` medium and
+  `Ultra_Co6_2` the coarsest.
 
 ### 0.28.0
 

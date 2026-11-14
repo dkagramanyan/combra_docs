@@ -117,6 +117,7 @@ print(metrics.degenerate_fit_reason(mus, sigmas, amps, density=unimodal))
 #
 #    >>> scores = metrics.compute_all_metrics(
 #    ...     real_batch, generated_batch, image_metrics=True,
+#    ...     pixel_size=0.0994,  # um per pixel; the v1 extractions need it
 #    ... )
 #    >>> scores['w1'], scores['mu1'], scores['fid']
 #

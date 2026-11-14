@@ -77,6 +77,7 @@ import tempfile
 ds = data.MicrostructureDataset(
     path=data.microstructure_data_dir(),
     max_per_class=2,
+    pixel_size=data.SEM_PIXEL_SIZE,
 )
 out_path = ds.generate_beams(
     save_path=tempfile.mkdtemp(),  # scratch folder for the parquet

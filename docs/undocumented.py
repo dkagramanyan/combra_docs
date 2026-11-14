@@ -21,6 +21,7 @@ UNDOCUMENTED_MODULES = frozenset({
 
 UNDOCUMENTED = frozenset({
     # combra.angles
+    "combra.angles.MEDIAN_RADIUS_UM",  # constant, in user_guide/angles (pixel size)
     "combra.angles.AngleDensityDisplay",
     "combra.angles.AngleSummary",
     "combra.angles.build_overlay_grid",
@@ -39,6 +40,7 @@ UNDOCUMENTED = frozenset({
     "combra.contours.find_contours",
     "combra.contours.Areas",
     # combra.data
+    "combra.data.SEM_PIXEL_SIZE",  # constant, in user_guide/angles (pixel size)
     "combra.data.load_crack_annotations",
     "combra.data.load_crack_contours",
     "combra.data.microstructure_data_dir",

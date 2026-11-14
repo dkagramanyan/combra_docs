@@ -238,8 +238,8 @@ nominal **alphabetical** convention the indices map as:
 
 | index | grain class | morphology |
 |---|---|---|
-| `0` | `Ultra_Co11` | small grain (мелкие зёрна) |
-| `1` | `Ultra_Co25` | medium grain (средние зёрна) |
+| `0` | `Ultra_Co11` | medium grain (средние зёрна) |
+| `1` | `Ultra_Co25` | small grain (мелкие зёрна) |
 | `2` | `Ultra_Co6_2` | large grain (крупные зёрна) |
 
 ```{warning}

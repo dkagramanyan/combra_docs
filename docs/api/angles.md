@@ -19,8 +19,9 @@ The vertex angles come in two versions that are not interchangeable: their
 densities differ and must not be compared with each other. Call a version
 explicitly; `combra.angles.vertex_angles` itself is not callable.
 
-- **v1** (P0) runs on the map {py:func}`preprocess_image` returns: median filter,
-  Otsu, Canny contours, Douglas-Peucker, short-segment pruning
+- **v1** (P0) runs on the map {py:func}`preprocess_image` returns: median filter
+  of 0.4 µm ({py:func}`median_radius` of the image's `pixel_size`, which v1
+  requires), Otsu, Canny contours, Douglas-Peucker, short-segment pruning
   (`min_segment_len`, 5 px by default), chord angles. The datasets use it, and
   the metrics use it unless told `method='v2'`.
 - **v2** (P6) takes the image itself: a detection mask, a sub-pixel boundary,
@@ -37,6 +38,7 @@ The training-time metrics report both versions; see
    :nosignatures:
 
    preprocess_image
+   median_radius
    vertex_angles.v1
    vertex_angles.v2
    settings_for_scale

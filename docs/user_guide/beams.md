@@ -73,11 +73,12 @@ a few counts set the slope. The defaults drop the first two and last three bins.
 
 ```pycon
 >>> from combra import data
->>> ds = data.MicrostructureDataset(path=data.microstructure_data_dir(), max_per_class=50)
+>>> ds = data.MicrostructureDataset(path=data.microstructure_data_dir(), max_per_class=50,
+...                                 pixel_size=data.SEM_PIXEL_SIZE)
 >>> ds.generate_beams(
 ...     save_path='./beams',
 ...     class_types={'Ultra_Co11': 'medium grain', 'Ultra_Co25': 'fine grain'},
-...     step=4, pixel=50 / 1000,
+...     step=4, pixel=data.SEM_PIXEL_SIZE,
 ...     run_meta={'family': 'real', 'resolution': 256},
 ... )
 ```

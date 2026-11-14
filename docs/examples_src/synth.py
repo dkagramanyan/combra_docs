@@ -59,10 +59,14 @@ print(list(by_bin)[:3])
 # ``seeds=[0]`` scores the single canvas above; the reference numbers use
 # ``range(20)``.
 
+from functools import partial
+
 from combra import angles
 
 methods = {
-    "P0": angles.extract_polygons.v1,
+    # The synthetic canvas has no physical scale, so v1 gets its median radius in
+    # pixels: the 3 px of combra before 0.30.
+    "P0": partial(angles.extract_polygons.v1, disk=3),
     "P6": angles.extract_polygons.v2,
 }
 results = {name: synth.benchmark(m, seeds=[0]) for name, m in methods.items()}

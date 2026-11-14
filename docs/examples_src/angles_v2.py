@@ -88,7 +88,7 @@ print(angles.output_directory.v2("./data/angles", "./data/h5/gen_san_N10000.h5",
 # and puts a vertex on many more true corners, so it returns far more angles
 # from the same image:
 
-angles_p0, _ = angles.vertex_angles.v1(angles.preprocess_image(image))
+angles_p0, _ = angles.vertex_angles.v1(angles.preprocess_image(image, pixel_size=data.SEM_PIXEL_SIZE))
 print(len(angles_p0), "<", len(angles_p6))
 print(f"reflex share: P0 {(angles_p0 > 180).mean():.2f}, P6 {(angles_p6 > 180).mean():.2f}")
 
@@ -122,7 +122,10 @@ pio.show(fig)
 from combra import fitting, stats
 
 pooled = np.concatenate(
-    [angles.vertex_angles.v1(angles.preprocess_image(im))[0] for im in data.load_microstructure().images]
+    [
+        angles.vertex_angles.v1(angles.preprocess_image(im, pixel_size=data.SEM_PIXEL_SIZE))[0]
+        for im in data.load_microstructure().images
+    ]
 )
 x, y = stats.density_histogram(pooled, 5.0)
 share_fit = fitting.fit_bimodal_share(x, y)

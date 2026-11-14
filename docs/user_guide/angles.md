@@ -44,8 +44,9 @@ two calls.
 **Preprocessing.** {py:func}`~combra.angles.preprocess_image` reduces the image
 to a three-level map:
 
-1. a median filter over a disk of radius `disk` (3), its rank near the frame
-   that of the full disk, counted over the pixels inside the image;
+1. a median filter over a disk of radius 0.4 µm on the sample, converted to
+   pixels with the image's pixel size (see {ref}`pixel-size`), its rank near the
+   frame that of the full disk, counted over the pixels inside the image;
 2. Otsu's threshold;
 3. the morphological gradient of the thresholded mask.
 
@@ -53,6 +54,51 @@ The mask and its boundary are stored in one `uint8` array with the levels 0,
 127 and 254. A colour image is converted as RGB, so an image read with OpenCV
 must be converted from BGR first. The same map is the input of the beam fit,
 {doc}`beams`.
+
+In the map, 254 is carbide, 127 the cobalt interior and 0 the cobalt pixels on the
+phase boundary. The carbide pixels on the boundary come out 127 as well (the
+`uint8` arithmetic wraps), so the grey region of the map is the cobalt grown by one
+pixel. Count cobalt on the thresholded mask, as `contours.areas.v1` does, not on
+the map.
+
+(pixel-size)=
+### Pixel size
+
+The pixel size is the length of the sample one pixel covers, in µm. The WC-Co
+micrographs were taken at 5000×, where one pixel is 0.049687 µm
+(`combra.data.SEM_PIXEL_SIZE`, from the microscope's TIFF metadata). The training
+images are 1024 px crops of them resized to $w$ px, so their pixel size is
+$0.049687 \cdot 1024 / w$:
+
+| image | pixel size, µm | median radius, px |
+|---|---|---|
+| 256 × 256 | 0.199 | 2 |
+| 512 × 512 | 0.099 | 4 |
+| 1024 × 1024 | 0.050 | 8 |
+
+The median radius is {py:func}`~combra.angles.median_radius` of the pixel size:
+`round(0.4 µm / pixel_size)`, at least 1. A filter of fixed size in pixels acts on
+different features at different resolutions: 3 px, the radius before 0.30, covers
+0.6 µm of the sample at 256 px but 0.15 µm at 1024 px, so it erased the thin cobalt
+films of the small images and kept the dark rim along the edge of the pools in the
+large ones. With the radius at 0.4 µm the cobalt fraction of the training crops is
+within 2.4 % of the cobalt volume fraction of the alloys at all three sizes; at 3 px
+it missed by −15 to +14 %.
+
+v1 therefore needs the pixel size: {py:func}`~combra.angles.preprocess_image`,
+`contours.areas.v1` and every metric that runs v1 take `pixel_size` and raise
+`ValueError` without it. An explicit `disk` overrides it (`disk=3` reproduces the
+results of earlier versions). The dataset class and the h5 comparisons read it from
+the file's `pixel_size_um` attribute.
+
+```pycon
+>>> from combra import angles, data
+>>> [angles.median_radius(data.SEM_PIXEL_SIZE * 1024 / w) for w in (256, 512, 1024)]
+[2, 4, 8]
+```
+
+Only the median radius follows the pixel size; `tol` and `min_segment_len` below stay
+in pixels.
 
 **Angles.** {py:func}`~combra.angles.vertex_angles.v1` then takes that map:
 
@@ -82,7 +128,7 @@ list of the simplified contours that produced them.
 ```pycon
 >>> from combra import data, angles
 >>> img = data.load_microstructure().images[0]
->>> prep = angles.preprocess_image(img)
+>>> prep = angles.preprocess_image(img, pixel_size=data.SEM_PIXEL_SIZE)
 >>> arr, contours = angles.vertex_angles.v1(prep, border_eps=5, tol=3, min_segment_len=5.0)
 >>> arr.min(), arr.max()
 ```
@@ -110,8 +156,8 @@ ways:
   which a longer `min_segment_len` merges back: on 88 px synthetic stars, 5 px
   finds 11 % more vertices than were drawn, 10 px none.
 
-At 5 px the real 1024 px fits reproduce the paper's Table 1 to within 1° on the
-reflex mode and 3–6° on the convex one. Densities extracted at different values
+At 5 px, with the 3 px median of combra before 0.30, the real 1024 px fits reproduce
+the paper's Table 1 to within 1° on the reflex mode and 3–6° on the convex one. Densities extracted at different values
 are different measurements, so the value is **part of a result's identity**:
 `combra.angles.output_directory.v1` writes it into the output folder name
 (`..._msl5`), so runs made at different settings cannot be silently compared.

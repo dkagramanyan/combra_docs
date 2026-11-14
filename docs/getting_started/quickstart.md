@@ -11,13 +11,17 @@ Load a bundled SEM image and extract its {term}`vertex angle` values:
 ```pycon
 >>> from combra import data, angles
 >>> img = data.load_microstructure().images[0]
->>> arr, contours = angles.vertex_angles.v1(angles.preprocess_image(img))
+>>> prep = angles.preprocess_image(img, pixel_size=data.SEM_PIXEL_SIZE)  # µm per pixel
+>>> arr, contours = angles.vertex_angles.v1(prep)
 >>> print(f'{len(arr)} angles, mean={arr.mean():.2f}°')
 >>> angles.angle_summary(arr).mus
 ```
 
 {py:func}`~combra.angles.preprocess_image` reduces the image to the thresholded
-map {py:func}`~combra.angles.vertex_angles.v1` reads; it returns the angles
+map {py:func}`~combra.angles.vertex_angles.v1` reads; it needs the pixel size, the
+length of the sample one pixel covers, which sets the median filter to 0.4 µm (see
+{ref}`pixel-size`). The bundled images are at the native 0.049687 µm per pixel.
+{py:func}`~combra.angles.vertex_angles.v1` returns the angles
 concatenated across grain contours and the simplified contours that produced
 them. {py:func}`~combra.angles.angle_summary` fits the density of the angles.
 
@@ -33,6 +37,7 @@ provenance:
 >>> ds = data.MicrostructureDataset(
 ...     path=data.microstructure_data_dir(),
 ...     max_per_class=50,
+...     pixel_size=data.SEM_PIXEL_SIZE,  # or the h5 attribute pixel_size_um
 ... )
 >>> ds.generate_angles(
 ...     save_path='./smoke_test',
