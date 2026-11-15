@@ -7,6 +7,22 @@ combra's changelog, and pointers to the four model repos' own.
 The authoritative copy is `CHANGELOG.md` in the combra repository; the highlights
 below track what changes for a *user* of the library.
 
+### 0.32.0
+
+**Added.**
+
+- {py:meth}`combra.data.MicrostructureDataset.generate_areas` writes the cobalt
+  regions of every image to `areas_n{N}.parquet`, one row per class, as
+  `generate_angles` and `generate_beams` do: the area of every region of the 0.4 µm
+  cobalt mask, whether it touches the frame, the per-image cobalt fractions, and per
+  step the area density and its lognormal fit in µm². See {doc}`/user_guide/areas`.
+- `combra.io.AREAS_SCHEMA`, the layout of that parquet.
+
+**Performance.** `generate_areas` reads the HDF5 file in blocks aligned to its chunks
+and builds no image cache: 10 000 generated 512 px images per class of three classes
+take about 50 s with 16 workers, against about 15 min reading one image at a time,
+which decompresses a whole 256-image chunk for every image.
+
 ### 0.31.0
 
 One angle pipeline, with every setting a length on the sample. The second angle

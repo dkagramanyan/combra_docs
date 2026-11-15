@@ -97,6 +97,7 @@ UNDOCUMENTED = frozenset({
     "combra.image.to_uint8",
     # combra.io
     "combra.io.ANGLES_SCHEMA",
+    "combra.io.AREAS_SCHEMA",
     "combra.io.BEAMS_SCHEMA",
     "combra.io.build_run_meta",
     "combra.io.flatten_hparams",

@@ -20,9 +20,13 @@ grain contours
    │     ▼
    │  angle density  ── bimodal-Gaussian fit ──▶ combra.fitting
    │
-   └─ minimum-volume enclosing ellipse           combra.ellipse
+   ├─ minimum-volume enclosing ellipse           combra.ellipse
+   │     ▼
+   │  beam lengths ── distribution fit ────────▶ combra.fitting
+   │
+   └─ cobalt regions (0.4 µm median mask)        combra.contours
          ▼
-      beam lengths ── distribution fit ────────▶ combra.fitting
+      region areas ── lognormal fit ───────────▶ combra.metrics
                                                         │
    reference vs. generated ─────────────────────────────┘
                      ▼
@@ -49,12 +53,14 @@ pruning set how many vertices survive, and therefore how many angles the next
 stage measures. `combra.contours` provides the Canny-and-Suzuki contour
 extraction, which the beam fit and the crack graph use as well.
 
-**Descriptors.** Two independent reductions of the same image:
+**Descriptors.** Three independent reductions of the same image:
 
 - {doc}`angles` — the interior angle at every vertex, pooled into an
   {term}`angle density`. This is combra's primary descriptor.
 - {doc}`beams` — the {term}`MVEE` of every contour of the same map, giving
   each grain a size and an orientation, pooled into a beam-length distribution.
+- {doc}`areas` — the area of every cobalt region and the cobalt fraction, from
+  the cobalt mask with its larger median.
 
 **Fitting.** `combra.fitting` fits parametric models to
 those distributions. WC-Co angle densities are bimodal, so the
@@ -83,7 +89,7 @@ propagation paths.
 and contour-size measures to a different material, frames of a polyamide
 fracture surface, grouped by frame index; see {doc}`../examples/polyamide`.
 
-{py:mod}`combra.io` owns the on-disk formats — the angle and beam
+{py:mod}`combra.io` owns the on-disk formats — the angle, beam and area
 parquet schemas, HDF5 image containers, and the {term}`run_meta` provenance
 struct written on every row.
 
@@ -105,6 +111,7 @@ struct written on every row.
 angles
 angle_fit
 beams
+areas
 metrics
 ```
 
