@@ -29,37 +29,30 @@ is why the fitted model is not wrapped around it.
 
 ## From image to angle
 
-The angles come in two versions, `combra.angles.vertex_angles.v1` and
-`combra.angles.vertex_angles.v2`, whose densities are not comparable with each
-other; `vertex_angles` itself is a namespace and is not callable. This section
-describes **v1** (the method called P0 in the extraction report), which the
-datasets use and the metrics use by default; {doc}`angles_v2` describes v2 (P6).
-v1 is the pipeline of Straumal et al., *Materials* 16, 5560 (2023) — median
-filter, Otsu, gradient, Canny, border following, Douglas–Peucker, chord angles
-— plus the short-segment pruning of step 3 below.
-
-{py:func}`combra.angles.vertex_angles.v1` measures the angles of one image in
-two calls.
+The angle pipeline is that of Straumal et al., *Materials* 16, 5560 (2023) —
+median filter, Otsu, gradient, Canny, border following, Douglas–Peucker, chord
+angles — plus the short-side pruning of step 3 below, with every setting a length on
+the sample (see {ref}`pixel-size`). {py:func}`combra.angles.vertex_angles` measures
+the angles of one image in two calls.
 
 **Preprocessing.** {py:func}`~combra.angles.preprocess_image` reduces the image
 to a three-level map:
 
-1. a median filter over a disk of radius 0.4 µm on the sample, converted to
-   pixels with the image's pixel size (see {ref}`pixel-size`), its rank near the
+1. an image coarser than 0.15 µm per pixel is enlarged twice (bicubic), so that the
+   lengths below span enough pixels;
+2. a median filter over a disk of radius 0.1 µm on the sample, its rank near the
    frame that of the full disk, counted over the pixels inside the image;
-2. Otsu's threshold;
-3. the morphological gradient of the thresholded mask.
+3. Otsu's threshold;
+4. the morphological gradient of the thresholded mask.
 
 The mask and its boundary are stored in one `uint8` array with the levels 0,
 127 and 254. A colour image is converted as RGB, so an image read with OpenCV
-must be converted from BGR first. The same map is the input of the beam fit,
-{doc}`beams`.
+must be converted from BGR first.
 
 In the map, 254 is carbide, 127 the cobalt interior and 0 the cobalt pixels on the
 phase boundary. The carbide pixels on the boundary come out 127 as well (the
 `uint8` arithmetic wraps), so the grey region of the map is the cobalt grown by one
-pixel. Count cobalt on the thresholded mask, as `contours.areas.v1` does, not on
-the map.
+pixel. Count cobalt with {py:func}`combra.contours.cobalt_mask`, not on the map.
 
 (pixel-size)=
 ### Pixel size
@@ -68,48 +61,59 @@ The pixel size is the length of the sample one pixel covers, in µm. The WC-Co
 micrographs were taken at 5000×, where one pixel is 0.049687 µm
 (`combra.data.SEM_PIXEL_SIZE`, from the microscope's TIFF metadata). The training
 images are 1024 px crops of them resized to $w$ px, so their pixel size is
-$0.049687 \cdot 1024 / w$:
+$0.049687 \cdot 1024 / w$. Every setting of the pipeline is a length on the sample,
+turned into pixels by {py:func}`~combra.angles.angle_settings`:
 
-| image | pixel size, µm | median radius, px |
-|---|---|---|
-| 256 × 256 | 0.199 | 2 |
-| 512 × 512 | 0.099 | 4 |
-| 1024 × 1024 | 0.050 | 8 |
+| setting | on the sample | 256 × 256 (0.199 µm/px) | 512 × 512 (0.099 µm/px) | 1024 × 1024 (0.050 µm/px) |
+|---|---|---|---|---|
+| enlargement | above 0.15 µm/px | 2× | — | — |
+| median radius | 0.1 µm | 1 px | 1 px | 2 px |
+| Douglas–Peucker `tol` | 0.4 µm | 4.0 px | 4.0 px | 8.1 px |
+| shortest side `min_segment_len` | 0.8 µm | 8.1 px | 8.1 px | 16.1 px |
+| cobalt-mask median | 0.4 µm | 2 px | 4 px | 8 px |
 
-The median radius is {py:func}`~combra.angles.median_radius` of the pixel size:
-`round(0.4 µm / pixel_size)`, at least 1. A filter of fixed size in pixels acts on
-different features at different resolutions: 3 px, the radius before 0.30, covers
-0.6 µm of the sample at 256 px but 0.15 µm at 1024 px, so it erased the thin cobalt
-films of the small images and kept the dark rim along the edge of the pools in the
-large ones. With the radius at 0.4 µm the cobalt fraction of the training crops is
-within 2.4 % of the cobalt volume fraction of the alloys at all three sizes; at 3 px
-it missed by −15 to +14 %.
+At 256 px the angle settings are in pixels of the enlarged image. A setting of fixed
+size in pixels acts on different features at different resolutions: the 3 px
+tolerance of combra before 0.31 is 0.6 µm of the sample at 256 px but 0.15 µm at
+1024 px. With all lengths fixed on the sample the same field gives the same angle
+distribution at all three sizes: on the real crops the Wasserstein-1 distance between
+the 256 and 1024 px distributions of the same fields is 5.5° (37.5° with the
+settings of 0.30).
 
-v1 therefore needs the pixel size: {py:func}`~combra.angles.preprocess_image`,
-`contours.areas.v1` and every metric that runs v1 take `pixel_size` and raise
-`ValueError` without it. An explicit `disk` overrides it (`disk=3` reproduces the
-results of earlier versions). The dataset class and the h5 comparisons read it from
-the file's `pixel_size_um` attribute.
+The angles and the cobalt fraction use different medians. A median rounds the
+corners it filters: the 0.4 µm median keeps the cobalt fraction of the training crops
+within 2.4 % of the alloys' cobalt volume fraction at all three sizes, but blunts the
+sharp corners, which then read as 100–130°. The angles use 0.1 µm; the cobalt mask
+({py:func}`combra.contours.cobalt_mask`, {py:func}`combra.contours.median_radius`), the
+cobalt areas and the semi-axes keep 0.4 µm.
+
+Every extraction therefore needs the pixel size: {py:func}`~combra.angles.preprocess_image`,
+{py:func}`~combra.angles.vertex_angles`, {py:func}`combra.contours.areas` and every
+metric take `pixel_size` and raise `ValueError` without it. An explicit `disk` gives
+the map of that median without enlargement, with the 3 and 5 px tolerance and
+shortest side of earlier versions (`disk=3` reproduces the angles of combra before
+0.30). The dataset class and the h5 comparisons read the pixel size from the file's
+`pixel_size_um` attribute.
 
 ```pycon
 >>> from combra import angles, data
->>> [angles.median_radius(data.SEM_PIXEL_SIZE * 1024 / w) for w in (256, 512, 1024)]
-[2, 4, 8]
+>>> for w in (256, 512, 1024):
+...     s = angles.angle_settings(data.SEM_PIXEL_SIZE * 1024 / w)
+...     print(w, s.scale, s.disk, round(s.tol, 1), round(s.min_segment_len, 1))
+256 2 1 4.0 8.1
+512 1 1 4.0 8.1
+1024 1 2 8.1 16.1
 ```
 
-Only the median radius follows the pixel size; `tol` and `min_segment_len` below stay
-in pixels.
-
-**Angles.** {py:func}`~combra.angles.vertex_angles.v1` then takes that map:
+**Angles.** {py:func}`~combra.angles.vertex_angles` then takes that map:
 
 1. contours are found, and a contour whose bounding box comes within
    `border_eps` px of the frame is dropped: a grain clipped by the frame has
    vertices that are artefacts of the crop;
-2. each contour is simplified with Douglas–Peucker at `tol` px (default 3), and
-   one left with three or fewer vertices is dropped;
-3. vertices are removed one at a time, shortest neighbouring segment first,
-   until no segment is shorter than `min_segment_len` px (default 5; 10 before
-   combra 0.25.0) or only three vertices remain;
+2. each contour is simplified with Douglas–Peucker at `tol` (0.4 µm), and one left
+   with three or fewer vertices is dropped;
+3. vertices are removed one at a time, shortest neighbouring side first, until no
+   side is shorter than `min_segment_len` (0.8 µm) or only three vertices remain;
 4. the angle at every remaining vertex $V_k$ is measured between the chords
    $\mathbf{a} = V_{k-1} - V_k$ and $\mathbf{b} = V_{k+1} - V_k$,
 
@@ -128,8 +132,9 @@ list of the simplified contours that produced them.
 ```pycon
 >>> from combra import data, angles
 >>> img = data.load_microstructure().images[0]
->>> prep = angles.preprocess_image(img, pixel_size=data.SEM_PIXEL_SIZE)
->>> arr, contours = angles.vertex_angles.v1(prep, border_eps=5, tol=3, min_segment_len=5.0)
+>>> px = data.SEM_PIXEL_SIZE
+>>> prep = angles.preprocess_image(img, pixel_size=px)
+>>> arr, contours = angles.vertex_angles(prep, pixel_size=px)
 >>> arr.min(), arr.max()
 ```
 
@@ -147,32 +152,31 @@ ways:
 
 - **Too long** turns small pools into triangles. A pool whose perimeter is under
   about three times `min_segment_len` keeps three vertices, whose angles add up
-  to 180° and are never reflex. At 10 px this put 83 %, 70 % and 41 % of the
-  real pools at 256, 512 and 1024 px into triangles, a spurious peak near 45°;
-  at 256 px the reference fit was rejected outright. Hence the default of 5
-  since 0.25.0.
-- **Too short** keeps split corners. On a large figure with a sharp tip the
-  median rounds the tip enough that Douglas–Peucker splits it into two vertices,
-  which a longer `min_segment_len` merges back: on 88 px synthetic stars, 5 px
-  finds 11 % more vertices than were drawn, 10 px none.
+  to 180° and are never reflex.
+- **Too short** keeps the staircase of the pixel boundary and splits corners: the
+  histogram fills with angles near the multiples of 45°.
 
-At 5 px, with the 3 px median of combra before 0.30, the real 1024 px fits reproduce
-the paper's Table 1 to within 1° on the reflex mode and 3–6° on the convex one. Densities extracted at different values
-are different measurements, so the value is **part of a result's identity**:
-`combra.angles.output_directory.v1` writes it into the output folder name
-(`..._msl5`), so runs made at different settings cannot be silently compared.
+The values 0.4 µm and 0.8 µm were chosen on synthetic micrographs with exact angles
+and on the real crops at 256, 512 and 1024 px, for the distance to the true angle
+distribution, the quality of the bimodal fit, the absence of pixel-grid spikes and
+the agreement between resolutions. On the synthetic images the Wasserstein-1 distance
+to the truth is 29°, 27° and 22° at 256, 512 and 1024 px, against 28°, 39° and 48°
+with the settings of 0.30. Every method measured underestimates the share of reflex
+vertices (0.17–0.21 against 0.37), because a pixel mask does not resolve the short
+notches of the boundary.
 
-### The other version
+Densities extracted at different values are different measurements, so the value is
+**part of a result's identity**: `combra.angles.output_directory` writes
+`min_segment_len` into the output folder name (`..._msl5`), and the parquets record
+the pixel size, the enlargement and the pixel values of the settings.
 
-{py:func}`combra.angles.vertex_angles.v2` (P6) detects the cobalt pools itself,
-locates their boundary to sub-pixel precision and reads each angle from lines
-fitted to the boundary; {doc}`angles_v2` describes it. From 0.15.0 to 0.20.2 P6
-was the only method of this module, and from 0.21.0 to 0.24.0 it lived in
-`combra.experimental`; the parquets extracted with it live in `..._tol1.75` and
-`..._scale0.25` folders and remain readable. A comparison across the two
-versions is not meaningful, so both sides of a comparison are always extracted
-with the same version — the training-time metrics report both, each against its
-own reference.
+### History
+
+combra 0.15.0–0.20.2 measured the angles with a second method (P6: a detection mask,
+a sub-pixel boundary and angles from lines fitted to it), from 0.25.0 to 0.30.0 kept
+as `combra.angles.vertex_angles.v2` beside this one (`v1`). It was removed in 0.31.0;
+the parquets extracted with it (`..._tol1.75` and `..._scale0.25` folders) remain
+readable but are not comparable with the densities of this pipeline.
 
 ## From angles to a density
 
@@ -254,7 +258,7 @@ likelihood, and the screening criteria, are derived in {doc}`angle_fit`,
 
 `combra.fitting.fit_bimodal_share` fits a five-parameter variant of the model,
 truncated to $D$, in which the two amplitudes are replaced by one mass share
-and a total fixed by the data; see {doc}`angles_v2`.
+and a total fixed by the data.
 
 ## Sample size
 

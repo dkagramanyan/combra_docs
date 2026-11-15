@@ -418,13 +418,15 @@ What a dataset yields is part of the API, identical in all four repos:
 - **Uniform keys**, in three sections (combra ≥ 0.25.0): the image metrics
   `Metrics/combra_fid`, `Metrics/combra_cmmd`, `Metrics/combra_fd_dinov2`,
   `Metrics/combra_num_fid_samples` and `Metrics/combra_fid_best`; the angle-density
-  metrics of {py:func}`combra.angles.vertex_angles.v1` as
-  `Metrics_v1/combra_<key>`; those of {py:func}`combra.angles.vertex_angles.v2`
+  metrics of `combra.angles.vertex_angles.v1` as
+  `Metrics_v1/combra_<key>`; those of `combra.angles.vertex_angles.v2`
   as `Metrics_v2/combra_<key>`. `<key>` is one of `w1`, `w2`, `circular_w1`,
   `circular_w2`, `mu1`, `mu2`, `sigma1`, `sigma2` and, for v1 (amplitude fit),
   `amp1`, `amp2`; for v2 (mass-share fit, `combra.fitting.fit_bimodal_share`),
   `pi`. The two angle versions measure different things and are never compared
-  with each other.
+  with each other. combra 0.31.0 removes v2 and its prefix: the angle metrics are
+  one set of these keys, without `pi`; a repository moving to 0.31 logs them in one
+  section.
   All of them are mirrored to `stats.jsonl`. Both sinks are required: a run
   whose metrics reach TensorBoard alone loses its entire history with the
   tfevents file.

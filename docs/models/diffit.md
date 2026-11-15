@@ -181,7 +181,7 @@ VAE latent space, decodes them to pixels, and scores them with the combra suite
 `compute_all_metrics(reals, fakes, image_metrics=True)` (see below). All returned metrics — angle-Wasserstein `w1`, `w2`, `circular_w1`,
 `circular_w2`, the bimodal-Gaussian relative errors
 `mu1`/`mu2`/`sigma1`/`sigma2`/`amp1`/`amp2`, and the image-feature metrics `fid`,
-`cmmd`, `fd_dinov2` — are logged in three sections (since v0.8.0, combra 0.25.0): `Metrics/combra_*` for the image metrics, `Metrics_v1/combra_*` and `Metrics_v2/combra_*` for the angle metrics of {py:func}`combra.angles.vertex_angles.v1` and {py:func}`combra.angles.vertex_angles.v2` (v2 fits one mass share, so its Gaussian keys end in `pi` instead of `amp1`/`amp2`). They go to TensorBoard and `stats.jsonl` under
+`cmmd`, `fd_dinov2` — are logged in three sections (since v0.8.0, combra 0.25.0): `Metrics/combra_*` for the image metrics, `Metrics_v1/combra_*` and `Metrics_v2/combra_*` for the angle metrics of `combra.angles.vertex_angles.v1` and `combra.angles.vertex_angles.v2` (v2 fits one mass share, so its Gaussian keys end in `pi` instead of `amp1`/`amp2`). They go to TensorBoard and `stats.jsonl` under
 those tags and to the run log as the `Metrics:`, `Metrics v1:` and `Metrics v2:`
 lines. Enabling the combra metrics (the
 default `--combra-metrics=true`) **replaces** DiffiT's own Inception suite: when
@@ -307,7 +307,7 @@ To score arbitrary real/generated image batches with the combra metrics directly
  'fid': ..., 'cmmd': ..., 'fd_dinov2': ...}
 ```
 
-That is the v1 section; `angle_kw={'method': 'v2'}` gives the v2 one.
+These are the angle keys of combra ≥ 0.31, one section; with combra 0.25 – 0.30 they were the v1 section, and `angle_kw={'method': 'v2'}` gave the v2 one.
 
 `image_metrics=True` is what adds the `fid`/`cmmd`/`fd_dinov2` keys; without it,
 only the angle-Wasserstein and bimodal-Gaussian metrics come back. Batches may be

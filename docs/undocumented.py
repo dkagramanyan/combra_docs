@@ -21,20 +21,19 @@ UNDOCUMENTED_MODULES = frozenset({
 
 UNDOCUMENTED = frozenset({
     # combra.angles
-    "combra.angles.MEDIAN_RADIUS_UM",  # constant, in user_guide/angles (pixel size)
+    "combra.angles.ANGLE_MEDIAN_UM",  # constants, in user_guide/angles (pixel size)
+    "combra.angles.ANGLE_MIN_SEGMENT_UM",
+    "combra.angles.ANGLE_TOL_UM",
+    "combra.angles.ENLARGE_ABOVE_UM",
     "combra.angles.AngleDensityDisplay",
+    "combra.angles.AngleSettings",
     "combra.angles.AngleSummary",
     "combra.angles.build_overlay_grid",
-    "combra.angles.extract_polygons.v1",
-    "combra.angles.extract_polygons.v2",
-    "combra.angles.output_directory.v1",
-    "combra.angles.output_directory.v2",
+    "combra.angles.output_directory",
     "combra.angles.plot_density_grid",
-    "combra.angles.pool_mask",
-    "combra.angles.pool_regions",
-    "combra.angles.Region",
     "combra.angles.resolve_overlay_rows",
     # combra.contours
+    "combra.contours.MEDIAN_RADIUS_UM",  # constant, in user_guide/angles (pixel size)
     "combra.contours.contour_to_binary_mask",
     "combra.contours.draw_contours",
     "combra.contours.find_contours",
@@ -175,6 +174,7 @@ UNDOCUMENTED = frozenset({
     "combra.synth.interior_angles",
     "combra.synth.iou_per_region",
     "combra.synth.MIN_GAP",
+    "combra.synth.PIXEL_SIZE",
     "combra.synth.plot_canvas",
     "combra.synth.plot_pools",
     "combra.synth.pool_polygon",

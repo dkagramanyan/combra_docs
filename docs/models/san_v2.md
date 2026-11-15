@@ -177,7 +177,7 @@ features (pooled angles, FID/DINOv2 `(mu, sigma)`, CLIP embedding) are extracted
 **once before the loop**, sharded across ranks and cached; only the generated side
 recomputes each tick. Both the image-feature metrics (`fid`, `cmmd`, `fd_dinov2`)
 and the angle-density metrics (Wasserstein `w1`/`w2`/`circular_*` + bimodal-Gaussian
-fit errors) are logged in three sections (since v0.8.0, combra 0.25.0): `Metrics/combra_*` for the image metrics, `Metrics_v1/combra_*` and `Metrics_v2/combra_*` for the angle metrics of {py:func}`combra.angles.vertex_angles.v1` and {py:func}`combra.angles.vertex_angles.v2` (v2 fits one mass share, so its Gaussian keys end in `pi` instead of `amp1`/`amp2`), in TensorBoard **and** `stats.jsonl`.
+fit errors) are logged in three sections (since v0.8.0, combra 0.25.0): `Metrics/combra_*` for the image metrics, `Metrics_v1/combra_*` and `Metrics_v2/combra_*` for the angle metrics of `combra.angles.vertex_angles.v1` and `combra.angles.vertex_angles.v2` (v2 fits one mass share, so its Gaussian keys end in `pi` instead of `amp1`/`amp2`), in TensorBoard **and** `stats.jsonl`.
 The metric keys are **bare** — `Metrics/combra_fid`, `combra_cmmd`, `combra_fd_dinov2`, plus `combra_fid_best` and `combra_num_fid_samples`, which records the count the run actually used, so a key never claims a count the run did not evaluate at.
 
 `G_ema` emits float images in `[-1, 1]`; the loop denormalizes fakes to `uint8`
@@ -220,7 +220,7 @@ call {py:func}`combra.metrics.compute_all_metrics`:
  'fid': ..., 'cmmd': ..., 'fd_dinov2': ...}
 ```
 
-That is the v1 section; `angle_kw={'method': 'v2'}` gives the v2 one.
+These are the angle keys of combra ≥ 0.31, one section; with combra 0.25 – 0.30 they were the v1 section, and `angle_kw={'method': 'v2'}` gave the v2 one.
 
 Prefer passing `uint8` batches (as the training loop does) so an unusual batch
 (e.g. an all-positive `[-1, 1]` batch) cannot be misread by combra's range

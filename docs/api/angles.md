@@ -15,33 +15,24 @@ from combra import angles
 
 ## Extraction
 
-The vertex angles come in two versions that are not interchangeable: their
-densities differ and must not be compared with each other. Call a version
-explicitly; `combra.angles.vertex_angles` itself is not callable.
-
-- **v1** (P0) runs on the map {py:func}`preprocess_image` returns: median filter
-  of 0.4 µm ({py:func}`median_radius` of the image's `pixel_size`, which v1
-  requires), Otsu, Canny contours, Douglas-Peucker, short-segment pruning
-  (`min_segment_len`, 5 px by default), chord angles. The datasets use it, and
-  the metrics use it unless told `method='v2'`.
-- **v2** (P6) takes the image itself: a detection mask, a sub-pixel boundary,
-  Douglas-Peucker, and angles from lines fitted to the boundary on either side
-  of each vertex. {py:func}`settings_for_scale` gives its settings for an
-  image of another resolution.
-
-The training-time metrics report both versions; see
-{doc}`/user_guide/metrics`.
+One pipeline: the map {py:func}`preprocess_image` returns (an optional enlargement,
+a median filter, Otsu, the phase boundary), then {py:func}`vertex_angles`: contours,
+Douglas-Peucker, short-side pruning, chord angles. Every setting is a length on the
+sample, turned into pixels by {py:func}`angle_settings` from the image's
+`pixel_size`, which the pipeline requires: a median of 0.1 µm, a tolerance of
+0.4 µm and a shortest side of 0.8 µm, with the image enlarged twice when its pixel
+is coarser than 0.15 µm. {py:func}`extract_polygons` returns the cobalt mask and the
+polygons in pixels of the image, the form {py:func}`combra.synth.benchmark` scores.
 
 ```{eval-rst}
 .. autosummary::
    :toctree: generated/
    :nosignatures:
 
+   angle_settings
    preprocess_image
-   median_radius
-   vertex_angles.v1
-   vertex_angles.v2
-   settings_for_scale
+   vertex_angles
+   extract_polygons
    angle_summary
 ```
 

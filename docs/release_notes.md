@@ -7,6 +7,44 @@ combra's changelog, and pointers to the four model repos' own.
 The authoritative copy is `CHANGELOG.md` in the combra repository; the highlights
 below track what changes for a *user* of the library.
 
+### 0.31.0
+
+One angle pipeline, with every setting a length on the sample. The second angle
+version (P6, `v2`) is removed, and with it the `v1` / `v2` names.
+
+**Changed (breaking).**
+
+- The angles take their settings from the pixel size,
+  {py:func}`combra.angles.angle_settings`: a 0.1 µm median (was the 0.4 µm of the
+  cobalt mask), a Douglas–Peucker tolerance of 0.4 µm (was 3 px) and a shortest
+  polygon side of 0.8 µm (was 5 px); an image coarser than 0.15 µm per pixel is
+  enlarged twice first. See {ref}`pixel-size`.
+- Why: the 0.4 µm median rounded the corners off before the polygons were made, so at
+  1024 px the convex mode piled up near 125°, and a tolerance fixed in pixels meant
+  0.6 µm at 256 px but 0.15 µm at 1024 px. On synthetic images with exact angles the
+  Wasserstein-1 distance to the truth goes from 28 / 39 / 48° to 29 / 27 / 22° at 256 /
+  512 / 1024 px; on the real crops the distance between the 256 and 1024 px angle
+  distributions of the same fields from 37.5° to 5.5°.
+- {py:func}`combra.angles.vertex_angles`, {py:func}`combra.angles.extract_polygons`,
+  {py:func}`combra.contours.areas` and {py:func}`combra.ellipse.semiaxes` are functions:
+  `vertex_angles(prep, pixel_size=px)`, `extract_polygons(image, pixel_size=px)`,
+  `areas(image, pixel_size=px)`, `semiaxes(image, pixel_size=px)` (it took the map; now
+  the image, same numbers).
+- The cobalt fraction, the cobalt regions and the semi-axes keep the 0.4 µm median:
+  {py:func}`combra.contours.cobalt_mask` (new) and {py:func}`combra.contours.median_radius`
+  (moved from `combra.angles`).
+- Removed: `vertex_angles.v2`, `extract_polygons.v2`, `contours.areas.v2`,
+  `ellipse.semiaxes.v2`, `angles.pool_mask`, `angles.pool_regions`,
+  `angles.settings_for_scale`; the `method` argument of the metrics. The training
+  metrics ({py:func}`combra.metrics.self_test`,
+  {py:func}`combra.metrics.distributed.distributed_metrics`) return one set of angle keys
+  without the `v1_` / `v2_` prefix and without `pi`.
+- {py:meth}`combra.data.MicrostructureDataset.generate_angles` takes `angles_tol` and
+  `min_segment_len` from the pixel size by default and records the settings in the
+  parquet.
+- {py:mod}`combra.synth` measures real and rendered images with the angle pipeline
+  and the cobalt mask at `synth.PIXEL_SIZE` (0.149 µm per pixel).
+
 ### 0.30.0
 
 The v1 median filter is sized on the sample, not in pixels, so v1 needs the pixel
@@ -19,7 +57,7 @@ the new median radius.
 - {py:func}`~combra.angles.preprocess_image`, `contours.areas.v1` and
   `angles.extract_polygons.v1` take `pixel_size`, the length of one pixel on the
   sample in µm, and raise `ValueError` without it (or an explicit `disk`). The
-  median radius is {py:func}`~combra.angles.median_radius` of it: 0.4 µm, so 2, 4 and
+  median radius is `combra.angles.median_radius` of it: 0.4 µm, so 2, 4 and
   8 px for the 256, 512 and 1024 px WC-Co crops, where it was 3 px at every size.
   `disk=3` reproduces earlier results. See {ref}`pixel-size`.
 - The metric functions pass it on: `pixel_size` of
@@ -38,7 +76,7 @@ three sizes.
 
 **Added**
 
-- {py:func}`~combra.angles.median_radius`, `combra.angles.MEDIAN_RADIUS_UM` and
+- `combra.angles.median_radius`, `combra.angles.MEDIAN_RADIUS_UM` and
   `combra.data.SEM_PIXEL_SIZE` (0.049687 µm, the native pixel of the WC-Co
   micrographs and of the bundled sample).
 
@@ -110,9 +148,9 @@ N-sweep convergence table. Angle and image-feature values are unchanged.
 **Added**
 
 - **`combra.ellipse.semiaxes`**, two versions like the vertex angles:
-  {py:func}`~combra.ellipse.semiaxes.v1` gives the big and small MVEE semi-axis of
+  `combra.ellipse.semiaxes.v1` gives the big and small MVEE semi-axis of
   every grain in the {py:func}`~combra.angles.preprocess_image` map,
-  {py:func}`~combra.ellipse.semiaxes.v2` the same on the v2 detection mask. See
+  `combra.ellipse.semiaxes.v2` the same on the v2 detection mask. See
   {doc}`user_guide/beams`.
 - **Exponential-tail semi-axis metrics.** {py:func}`~combra.metrics.fit_exponential_tail`
   fits $p(x) = p_0 e^{kx}$ to a semi-axis distribution from its mode on, by least
@@ -151,13 +189,13 @@ was left at its default.
 
 **Changed**
 
-- **{py:func}`combra.angles.vertex_angles.v1`** is P0 (the method of 0.21 – 0.24),
-  **{py:func}`combra.angles.vertex_angles.v2`** is P6 (was
+- **`combra.angles.vertex_angles.v1`** is P0 (the method of 0.21 – 0.24),
+  **`combra.angles.vertex_angles.v2`** is P6 (was
   `combra.experimental.vertex_angles`). Calling `vertex_angles(...)` itself raises
   `TypeError`. `extract_polygons` and `output_directory` follow the same `.v1` /
-  `.v2` pattern; {py:func}`~combra.angles.settings_for_scale`, `pool_mask`,
+  `.v2` pattern; `combra.angles.settings_for_scale`, `pool_mask`,
   `pool_regions` and `Region` are now in {py:mod}`combra.angles`. See
-  {doc}`user_guide/angles` and {doc}`user_guide/angles_v2`.
+  {doc}`user_guide/angles` and the `angles_v2` page (removed in 0.31.0).
 - **`min_segment_len` defaults to 5** (was 10) in v1,
   {py:meth}`~combra.data.MicrostructureDataset.generate_angles` and the image-batch
   metrics. At 10 most small pools were pruned to triangles (83 / 70 / 41 % of the
@@ -205,7 +243,7 @@ was left at its default.
 
 - The model spec and the four model pages describe the three metric sections and
   the `combra <v>` field of the `[startup]` line; `pi` is gone from the key lists.
-- The experimental page became {doc}`user_guide/angles_v2`; the v1 page cites the
+- The experimental page became the `angles_v2` page (removed in 0.31.0); the v1 page cites the
   pipeline's paper and discusses the choice of `min_segment_len`.
 - The model pages name the WC-Co training zips `imagenet_9to4_1024x1024_<r>x<r>.zip`
   again (the model repos' v0.7.1): the 1080-original-crop sets took over those
@@ -285,7 +323,7 @@ was left at its default.
   `truncated_bimodal_gaussian(..., weight, total)` and the result
   `BimodalGaussianFit(curve, mus, sigmas, shares, total)`. On 30 real angle
   densities it returns the values of 0.21.0 bit for bit, and the six-parameter
-  fit those of 0.12.0. See {doc}`user_guide/angles_v2`.
+  fit those of 0.12.0. See the `angles_v2` page (removed in 0.31.0).
 
 ### 0.21.0
 
@@ -307,7 +345,7 @@ was left at its default.
   there from `combra.angles`, unchanged, with the `scale` argument and the
   `_tol` / `_scale` folder names. On the bundled images both methods return
   the arrays of 0.20.2 bit for bit under their new names. See
-  {doc}`user_guide/angles_v2`.
+  the `angles_v2` page (removed in 0.31.0).
 - {py:meth}`~combra.data.MicrostructureDataset.generate_angles`,
   {py:func}`~combra.data.sweep_angles` and the image-batch angle metrics
   (`images_to_pooled_angles`, `images_to_angle_density`, and through them
@@ -330,9 +368,9 @@ was left at its default.
 
 **Documentation**
 
-- {doc}`user_guide/angles` describes P0 and {doc}`user_guide/angles_v2`
+- {doc}`user_guide/angles` describes P0 and the `angles_v2` page (removed in 0.31.0)
   describes P6; the P0 and P7 pages are gone. The worked examples follow:
-  {doc}`examples/angles` starts from one image, {doc}`examples/angles_v2`
+  {doc}`examples/angles` starts from one image, the `angles_v2` page (removed in 0.31.0)
   runs P6 and compares it with P0.
 
 ### 0.20.2
@@ -366,7 +404,7 @@ was left at its default.
   P6 benchmark validated at 256, 512 and 1536 px of the 1536 px field, so angle
   densities of different resolutions are measured with the same physical
   settings. Without `scale` nothing changes. See
-  {doc}`user_guide/angles_v2`.
+  the `angles_v2` page (removed in 0.31.0).
 - `combra.angles.output_directory` names folders of scaled extractions
   `..._scale{scale:.4g}`; `resolve_overlay_rows` / `plot_overlay_grid` accept a
   fifth manifest element `scale` per source, and
@@ -599,7 +637,7 @@ A clean break: defaults and names change without aliases.
 
 - The reference entry of `angles.vertex_angles` states the
   five P6 stages with the input, output, parameters and formula of each, as
-  {doc}`user_guide/angles_v2` does. Documentation only; nothing needs
+  the `angles_v2` page (removed in 0.31.0) does. Documentation only; nothing needs
   regenerating.
 
 ### 0.15.1
@@ -638,7 +676,7 @@ A clean break: defaults and names change without aliases.
   corners with an RMS edge error of 0.67 px where P0 recovered 12% at 1.26 px,
   and finds every pool where P0's Otsu mask missed 7%; the convex mode sits
   about 15° higher than under P0, so every reference set is re-extracted. See
-  {doc}`user_guide/angles_v2`.
+  the `angles_v2` page (removed in 0.31.0).
 - The per-source folder suffix is `_tol{tol:g}` instead of `_msl{msl}`:
   `angles.output_directory`,
   {py:func}`~combra.angles.resolve_overlay_rows`,

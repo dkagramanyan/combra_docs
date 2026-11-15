@@ -34,14 +34,9 @@ from undocumented import UNDOCUMENTED, UNDOCUMENTED_MODULES  # noqa: E402
 # Modules whose public surface must be triaged.
 SUBMODULES = [
     "angles",
-    "angles.extract_polygons",
-    "angles.output_directory",
-    "angles.vertex_angles",
     "contours",
-    "contours.areas",
     "data",
     "ellipse",
-    "ellipse.semiaxes",
     "fitting",
     "graph",
     "image",
@@ -100,7 +95,6 @@ def main() -> int:
     for sub in SUBMODULES:
         module = importlib.import_module(f"combra.{sub}")
         exported |= {f"combra.{sub}.{n}" for n in getattr(module, "__all__", ()) or ()}
-    # A versioned namespace (combra.angles.vertex_angles) is triaged through its members.
     exported -= {f"combra.{sub}" for sub in SUBMODULES}
 
     documented = set().union(*(names_on_page(p) for p in API_PAGES))

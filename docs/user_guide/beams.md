@@ -88,12 +88,11 @@ See {py:mod}`combra.ellipse` for the plotting functions and
 
 ## Semi-axes as a metric
 
-`combra.ellipse.semiaxes` returns the big ($A$) and small ($B$) semi-axis of
-every ellipse in an image, in two versions like the vertex angles:
-{py:func}`~combra.ellipse.semiaxes.v1` on the map
-{py:func}`~combra.angles.preprocess_image` returns, as `generate_beams` does, and
-{py:func}`~combra.ellipse.semiaxes.v2` on the detection mask of the v2 angles. Only
-the image processing differs, and the two distributions are not comparable.
+{py:func}`combra.ellipse.semiaxes` returns the big ($A$) and small ($B$) semi-axis of
+every ellipse in an image. The ellipses are fitted to the regions of the cobalt mask
+({py:func}`combra.contours.cobalt_mask`, a 0.4 µm median), as `generate_beams` does:
+the mask whose area is the cobalt fraction, not the angle map, whose smaller median
+keeps sharp corners but also small noise specks.
 
 At the resolution of training images the grains are a few pixels wide, and the
 histogram of a semi-axis rises to a peak at 2 – 4 px before the exponential decay

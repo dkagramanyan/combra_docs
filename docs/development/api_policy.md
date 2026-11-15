@@ -23,7 +23,8 @@ Experimental
 : A module of candidate methods, whose API and output may change without a
   deprecation period; a change is still listed in the release notes. There is
   none at present: `combra.experimental` (0.21.0 – 0.24.0) was removed in
-  0.25.0, its angle method becoming `combra.angles.vertex_angles.v2`.
+  0.25.0, its angle method becoming `combra.angles.vertex_angles.v2`, itself removed
+  in 0.31.0.
 
 The output formats written by {py:mod}`combra.io` — the angle and beam parquet
 schemas and the HDF5 image containers — are part of the stable API. A release

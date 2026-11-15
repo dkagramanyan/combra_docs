@@ -14,7 +14,7 @@ write the two chords leaving the vertex
 
 $$\mathbf{v}_1 = V_{k-1} - V_k, \qquad \mathbf{v}_2 = V_{k+1} - V_k .$$
 
-{py:func}`combra.angles.vertex_angles.v1` reports
+{py:func}`combra.angles.vertex_angles` reports
 
 $$
 \alpha_k =
@@ -32,13 +32,6 @@ with $\det(\mathbf{v}_1, \mathbf{v}_2) = v_1^x v_2^y - v_1^y v_2^x$, the signed
 area of the pair, for the orientation the contours are traced in. So
 $\alpha_k \in [0^\circ, 360^\circ)$, convex vertices occupy the lower half and
 reflex vertices the upper half.
-
-The other version, {py:func}`combra.angles.vertex_angles.v2`, uses in
-place of the chords the directions of two lines fitted to the boundary on
-either side of the vertex, $\mathbf{u}_1 = -\mathbf{d}_{k-1}$ and
-$\mathbf{u}_2 = \mathbf{d}_k$, with the convex test
-$\det(\mathbf{u}_1, \mathbf{u}_2) > 0$ for the orientation its contours are
-traced in; see {doc}`angles_v2`.
 
 :::{important}
 **The angle domain is an interval, not a circle.** $\alpha = 1^\circ$ is a
@@ -140,8 +133,7 @@ $\sigma = 10^5$ degrees with $a = 2 \times 10^3$ against an expected 5 have
 been observed. Both are why §5 screens every fit before it is read.
 
 `combra.fitting.fit_bimodal_share` fits the truncated variant, each mode
-divided by its $Z_i$ and the two amplitudes replaced by one mass share; see
-{doc}`angles_v2`.
+divided by its $Z_i$ and the two amplitudes replaced by one mass share.
 
 ## 4. The estimator
 

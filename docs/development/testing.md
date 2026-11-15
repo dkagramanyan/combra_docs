@@ -52,8 +52,7 @@ results. Results (`results/`), built environments (`env/`) and the report
 
 | Module | Times |
 | --- | --- |
-| `angles` | v1 (P0) extraction |
-| `angles_v2` | v2 (P6) extraction |
+| `angles` | angle extraction |
 | `synth` | synthetic canvas generation, rendering and scoring |
 | `fitting_metrics` | the bimodal fit and the density metrics |
 | `data` | {py:meth}`~combra.data.MicrostructureDataset.generate_angles` on the bundled images |

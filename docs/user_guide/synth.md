@@ -4,9 +4,8 @@ A real micrograph cannot tell you how accurate an angle method is: nobody knows
 where the true corners of its pools are. {py:mod}`combra.synth` makes images
 where that is known. It draws cobalt {term}`pools <pool>` as polygons, renders
 them like an SEM image, runs a method on the rendering and scores the method's
-polygons against the polygons that were drawn. This is how P0
-({py:func}`combra.angles.vertex_angles.v1`) and P6 ({doc}`angles_v2`) are
-measured.
+polygons against the polygons that were drawn. This is how the angle pipeline
+({py:func}`combra.angles.vertex_angles`) and its settings were measured.
 
 For a worked run, see {doc}`/examples/synth`.
 
@@ -52,15 +51,17 @@ generator's were fitted to real images: {py:func}`~combra.synth.fit_renderer`
 matches the image statistics of {py:func}`~combra.synth.image_statistics`
 (edge width, noise, texture, illumination, cobalt fraction, pool shape and
 spacing), and {py:func}`~combra.synth.fit_generator` matches the real pools'
-solidity, aspect ratio and P6 angle histograms per size class. You do not need
-to rerun either to use the benchmark.
+solidity, aspect ratio and angle histograms per size class. You do not need
+to rerun either to use the benchmark. The canvases stand for SEM images at
+{py:data}`~combra.synth.PIXEL_SIZE` (0.149 µm per pixel), the scale both were
+fitted at; the measuring functions use it as their default pixel size.
 
 ## Scoring
 
 A method is any function `method(image) -> (mask, polygons)`: a boolean
 detection mask and one `(N, 2)` polygon in `(x, y)` pixel coordinates per pool.
-`combra.angles.extract_polygons.v1` and
-`combra.angles.extract_polygons.v2` have this form.
+{py:func}`combra.angles.extract_polygons` has this form once its pixel size is
+bound: `functools.partial(angles.extract_polygons, pixel_size=synth.PIXEL_SIZE)`.
 
 {py:func}`~combra.synth.score_canvas` matches every polygon to the true pool it
 overlaps most and records raw rows; {py:func}`~combra.synth.summarize` pools
@@ -79,9 +80,8 @@ covered by the mask, and `false_polygons`, polygons that overlap no true pool.
 
 {py:func}`~combra.synth.benchmark` runs all of this over a set of canvases.
 Every canvas is rendered with the seed `seed + 300`, so every method sees the
-same images. The default, `seeds=range(20)`, holds about 1960 true pools and
-gives the reference numbers quoted in {doc}`angles_v2`; it takes a few minutes for
-P6. {py:func}`~combra.synth.plot_benchmark` draws the four metrics by pool size
+same images. The default, `seeds=range(20)`, holds about 1960 true pools; it takes
+about a minute. {py:func}`~combra.synth.plot_benchmark` draws the four metrics by pool size
 for several methods at once.
 
 ```{note}

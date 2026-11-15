@@ -187,7 +187,7 @@ angle version, v1 and v2, **and** the
 image-feature metrics `fid`, `cmmd`, `fd_dinov2` (keys `combra_fid`, `combra_cmmd`,
 `combra_fd_dinov2`; the running best is `combra_fid_best`, and `combra_num_fid_samples`
 records the count the run used, so a key never claims a count the run did not
-evaluate at). All are logged in three sections (since v0.8.0, combra 0.25.0): `Metrics/combra_*` for the image metrics, `Metrics_v1/combra_*` and `Metrics_v2/combra_*` for the angle metrics of {py:func}`combra.angles.vertex_angles.v1` and {py:func}`combra.angles.vertex_angles.v2` (v2 fits one mass share, so its Gaussian keys end in `pi` instead of `amp1`/`amp2`), **mirrored into
+evaluate at). All are logged in three sections (since v0.8.0, combra 0.25.0): `Metrics/combra_*` for the image metrics, `Metrics_v1/combra_*` and `Metrics_v2/combra_*` for the angle metrics of `combra.angles.vertex_angles.v1` and `combra.angles.vertex_angles.v2` (v2 fits one mass share, so its Gaussian keys end in `pi` instead of `amp1`/`amp2`), **mirrored into
 `stats.jsonl`** as well as TensorBoard, so post-hoc best-snapshot selection
 survives the loss of the tfevents file; the combra row is cleared every tick, so a tick with no eval
 writes no combra columns rather than repeating the previous tick's values at a new step. `styleswin-eval` scores a checkpoint standalone and reproduces the training metrics: snapshots

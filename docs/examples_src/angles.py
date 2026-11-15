@@ -7,7 +7,7 @@ for every class of the bundled dataset: write them to parquet, and plot the
 per-class densities with their bimodal-Gaussian fits.
 
 For what the steps mean, see :doc:`/user_guide/angles`; for the primitives, see
-:func:`combra.angles.vertex_angles.v1` and
+:func:`combra.angles.vertex_angles` and
 :meth:`combra.data.MicrostructureDataset.generate_angles`.
 """
 
@@ -17,7 +17,8 @@ For what the steps mean, see :doc:`/user_guide/angles`; for the primitives, see
 #
 # The extraction works on the three-level map of
 # :func:`~combra.angles.preprocess_image`: the thresholded mask and its boundary
-# in one ``uint8`` array.
+# in one ``uint8`` array. Every setting is a length on the sample, turned into
+# pixels by :func:`~combra.angles.angle_settings` from the pixel size.
 
 import tempfile
 from pathlib import Path
@@ -28,32 +29,35 @@ import plotly.io as pio
 from combra import angles, data
 
 image = data.load_microstructure().images[0]
-# The pixel size (um per pixel) sets the median filter to 0.4 um of the sample.
-prep = angles.preprocess_image(image, pixel_size=data.SEM_PIXEL_SIZE)
+px = data.SEM_PIXEL_SIZE  # um per pixel of the bundled images
+print(angles.angle_settings(px))
+prep = angles.preprocess_image(image, pixel_size=px)
 print(prep.shape, prep.dtype)
 print(np.unique(prep).tolist())
 
 # %%
-# :func:`~combra.angles.vertex_angles.v1` returns every vertex angle in degrees and
+# :func:`~combra.angles.vertex_angles` returns every vertex angle in degrees and
 # the simplified contours that produced them.
 
-angles_deg, contours = angles.vertex_angles.v1(prep, min_segment_len=5.0)
+angles_deg, contours = angles.vertex_angles(prep, pixel_size=px)
 print(angles_deg.min(), angles_deg.max())
 print(contours[0].shape[1], contours[0].dtype)
 
 # %%
-# A larger ``min_segment_len`` prunes more of the short, pixel-staircase
-# segments, so fewer angles survive:
+# A larger ``min_segment_len`` (in pixels of the map; 0.8 um by default) prunes more
+# of the short, pixel-staircase segments, so fewer angles survive:
 
-counts = {m: len(angles.vertex_angles.v1(prep, min_segment_len=m)[0]) for m in (5, 10, 20)}
+counts = {
+    m: len(angles.vertex_angles(prep, min_segment_len=m, pixel_size=px)[0]) for m in (8, 16, 32)
+}
 print(counts)
 
 # %%
 # Because of that, the value is part of a result's name.
-# ``combra.angles.output_directory.v1`` builds the folder the parquets are
+# ``combra.angles.output_directory`` builds the folder the parquets are
 # kept in:
 
-print(angles.output_directory.v1("./data/angles", "./data/h5/gen_san_N10000.h5", 5.0))
+print(angles.output_directory("./data/angles", "./data/h5/gen_san_N10000.h5", 16.1))
 
 # %%
 # A dataset
@@ -81,8 +85,7 @@ out_path = dataset.generate_angles(
     save_path=work / "angles",
     class_types=class_types,
     step=[5],  # one or more bin widths, in degrees
-    workers=2,
-    min_segment_len=5.0,
+    workers=2,  # the angle settings come from the dataset's pixel size
 )
 print(out_path.name)
 

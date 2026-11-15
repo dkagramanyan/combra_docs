@@ -32,7 +32,7 @@ Thresholding and vertex angles ({py:mod}`combra.angles`)
 : B. B. Straumal, L. N. Shchur, D. G. Kagramanyan, E. P. Konstantinova,
   A. V. Druzhinin and A. N. Nekrasov, "Topology of WC/Co Interfaces in Cemented
   Carbides", *Materials* 16(16), 5560, 2023. The vertex-angle pipeline of
-  `vertex_angles.v1`, before short-segment pruning.
+  `vertex_angles`, before short-segment pruning.
 : N. Otsu, "A Threshold Selection Method from Gray-Level Histograms",
   *IEEE Transactions on Systems, Man, and Cybernetics* 9(1), 1979.
 : D. H. Douglas and T. K. Peucker, "Algorithms for the Reduction of the Number

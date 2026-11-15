@@ -2,8 +2,8 @@
 Benchmarking an angle method
 ============================
 
-Generate a canvas of pools with an exact truth, render it, score one method on
-it, then compare P0 and P6 over the same canvas.
+Generate a canvas of pools with an exact truth, render it, score the angle
+pipeline on it, then compare settings over the same canvas.
 
 For what the metrics mean, see :doc:`/user_guide/synth`; for the entry points,
 see :func:`combra.synth.make_canvas` and :func:`combra.synth.benchmark`.
@@ -41,11 +41,12 @@ print(round(float((truth > 180).mean()), 3))
 # ------------------------------
 #
 # A method is any function that returns ``(mask, polygons)`` for an image.
-# ``combra.angles.extract_polygons.v2`` is P6 in that form:
+# :func:`combra.angles.extract_polygons` is the angle pipeline in that form; the
+# canvas stands for an SEM image at ``synth.PIXEL_SIZE`` um per pixel.
 
 from combra import angles
 
-score = synth.score_canvas(*angles.extract_polygons.v2(img), cv)
+score = synth.score_canvas(*angles.extract_polygons(img, pixel_size=synth.PIXEL_SIZE), cv)
 summary, by_bin = synth.summarize([score])
 print(f"found {summary['found']:.3f}, IoU {summary['iou_truth']:.3f}")
 print(f"RMS edge error {summary['rms']:.2f} px")
@@ -64,10 +65,10 @@ from functools import partial
 from combra import angles
 
 methods = {
-    # The synthetic canvas has no physical scale, so v1 gets its median radius in
-    # pixels: the 3 px of combra before 0.30.
-    "P0": partial(angles.extract_polygons.v1, disk=3),
-    "P6": angles.extract_polygons.v2,
+    # the settings of angle_settings: 0.1 um median, 0.4 um tolerance, 0.8 um sides
+    "angles": partial(angles.extract_polygons, pixel_size=synth.PIXEL_SIZE),
+    # the pixel settings of combra before 0.30: 3 px median, tolerance 3 px, sides 5 px
+    "3 px median": partial(angles.extract_polygons, disk=3),
 }
 results = {name: synth.benchmark(m, seeds=[0]) for name, m in methods.items()}
 recovery = {name: r.summary["corner_recovery"] for name, r in results.items()}
@@ -81,18 +82,21 @@ fig = synth.plot_benchmark(results)
 pio.show(fig)
 
 # %%
-# To score a variant of a method, wrap it so it keeps the same signature. Here
-# P6 runs at a coarser simplification tolerance, and recovers fewer corners:
+# To score a variant of a method, wrap it so it keeps the same signature. Here the
+# pipeline runs at a coarser simplification tolerance (8 px, 1.2 um), and recovers
+# fewer corners:
 
-coarse = synth.benchmark(lambda im: angles.extract_polygons.v2(im, tol=3.0), seeds=[0])
-print(round(coarse.summary["corner_recovery"], 3), "<", round(recovery["P6"], 3))
+coarse = synth.benchmark(
+    partial(angles.extract_polygons, pixel_size=synth.PIXEL_SIZE, tol=8.0), seeds=[0]
+)
+print(round(coarse.summary["corner_recovery"], 3), "<", round(recovery["angles"], 3))
 
 # %%
 # Look at the canvas
 # ------------------
 #
 # :func:`~combra.synth.plot_canvas` shows a crop of the rendering with the true
-# outlines and the P6 mask:
+# outlines and the cobalt mask of the angle pipeline:
 
 fig = synth.plot_canvas(cv, img)
 pio.show(fig)

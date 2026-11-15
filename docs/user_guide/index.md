@@ -38,12 +38,13 @@ Each stage is described below, with links into the reference.
 
 **Thresholding.** {py:func}`combra.angles.preprocess_image` reduces an SEM
 image to a three-level map: a median filter, Otsu's threshold, and the
-morphological gradient that marks the boundary of the thresholded mask.
+morphological gradient that marks the boundary of the thresholded mask. Every
+setting is a length on the sample, set from the image's pixel size
+({py:func}`combra.angles.angle_settings`).
 
-**Contours.** {py:func}`combra.angles.vertex_angles.v1` finds the contours of
-that map, simplifies each with Douglas–Peucker and prunes the segments shorter
-than `min_segment_len`; {py:func}`combra.angles.vertex_angles.v2`, the second
-version, finds the pools on the image itself ({doc}`angles_v2`). Simplification is not cosmetic: the tolerance and the
+**Contours.** {py:func}`combra.angles.vertex_angles` finds the contours of
+that map, simplifies each with Douglas–Peucker and prunes the sides shorter
+than `min_segment_len`. Simplification is not cosmetic: the tolerance and the
 pruning set how many vertices survive, and therefore how many angles the next
 stage measures. `combra.contours` provides the Canny-and-Suzuki contour
 extraction, which the beam fit and the crack graph use as well.
@@ -68,8 +69,8 @@ errors on the fitted parameters, and Fréchet distances on deep image features.
 vertices are known, renders them like the micrographs and scores a method
 against that truth by size: the overlap of the polygon with the true region,
 where its edge sits, the angle error at the corners it found and the share of
-reflex vertices it sees. It is how the two angle versions, v1 (P0) and v2
-(P6), are compared; see {doc}`synth` and {doc}`angles_v2`.
+reflex vertices it sees. It is how the settings of the angle pipeline were chosen;
+see {doc}`synth`.
 
 ## Other tooling
 
@@ -113,7 +114,6 @@ metrics
 :hidden:
 
 synth
-angles_v2
 ```
 
 ```{toctree}

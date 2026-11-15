@@ -81,19 +81,18 @@ as close as a Weibull and far closer than an exponential (0.09 - 0.19).
 the two fits (`area_w2`), the relative errors of $S_m$ and $\sigma$
 (`area_median`, `area_sigma`; of the median rather than $\mu$, whose relative error
 would change with the unit of area) and the relative error of the mean cobalt fraction
-(`co_fraction`). The cobalt fraction is that of the binary. With the v1 median at
-0.4 µm of the sample ({ref}`pixel-size`) it is within 2.4 % of the cobalt volume
-fraction of the WC-Co alloys (10, 6 and 6.2 wt.% Co: 16.3, 10.1 and 10.4 vol.%) on the
-256, 512 and 1024 px training crops; the v2 mask, grown for corner detection, is 30 -
-120 % above it. The metric is the relative error of two samples processed the same
+(`co_fraction`). The cobalt fraction is that of the cobalt mask
+({py:func}`combra.contours.cobalt_mask`). With its median at 0.4 µm of the sample
+({ref}`pixel-size`) it is within 2.4 % of the cobalt volume fraction of the WC-Co
+alloys (10, 6 and 6.2 wt.% Co: 16.3, 10.1 and 10.4 vol.%) on the 256, 512 and 1024 px
+training crops. The metric is the relative error of two samples processed the same
 way, so the remaining offset cancels.
 
 {py:func}`~combra.metrics.compute_all_metrics` runs the first two families, the
 semi-axis errors and the cobalt-area errors always, and the image-feature family
 when `image_metrics=True`. The semi-axes come from
-{py:func}`combra.ellipse.semiaxes.v1` unless `semiaxis_kw={'method': 'v2'}`, the
-regions from {py:func}`combra.contours.areas.v1` unless
-`area_kw={'method': 'v2'}`.
+{py:func}`combra.ellipse.semiaxes`, the regions from {py:func}`combra.contours.areas`;
+all three families take their lengths from `pixel_size`.
 
 Lengths and areas are in pixels, so two samples compare only at the same physical
 size of a pixel ({doc}`beams`).
@@ -207,9 +206,9 @@ Two results are comparable only when produced the same way. Both the
 {term}`step` used to bin the angles and the `min_segment_len` used to extract
 them change the measured distribution, so both are recorded on every parquet row;
 {py:func}`~combra.metrics.parquet_has_step` checks the first before a comparison,
-and `combra.angles.output_directory.v1` encodes the second in the folder
-name. The angle version is part of the identity too: the training-time metrics
-report v1 and v2 in separate sections, each against its own reference. See {doc}`angles` for what each does.
+and `combra.angles.output_directory` encodes the second in the folder
+name. The pixel size is part of the identity too: it sets every length of the
+extraction. See {doc}`angles`.
 
 [^fid]: M. Heusel, H. Ramsauer, T. Unterthiner, B. Nessler, S. Hochreiter,
     *GANs Trained by a Two Time-Scale Update Rule Converge to a Local Nash

@@ -117,7 +117,7 @@ df = compare_samplers(
     k_values=[5, 10, 20, 50, 100, 250],
     image_metrics=False,  # the angle metrics only; no feature networks
     verbose=False,
-    pixel_size=0.1,  # the toy images have no physical scale; this sets a 4 px median
+    pixel_size=0.1,  # the toy images have no physical scale; this sets every length
 )
 print(df[["sampler", "k", "w1", "circular_w1", "mu1"]].round(3))
 

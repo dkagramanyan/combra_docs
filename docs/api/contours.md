@@ -12,24 +12,22 @@ and the plot of the area distributions. See {doc}`/user_guide/metrics`.
 from combra import contours
 ```
 
-## Areas
+## Cobalt mask and areas
 
-The areas of an image come in two versions, like the vertex angles and the
-semi-axes, that differ only in image processing; their distributions are not
-comparable. **v1** takes the cobalt side of the median-filtered Otsu binary
-{py:func}`combra.angles.preprocess_image` starts from, and the metrics use it unless
-told `method='v2'`; **v2** takes the detection mask of
-{py:func}`combra.angles.vertex_angles.v2`. Both take the image itself. A region is an
-8-connected component of the mask, its area its pixel count.
-`combra.contours.areas` itself is not callable.
+The cobalt is the dark side of the median-filtered Otsu binary of the image, with a
+median of 0.4 µm ({py:func}`median_radius` of the image's `pixel_size`): the size that
+keeps the cobalt fraction of the WC-Co crops at the alloys' cobalt volume fraction.
+The angles use a smaller median ({py:func}`combra.angles.angle_settings`). A region is
+an 8-connected component of the mask, its area its pixel count.
 
 ```{eval-rst}
 .. autosummary::
    :toctree: generated/
    :nosignatures:
 
-   areas.v1
-   areas.v2
+   cobalt_mask
+   areas
+   median_radius
 ```
 
 ## Plotting

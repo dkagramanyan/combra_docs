@@ -11,17 +11,18 @@ Load a bundled SEM image and extract its {term}`vertex angle` values:
 ```pycon
 >>> from combra import data, angles
 >>> img = data.load_microstructure().images[0]
->>> prep = angles.preprocess_image(img, pixel_size=data.SEM_PIXEL_SIZE)  # µm per pixel
->>> arr, contours = angles.vertex_angles.v1(prep)
+>>> px = data.SEM_PIXEL_SIZE  # µm per pixel
+>>> prep = angles.preprocess_image(img, pixel_size=px)
+>>> arr, contours = angles.vertex_angles(prep, pixel_size=px)
 >>> print(f'{len(arr)} angles, mean={arr.mean():.2f}°')
 >>> angles.angle_summary(arr).mus
 ```
 
 {py:func}`~combra.angles.preprocess_image` reduces the image to the thresholded
-map {py:func}`~combra.angles.vertex_angles.v1` reads; it needs the pixel size, the
-length of the sample one pixel covers, which sets the median filter to 0.4 µm (see
-{ref}`pixel-size`). The bundled images are at the native 0.049687 µm per pixel.
-{py:func}`~combra.angles.vertex_angles.v1` returns the angles
+map {py:func}`~combra.angles.vertex_angles` reads. Both need the pixel size, the
+length of the sample one pixel covers: every setting of the pipeline is a length on
+the sample (see {ref}`pixel-size`). The bundled images are at the native 0.049687 µm
+per pixel. {py:func}`~combra.angles.vertex_angles` returns the angles
 concatenated across grain contours and the simplified contours that produced
 them. {py:func}`~combra.angles.angle_summary` fits the density of the angles.
 

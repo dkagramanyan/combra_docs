@@ -25,21 +25,16 @@ from combra import ellipse
 
 ## Semi-axes
 
-The semi-axes of every ellipse in an image come in two versions, like the vertex
-angles, that differ only in image processing; their distributions are not
-comparable. **v1** runs on the map {py:func}`combra.angles.preprocess_image`
-returns, as the beam datasets do, and the metrics use it unless told
-`method='v2'`; **v2** takes the image itself and fits the ellipses to the
-detection mask of {py:func}`combra.angles.vertex_angles.v2`.
-`combra.ellipse.semiaxes` itself is not callable.
+The big and small semi-axes of the ellipses {py:func}`fit_mvee` fits to the cobalt
+regions of an image: the regions of {py:func}`combra.contours.cobalt_mask`, the
+0.4 µm-median mask whose area is the cobalt fraction, as the beam datasets use.
 
 ```{eval-rst}
 .. autosummary::
    :toctree: generated/
    :nosignatures:
 
-   semiaxes.v1
-   semiaxes.v2
+   semiaxes
 ```
 
 ## Plotting
