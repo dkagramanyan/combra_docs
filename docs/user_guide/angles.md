@@ -29,30 +29,33 @@ is why the fitted model is not wrapped around it.
 
 ## From image to angle
 
-The angle pipeline is that of Straumal et al., *Materials* 16, 5560 (2023) —
-median filter, Otsu, gradient, Canny, border following, Douglas–Peucker, chord
-angles — plus the short-side pruning of step 3 below, with every setting a length on
-the sample (see {ref}`pixel-size`). {py:func}`combra.angles.vertex_angles` measures
-the angles of one image in two calls.
+The angle pipeline follows Straumal et al., *Materials* 16, 5560 (2023) — median
+filter, Otsu, border following, Douglas–Peucker, chord angles — with the short-side
+pruning and spike removal of steps 3 and 4 below, and every setting a length on the
+sample (see {ref}`pixel-size`). {py:func}`combra.angles.vertex_angles` measures the
+angles of one image in two calls.
 
 **Preprocessing.** {py:func}`~combra.angles.preprocess_image` reduces the image
-to a three-level map:
+to a binary:
 
 1. an image coarser than 0.15 µm per pixel is enlarged twice (bicubic), so that the
    lengths below span enough pixels;
 2. a median filter over a disk of radius 0.1 µm on the sample, its rank near the
    frame that of the full disk, counted over the pixels inside the image;
-3. Otsu's threshold;
-4. the morphological gradient of the thresholded mask.
+3. Otsu's threshold: 0 on cobalt, 255 on carbide.
 
-The mask and its boundary are stored in one `uint8` array with the levels 0,
-127 and 254. A colour image is converted as RGB, so an image read with OpenCV
-must be converted from BGR first.
+A colour image is converted as RGB, so an image read with OpenCV must be converted from
+BGR first. The 0.1 µm median keeps small noise specks, so count cobalt with
+{py:func}`combra.contours.cobalt_mask` (0.4 µm), not on this binary.
 
-In the map, 254 is carbide, 127 the cobalt interior and 0 the cobalt pixels on the
-phase boundary. The carbide pixels on the boundary come out 127 as well (the
-`uint8` arithmetic wraps), so the grey region of the map is the cobalt grown by one
-pixel. Count cobalt with {py:func}`combra.contours.cobalt_mask`, not on the map.
+```{versionchanged} 0.33.0
+The binary replaces the three-level map (0/127/254) with the boundary band, and the
+contours are the boundaries of the cobalt regions instead of the outer borders of its
+Canny edges. Two pools 1–3 px apart had touching edge lines and were traced as one
+polygon, with chords across the carbide and angles near 0° and 360° at the join.
+The three-level map (`combra.angles._core.binary_map`) is still built for the crack graph and the
+MVEE fit; {py:func}`~combra.angles.vertex_angles` refuses it.
+```
 
 (pixel-size)=
 ### Pixel size
@@ -69,7 +72,7 @@ turned into pixels by {py:func}`~combra.angles.angle_settings`:
 | enlargement | above 0.15 µm/px | 2× | — | — |
 | median radius | 0.1 µm | 1 px | 1 px | 2 px |
 | Douglas–Peucker `tol` | 0.4 µm | 4.0 px | 4.0 px | 8.1 px |
-| shortest side `min_segment_len` | 0.8 µm | 8.1 px | 8.1 px | 16.1 px |
+| shortest side `min_segment_len` | 0.7 µm | 7.0 px | 7.0 px | 14.1 px |
 | cobalt-mask median | 0.4 µm | 2 px | 4 px | 8 px |
 
 At 256 px the angle settings are in pixels of the enlarged image. A setting of fixed
@@ -77,7 +80,7 @@ size in pixels acts on different features at different resolutions: the 3 px
 tolerance of combra before 0.31 is 0.6 µm of the sample at 256 px but 0.15 µm at
 1024 px. With all lengths fixed on the sample the same field gives the same angle
 distribution at all three sizes: on the real crops the Wasserstein-1 distance between
-the 256 and 1024 px distributions of the same fields is 5.5° (37.5° with the
+the 256 and 1024 px distributions of the same fields is 0.4–0.7° (37.5° with the
 settings of 0.30).
 
 The angles and the cobalt fraction use different medians. A median rounds the
@@ -90,7 +93,7 @@ cobalt areas and the semi-axes keep 0.4 µm.
 Every extraction therefore needs the pixel size: {py:func}`~combra.angles.preprocess_image`,
 {py:func}`~combra.angles.vertex_angles`, {py:func}`combra.contours.areas` and every
 metric take `pixel_size` and raise `ValueError` without it. An explicit `disk` gives
-the map of that median without enlargement, with the 3 and 5 px tolerance and
+the binary of that median without enlargement, with the 3 and 5 px tolerance and
 shortest side of earlier versions (`disk=3` reproduces the angles of combra before
 0.30). The dataset class and the h5 comparisons read the pixel size from the file's
 `pixel_size_um` attribute.
@@ -100,21 +103,26 @@ shortest side of earlier versions (`disk=3` reproduces the angles of combra befo
 >>> for w in (256, 512, 1024):
 ...     s = angles.angle_settings(data.SEM_PIXEL_SIZE * 1024 / w)
 ...     print(w, s.scale, s.disk, round(s.tol, 1), round(s.min_segment_len, 1))
-256 2 1 4.0 8.1
-512 1 1 4.0 8.1
-1024 1 2 8.1 16.1
+256 2 1 4.0 7.0
+512 1 1 4.0 7.0
+1024 1 2 8.1 14.1
 ```
 
-**Angles.** {py:func}`~combra.angles.vertex_angles` then takes that map:
+**Angles.** {py:func}`~combra.angles.vertex_angles` then takes that binary:
 
-1. contours are found, and a contour whose bounding box comes within
-   `border_eps` px of the frame is dropped: a grain clipped by the frame has
-   vertices that are artefacts of the crop;
-2. each contour is simplified with Douglas–Peucker at `tol` (0.4 µm), and one left
+1. the boundary of every cobalt region is traced (border following), and one whose
+   bounding box comes within `border_eps` px of the frame is dropped: a grain clipped
+   by the frame has vertices that are artefacts of the crop;
+2. each boundary is simplified with Douglas–Peucker at `tol` (0.4 µm), and one left
    with three or fewer vertices is dropped;
 3. vertices are removed one at a time, shortest neighbouring side first, until no
-   side is shorter than `min_segment_len` (0.8 µm) or only three vertices remain;
-4. the angle at every remaining vertex $V_k$ is measured between the chords
+   side is shorter than `min_segment_len` (0.7 µm) or only three vertices remain;
+4. spikes narrower than `tol` are removed: a vertex whose neighbour lies closer than
+   `tol` to the side on its other hand is dropped and the polygon closed across it,
+   narrowest first, and a polygon that is all spike is dropped. A cobalt film thinner
+   than the tolerance cannot be drawn as a polygon: its two sides collapse onto one
+   line, and its tip would read as an angle near 0° and its folds near 360°;
+5. the angle at every remaining vertex $V_k$ is measured between the chords
    $\mathbf{a} = V_{k-1} - V_k$ and $\mathbf{b} = V_{k+1} - V_k$,
 
    $$
@@ -156,14 +164,15 @@ ways:
 - **Too short** keeps the staircase of the pixel boundary and splits corners: the
   histogram fills with angles near the multiples of 45°.
 
-The values 0.4 µm and 0.8 µm were chosen on synthetic micrographs with exact angles
+The values 0.4 µm and 0.7 µm were chosen on synthetic micrographs with exact angles
 and on the real crops at 256, 512 and 1024 px, for the distance to the true angle
 distribution, the quality of the bimodal fit, the absence of pixel-grid spikes and
 the agreement between resolutions. On the synthetic images the Wasserstein-1 distance
-to the truth is 29°, 27° and 22° at 256, 512 and 1024 px, against 28°, 39° and 48°
-with the settings of 0.30. Every method measured underestimates the share of reflex
-vertices (0.17–0.21 against 0.37), because a pixel mask does not resolve the short
-notches of the boundary.
+to the truth is 24° on average over grain sizes and resolutions, against 25° with the
+tracing of 0.31–0.32 and 37° with the settings of 0.30. On the real crops the share
+of angles under 20° is 1.5 %, and over 340° none (5 % and 2 % in 0.31–0.32). Every
+method measured underestimates the share of reflex vertices (about 0.19 against 0.37),
+because a pixel mask does not resolve the short notches of the boundary.
 
 Densities extracted at different values are different measurements, so the value is
 **part of a result's identity**: `combra.angles.output_directory` writes

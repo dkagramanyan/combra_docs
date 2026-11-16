@@ -9,11 +9,11 @@ comparing pixels.
 
 ```
 SEM image
-   │  median, Otsu threshold, gradient            combra.angles.preprocess_image
+   │  median, Otsu threshold                      combra.angles.preprocess_image
    ▼
-thresholded map (mask and its boundary)
-   │  contours, Douglas–Peucker,                  combra.angles
-   │  short-segment pruning
+binary (cobalt and carbide)
+   │  cobalt boundaries, Douglas–Peucker,         combra.angles
+   │  short-side pruning, spike removal
    ▼
 grain contours
    ├─ angle at every vertex                      combra.angles
@@ -41,17 +41,17 @@ Each stage is described below, with links into the reference.
 ## Stages
 
 **Thresholding.** {py:func}`combra.angles.preprocess_image` reduces an SEM
-image to a three-level map: a median filter, Otsu's threshold, and the
-morphological gradient that marks the boundary of the thresholded mask. Every
-setting is a length on the sample, set from the image's pixel size
+image to a binary: a median filter and Otsu's threshold. Every setting is a length
+on the sample, set from the image's pixel size
 ({py:func}`combra.angles.angle_settings`).
 
-**Contours.** {py:func}`combra.angles.vertex_angles` finds the contours of
-that map, simplifies each with Douglas–Peucker and prunes the sides shorter
-than `min_segment_len`. Simplification is not cosmetic: the tolerance and the
-pruning set how many vertices survive, and therefore how many angles the next
-stage measures. `combra.contours` provides the Canny-and-Suzuki contour
-extraction, which the beam fit and the crack graph use as well.
+**Contours.** {py:func}`combra.angles.vertex_angles` traces the boundary of every
+cobalt region of that binary, simplifies each with Douglas–Peucker, prunes the sides
+shorter than `min_segment_len` and removes the spikes narrower than the tolerance.
+Simplification is not cosmetic: the tolerance and the pruning set how many vertices
+survive, and therefore how many angles the next stage measures. `combra.contours`
+provides the Canny-and-Suzuki contour extraction, which the beam fit and the crack
+graph use.
 
 **Descriptors.** Three independent reductions of the same image:
 

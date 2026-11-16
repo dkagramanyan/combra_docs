@@ -7,6 +7,32 @@ combra's changelog, and pointers to the four model repos' own.
 The authoritative copy is `CHANGELOG.md` in the combra repository; the highlights
 below track what changes for a *user* of the library.
 
+### 0.33.0
+
+The angle polygons follow the cobalt regions: the angle distributions start and end at
+zero density, and the same fields at 256, 512 and 1024 px agree within 0.7°.
+
+**Changed (breaking).**
+
+- {py:func}`combra.angles.vertex_angles` traces the boundary of every cobalt region of
+  the Otsu binary. It traced the outer borders of the Canny edges of the 0/127/254 map,
+  which joined pools 1–3 px apart into one polygon, with chords across the carbide and
+  angles near 0° and 360° at the joins.
+- Spikes narrower than the tolerance (0.4 µm) are removed: a cobalt film thinner than
+  the tolerance cannot be drawn as a polygon, and its tip read as an angle near 0°.
+- The shortest polygon side is 0.7 µm (was 0.8 µm).
+- {py:func}`combra.angles.preprocess_image` returns the 0/255 binary, which
+  `vertex_angles` reads; it raises on the old map. The crack graph and the MVEE fit
+  still read the three-level map (`combra.angles._core.binary_map`), unchanged.
+
+**Effect.** On the real crops, the share of angles under 20° falls from about 5 % to
+1.5 % and over 340° from about 2 % to none, for SAN and DiffiT alike; the Wasserstein-1
+distance between the 256 and 1024 px angles of the same fields falls from 3.7–7.4° to
+0.4–0.7°. On synthetic images with exact angles, medium and large grains come 1–4°
+closer to the truth; small grains 1–6° further at 512 and 1024 px, where the old false
+angles near 0° and 360° filled in part of the reflex mode every method underestimates.
+About 30 % fewer angles per image. The semi-axes and the cobalt mask are unchanged.
+
 ### 0.32.0
 
 **Added.**

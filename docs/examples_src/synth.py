@@ -65,7 +65,7 @@ from functools import partial
 from combra import angles
 
 methods = {
-    # the settings of angle_settings: 0.1 um median, 0.4 um tolerance, 0.8 um sides
+    # the settings of angle_settings: 0.1 um median, 0.4 um tolerance, 0.7 um sides
     "angles": partial(angles.extract_polygons, pixel_size=synth.PIXEL_SIZE),
     # the pixel settings of combra before 0.30: 3 px median, tolerance 3 px, sides 5 px
     "3 px median": partial(angles.extract_polygons, disk=3),

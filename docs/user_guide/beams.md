@@ -91,7 +91,7 @@ See {py:mod}`combra.ellipse` for the plotting functions and
 {py:func}`combra.ellipse.semiaxes` returns the big ($A$) and small ($B$) semi-axis of
 every ellipse in an image. The ellipses are fitted to the regions of the cobalt mask
 ({py:func}`combra.contours.cobalt_mask`, a 0.4 µm median), as `generate_beams` does:
-the mask whose area is the cobalt fraction, not the angle map, whose smaller median
+the mask whose area is the cobalt fraction, not the angle binary, whose smaller median
 keeps sharp corners but also small noise specks.
 
 At the resolution of training images the grains are a few pixels wide, and the

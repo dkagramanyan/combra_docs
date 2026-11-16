@@ -8,7 +8,7 @@ between the carbide grains, and the share of the image they cover.
 {py:func}`combra.contours.cobalt_mask` is the dark side of the Otsu threshold of the
 median-filtered image. The median is 0.4 µm of the sample
 ({py:func}`combra.contours.median_radius`: 2, 4 and 8 px at 256, 512 and 1024 px WC-Co
-crops), larger than the 0.1 µm of the angle map: it removes the noise specks that the
+crops), larger than the 0.1 µm of the angle binary: it removes the noise specks that the
 angles tolerate but an area count does not. With it the cobalt fraction of the
 training crops is within 2.4 % of the alloys' cobalt volume fraction at every
 resolution.

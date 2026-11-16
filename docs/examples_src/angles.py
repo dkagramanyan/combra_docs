@@ -15,9 +15,8 @@ For what the steps mean, see :doc:`/user_guide/angles`; for the primitives, see
 # One image
 # ---------
 #
-# The extraction works on the three-level map of
-# :func:`~combra.angles.preprocess_image`: the thresholded mask and its boundary
-# in one ``uint8`` array. Every setting is a length on the sample, turned into
+# The extraction works on the binary of :func:`~combra.angles.preprocess_image`:
+# ``0`` on cobalt, ``255`` on carbide. Every setting is a length on the sample, turned into
 # pixels by :func:`~combra.angles.angle_settings` from the pixel size.
 
 import tempfile
@@ -44,7 +43,7 @@ print(angles_deg.min(), angles_deg.max())
 print(contours[0].shape[1], contours[0].dtype)
 
 # %%
-# A larger ``min_segment_len`` (in pixels of the map; 0.8 um by default) prunes more
+# A larger ``min_segment_len`` (in pixels of the binary; 0.7 um by default) prunes more
 # of the short, pixel-staircase segments, so fewer angles survive:
 
 counts = {
@@ -57,7 +56,7 @@ print(counts)
 # ``combra.angles.output_directory`` builds the folder the parquets are
 # kept in:
 
-print(angles.output_directory("./data/angles", "./data/h5/gen_san_N10000.h5", 16.1))
+print(angles.output_directory("./data/angles", "./data/h5/gen_san_N10000.h5", 14.1))
 
 # %%
 # A dataset
