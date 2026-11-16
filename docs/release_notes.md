@@ -7,6 +7,36 @@ combra's changelog, and pointers to the four model repos' own.
 The authoritative copy is `CHANGELOG.md` in the combra repository; the highlights
 below track what changes for a *user* of the library.
 
+### 0.34.0
+
+The binder mean free path joins the cobalt areas: per image, between two samples, and
+per dataset. See {doc}`/user_guide/areas`.
+
+**Added.**
+
+- {py:func}`combra.contours.free_paths`: the area $S$ and the Crofton boundary length
+  $P$ of every cobalt region off the image frame and of at least 0.16 µm², their mean
+  chord lengths $\ell = \pi S / P$, and the image's mean free path
+  $\lambda_{\mathrm{Co}} = \pi \sum S / \sum P$.
+- {py:func}`combra.metrics.fit_free_path_distribution`: a two-parameter Weibull fitted
+  by maximum likelihood to the chord lengths past 0.5 µm.
+- {py:func}`combra.metrics.free_path_metrics`: `mfp_w2`, the 2-Wasserstein distance
+  between two fits; `mfp_scale` and `mfp_shape`, the relative errors of the Weibull
+  scale and shape; `mfp_lambda`, the relative error of the mean $\lambda_{\mathrm{Co}}$.
+- {py:meth}`combra.data.MicrostructureDataset.generate_free_paths` writes
+  `free_paths_n{N}.parquet` (`combra.io.FREE_PATHS_SCHEMA`), as `generate_areas` does
+  for the areas.
+
+**Changed.** {py:func}`combra.metrics.compute_all_metrics` also returns the four
+`mfp_*` keys, from the same cobalt mask as the areas: a model repo that logs every key
+gets four more series after the bump.
+
+**Evidence.** On the WC-Co training crops and 10 000 generated images per class (real,
+SAN and DiffiT at 256 px, real and SAN at 512 px), the mean $\lambda_{\mathrm{Co}}$
+equals that of the wc_cv analysis to four decimals. The Weibull fit keeps 79–91 % of the regions and is as close to them
+(KS 0.006–0.019) as a Weibull times a smooth step fitted to all lengths, with half the
+parameters.
+
 ### 0.33.0
 
 The angle polygons follow the cobalt regions: the angle distributions start and end at

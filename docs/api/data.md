@@ -16,13 +16,19 @@ from combra import data
 ## Datasets
 
 {py:meth}`~combra.data.MicrostructureDataset.generate_angles`,
-{py:meth}`~combra.data.MicrostructureDataset.generate_beams` and
-{py:meth}`~combra.data.MicrostructureDataset.generate_areas` are documented on
+{py:meth}`~combra.data.MicrostructureDataset.generate_beams`,
+{py:meth}`~combra.data.MicrostructureDataset.generate_areas` and
+{py:meth}`~combra.data.MicrostructureDataset.generate_free_paths` are documented on
 the class page.
 
 ```{versionadded} 0.32.0
 {py:meth}`~combra.data.MicrostructureDataset.generate_areas`: the cobalt regions of
 every image, read in blocks of whole HDF5 chunks ({doc}`/user_guide/areas`).
+```
+
+```{versionadded} 0.34.0
+{py:meth}`~combra.data.MicrostructureDataset.generate_free_paths`: the chord lengths of
+the cobalt regions of every image and their Weibull fit ({doc}`/user_guide/areas`).
 ```
 
 ```{eval-rst}

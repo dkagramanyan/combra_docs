@@ -88,11 +88,23 @@ alloys (10, 6 and 6.2 wt.% Co: 16.3, 10.1 and 10.4 vol.%) on the 256, 512 and 10
 training crops. The metric is the relative error of two samples processed the same
 way, so the remaining offset cancels.
 
+**Mean-free-path errors** compare the chord lengths $\ell = \pi S / P$ of the same
+regions, off the image frame and of at least 0.16 µm² ({doc}`areas`). Past
+$\ell_0$ = 0.5 µm they are fitted by maximum likelihood with a Weibull distribution
+truncated at $\ell_0$, of scale $\lambda$ and shape $k$. On the WC-Co training crops
+its KS distance to the data is 0.006 - 0.019, as close as a Weibull times a smooth
+step fitted to all lengths, and closer than a lognormal (0.029 - 0.038).
+{py:func}`~combra.metrics.free_path_metrics` reports the 2-Wasserstein distance
+between the two fits (`mfp_w2`), the relative errors of $\lambda$ and $k$
+(`mfp_scale`, `mfp_shape`) and the relative error of the mean over the images of their
+mean free path $\lambda_{\mathrm{Co}} = \pi \sum S / \sum P$ (`mfp_lambda`).
+
 {py:func}`~combra.metrics.compute_all_metrics` runs the first two families, the
-semi-axis errors and the cobalt-area errors always, and the image-feature family
-when `image_metrics=True`. The semi-axes come from
-{py:func}`combra.ellipse.semiaxes`, the regions from {py:func}`combra.contours.areas`;
-all three families take their lengths from `pixel_size`.
+semi-axis errors, the cobalt-area errors and the mean-free-path errors always, and
+the image-feature family when `image_metrics=True`. The semi-axes come from
+{py:func}`combra.ellipse.semiaxes`, the regions from {py:func}`combra.contours.areas`
+and {py:func}`combra.contours.free_paths`; all these families take their lengths from
+`pixel_size`.
 
 Lengths and areas are in pixels, so two samples compare only at the same physical
 size of a pixel ({doc}`beams`).

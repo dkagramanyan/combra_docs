@@ -1,7 +1,8 @@
 # Cobalt regions
 
 The third descriptor is the cobalt binder itself: the area of every pool of cobalt
-between the carbide grains, and the share of the image they cover.
+between the carbide grains, the share of the image they cover, and how thick the pools
+are, the binder mean free path.
 
 ## The mask and its regions
 
@@ -34,6 +35,40 @@ Past a peak at a few pixels the areas follow a lognormal distribution.
 {py:func}`combra.contours.plot_area_grid` draws the distributions of several sources
 in a grid, as {py:func}`~combra.angles.plot_density_grid` draws the angles.
 
+## Mean free path
+
+The area does not tell a compact pool from a thin film of the same area. The mean
+length of the chords that straight lines cut in a region does: by the Cauchy–Crofton
+relation it is $\ell = \pi S / P$ for a region of area $S$ and boundary length $P$,
+and over the regions of an image $\lambda_{\mathrm{Co}} = \pi \sum S / \sum P$ is the
+binder mean free path. {py:func}`combra.contours.free_paths` returns both for one image:
+
+```pycon
+>>> r = contours.free_paths(data.load_microstructure().images[0],
+...                         pixel_size=data.SEM_PIXEL_SIZE)
+>>> r.lengths  # chord length of every kept region, px
+>>> r.mean  # mean free path of the image, px
+```
+
+The regions are those of the cobalt mask, with two kinds left out: those touching the
+image frame, whose boundary would include the cut, and those under 0.16 µm² (the
+square of the 0.4 µm median), which the median leaves as noise. $P$ is the
+4-direction Crofton perimeter and includes the boundaries of the carbide grains inside
+a region.
+
+Past 0.5 µm the chord lengths follow a Weibull distribution,
+
+$$p(\ell) = \frac{k}{\lambda} \left( \frac{\ell}{\lambda} \right)^{k-1}
+\exp\left[ \left( \frac{\ell_0}{\lambda} \right)^k
+- \left( \frac{\ell}{\lambda} \right)^k \right], \qquad \ell \ge \ell_0 = 0.5~\text{µm};$$
+
+below it the area cut and the median shape the histogram.
+{py:func}`combra.metrics.fit_free_path_distribution` fits the scale $\lambda$ and the
+shape $k$ by maximum likelihood, and {py:func}`combra.metrics.free_path_metrics`
+compares two samples; see {doc}`metrics`. On the WC-Co training crops the fit keeps 79–91 %
+of the regions, with $\lambda$ = 0.77 / 0.86 / 1.05 µm and $k$ = 2.3 / 1.8 / 1.8 for
+small / medium / large grains, the same at 256 and 512 px within 2.4 %.
+
 ## A whole dataset
 
 {py:meth}`combra.data.MicrostructureDataset.generate_areas` runs the same extraction
@@ -55,6 +90,13 @@ regions of each image and its cobalt fraction (`raw`); the pixel size and the me
 cobalt fraction (`meta`); and per histogram step the area density and the lognormal
 fit, in µm² (`prep_per_step`). {py:func}`combra.io.load_rows` reads it like the other
 parquets.
+
+{py:meth}`~combra.data.MicrostructureDataset.generate_free_paths` does the same for the
+mean free path and writes `free_paths_n{N}.parquet`
+({py:data}`combra.io.FREE_PATHS_SCHEMA`): the area and the perimeter of every kept
+region in pixels (`raw`), the mean $\lambda_{\mathrm{Co}}$ of the class in µm (`meta`),
+and per histogram step the chord-length density and the Weibull fit in µm
+(`prep_per_step`).
 
 ```{note}
 Read compressed HDF5 images in blocks of whole chunks. A chunk is decompressed whole,

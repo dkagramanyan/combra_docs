@@ -5,8 +5,9 @@
 .. currentmodule:: combra.contours
 ```
 
-The areas of the cobalt regions of a microstructure image and its cobalt fraction,
-and the plot of the area distributions. See {doc}`/user_guide/metrics`.
+The areas of the cobalt regions of a microstructure image, its cobalt fraction and
+its binder mean free path, and the plot of the area distributions. See
+{doc}`/user_guide/areas` and {doc}`/user_guide/metrics`.
 
 ```python
 from combra import contours
@@ -28,6 +29,23 @@ an 8-connected component of the mask, its area its pixel count.
    cobalt_mask
    areas
    median_radius
+```
+
+## Mean free path
+
+The mean chord length $\ell = \pi S / P$ of every cobalt region off the image frame,
+from its area $S$ and its Crofton boundary length $P$, and the image's binder mean free
+path $\lambda_{\mathrm{Co}} = \pi \sum S / \sum P$.
+
+```{versionadded} 0.34.0
+```
+
+```{eval-rst}
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   free_paths
 ```
 
 ## Plotting

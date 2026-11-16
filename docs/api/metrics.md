@@ -67,6 +67,24 @@ reports these for image batches.
    area_metrics
 ```
 
+## Mean-free-path metrics
+
+The Weibull fit of the cobalt chord lengths past 0.5 µm, and the comparison of the
+chord lengths and the mean free path between two samples;
+{py:func}`compute_all_metrics` reports these for image batches.
+
+```{versionadded} 0.34.0
+```
+
+```{eval-rst}
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   fit_free_path_distribution
+   free_path_metrics
+```
+
 ## Consistency over training
 
 Agreement between the angle statistics and the image metrics across the

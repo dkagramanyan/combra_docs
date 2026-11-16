@@ -5,7 +5,7 @@
 .. currentmodule:: combra.io
 ```
 
-Readers and writers for combra's files: the angle, beam and area parquets, the image
+Readers and writers for combra's files: the angle, beam, area and free-path parquets, the image
 HDF5 containers, and the TensorBoard record of a training run.
 
 ```python
