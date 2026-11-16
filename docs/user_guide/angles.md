@@ -169,7 +169,7 @@ and on the real crops at 256, 512 and 1024 px, for the distance to the true angl
 distribution, the quality of the bimodal fit, the absence of pixel-grid spikes and
 the agreement between resolutions. On the synthetic images the Wasserstein-1 distance
 to the truth is 24° on average over grain sizes and resolutions, against 25° with the
-tracing of 0.31–0.32 and 37° with the settings of 0.30. On the real crops the share
+tracing of 0.31–0.32 and 38.5° with the settings of 0.30. On the real crops the share
 of angles under 20° is 1.5 %, and over 340° none (5 % and 2 % in 0.31–0.32). Every
 method measured underestimates the share of reflex vertices (about 0.19 against 0.37),
 because a pixel mask does not resolve the short notches of the boundary.

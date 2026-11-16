@@ -28,9 +28,11 @@ zero density, and the same fields at 256, 512 and 1024 px agree within 0.7°.
 **Effect.** On the real crops, the share of angles under 20° falls from about 5 % to
 1.5 % and over 340° from about 2 % to none, for SAN and DiffiT alike; the Wasserstein-1
 distance between the 256 and 1024 px angles of the same fields falls from 3.7–7.4° to
-0.4–0.7°. On synthetic images with exact angles, medium and large grains come 1–4°
-closer to the truth; small grains 1–6° further at 512 and 1024 px, where the old false
-angles near 0° and 360° filled in part of the reflex mode every method underestimates.
+0.4–0.7°. On synthetic images with exact angles, medium grains come 3.8 / 4.3 / 1.3°
+closer to the truth at 256 / 512 / 1024 px and large grains 3.2 / 3.0 / 0.5°; small
+grains 1.5° closer at 256 px but 0.6° and 5.7° further at 512 and 1024 px, where the old
+false angles near 0° and 360° filled in part of the reflex mode every method
+underestimates.
 About 30 % fewer angles per image. The semi-axes and the cobalt mask are unchanged.
 
 ### 0.32.0
