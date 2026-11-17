@@ -7,6 +7,48 @@ combra's changelog, and pointers to the four model repos' own.
 The authoritative copy is `CHANGELOG.md` in the combra repository; the highlights
 below track what changes for a *user* of the library.
 
+### 0.35.0
+
+The angle polygons follow the outline of the cobalt regions, and every region is
+measured. See {doc}`/user_guide/angles`.
+
+**Changed (breaking).** Angle densities of 0.35 and of earlier versions are not
+comparable: regenerate the angle parquets and the reference densities.
+
+- {py:func}`combra.angles.vertex_angles` traces the boundary of a region between the
+  pixels, where the filtered image crosses its Otsu level. The chain of boundary pixels
+  it used before put the angles of small regions on the pixel grid.
+- The Douglas–Peucker tolerance is 0.15 µm (was 0.4 µm), so the sides stay on the
+  outline; vertices within 12° of 180° are then removed as boundary noise.
+- A side under 0.4 µm is rebuilt into the corner its two neighbours point to. Before, a
+  side under 0.7 µm was removed with one of its vertices, and the chord that closed the
+  polygon could cut across the region or the carbide.
+- Spikes narrower than 0.2 µm are removed (was 0.4 µm).
+- Triangles are kept. They were dropped since January 2026 by a test left from an
+  earlier contour format.
+- A region at the frame is kept, without its vertices on the frame; before, it was
+  dropped. `border_eps` is removed.
+- {py:func}`combra.angles.preprocess_image` returns the median-filtered grey image, not
+  its Otsu binary, and `vertex_angles` returns `float64` polygons.
+- {py:func}`combra.angles.angle_settings`: `tol` is 0.15 µm and `min_segment_len`
+  0.4 µm, now the side under which a side is rebuilt.
+
+**Effect.** On the 360 WC-Co training crops per class at 512 px (small / medium / large
+grains) the polygons go from 33k / 14k / 9k to 127k / 47k / 27k and the angles from
+194k / 85k / 62k to 754k / 280k / 166k; 0.2–1.1 % of the cobalt area is left without a
+polygon. The first mode of the bimodal fit moves from 77 / 82 / 80° to 90 / 89 / 83°
+and the second from 256 / 242 / 245° to 241 / 223 / 228°. On 200 synthetic canvases
+with exact angles the Wasserstein-1 distance to the truth goes from 33.6° to 29.5°; on
+the canvas of `synth.benchmark(seeds=[0])` the IoU with the true regions goes from 0.64
+to 0.81, the RMS edge error from 0.97 to 0.55 px, the corner recovery from 0.25 to 0.53
+and the reflex share from 0.28 to 0.35 (truth 0.50).
+
+**Costs.** The density has a shoulder at 140–165° and no angle between 168° and 192°,
+which two Gaussians do not describe: the first-peak residual of the fit is
+0.10 / 0.09 / 0.09 (was 0.10 / 0.07 / 0.06), and the fitted widths and amplitudes are
+less stable than the positions. The same fields at 256 and 512 px differ by 1.3–1.7°
+(Wasserstein-1; 0.2–0.4° before).
+
 ### 0.34.0
 
 The binder mean free path joins the cobalt areas: per image, between two samples, and

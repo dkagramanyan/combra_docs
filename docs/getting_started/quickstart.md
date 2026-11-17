@@ -18,8 +18,8 @@ Load a bundled SEM image and extract its {term}`vertex angle` values:
 >>> angles.angle_summary(arr).mus
 ```
 
-{py:func}`~combra.angles.preprocess_image` reduces the image to the thresholded
-map {py:func}`~combra.angles.vertex_angles` reads. Both need the pixel size, the
+{py:func}`~combra.angles.preprocess_image` reduces the image to the filtered grey
+image {py:func}`~combra.angles.vertex_angles` reads. Both need the pixel size, the
 length of the sample one pixel covers: every setting of the pipeline is a length on
 the sample (see {ref}`pixel-size`). The bundled images are at the native 0.049687 µm
 per pixel. {py:func}`~combra.angles.vertex_angles` returns the angles

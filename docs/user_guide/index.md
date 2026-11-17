@@ -9,11 +9,11 @@ comparing pixels.
 
 ```
 SEM image
-   │  median, Otsu threshold                      combra.angles.preprocess_image
+   │  median filter                               combra.angles.preprocess_image
    ▼
-binary (cobalt and carbide)
-   │  cobalt boundaries, Douglas–Peucker,         combra.angles
-   │  short-side pruning, spike removal
+filtered image (cobalt dark, carbide bright)
+   │  cobalt boundaries at the Otsu level,        combra.angles
+   │  Douglas–Peucker, corner rebuilding, spike removal
    ▼
 grain contours
    ├─ angle at every vertex                      combra.angles
@@ -41,14 +41,15 @@ Each stage is described below, with links into the reference.
 ## Stages
 
 **Thresholding.** {py:func}`combra.angles.preprocess_image` reduces an SEM
-image to a binary: a median filter and Otsu's threshold. Every setting is a length
+image to its median-filtered grey image. Every setting is a length
 on the sample, set from the image's pixel size
 ({py:func}`combra.angles.angle_settings`).
 
 **Contours.** {py:func}`combra.angles.vertex_angles` traces the boundary of every
-cobalt region of that binary, simplifies each with Douglas–Peucker, prunes the sides
-shorter than `min_segment_len` and removes the spikes narrower than the tolerance.
-Simplification is not cosmetic: the tolerance and the pruning set how many vertices
+cobalt region of that image between the pixels, at its Otsu level, simplifies each
+with Douglas–Peucker, rebuilds the sides shorter than `min_segment_len` into corners
+and removes the thin spikes.
+Simplification is not cosmetic: the tolerance and the rebuilding set how many vertices
 survive, and therefore how many angles the next stage measures. `combra.contours`
 provides the Canny-and-Suzuki contour extraction, which the beam fit and the crack
 graph use.

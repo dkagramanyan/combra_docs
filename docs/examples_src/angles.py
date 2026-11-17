@@ -15,14 +15,13 @@ For what the steps mean, see :doc:`/user_guide/angles`; for the primitives, see
 # One image
 # ---------
 #
-# The extraction works on the binary of :func:`~combra.angles.preprocess_image`:
-# ``0`` on cobalt, ``255`` on carbide. Every setting is a length on the sample, turned into
+# The extraction works on the filtered image of :func:`~combra.angles.preprocess_image`:
+# cobalt is its dark side. Every setting is a length on the sample, turned into
 # pixels by :func:`~combra.angles.angle_settings` from the pixel size.
 
 import tempfile
 from pathlib import Path
 
-import numpy as np
 import plotly.io as pio
 
 from combra import angles, data
@@ -32,7 +31,6 @@ px = data.SEM_PIXEL_SIZE  # um per pixel of the bundled images
 print(angles.angle_settings(px))
 prep = angles.preprocess_image(image, pixel_size=px)
 print(prep.shape, prep.dtype)
-print(np.unique(prep).tolist())
 
 # %%
 # :func:`~combra.angles.vertex_angles` returns every vertex angle in degrees and
@@ -43,8 +41,8 @@ print(angles_deg.min(), angles_deg.max())
 print(contours[0].shape[1], contours[0].dtype)
 
 # %%
-# A larger ``min_segment_len`` (in pixels of the binary; 0.7 um by default) prunes more
-# of the short, pixel-staircase segments, so fewer angles survive:
+# A larger ``min_segment_len`` (in pixels of the image; 0.4 um by default) rebuilds
+# longer sides into corners, so fewer angles survive:
 
 counts = {
     m: len(angles.vertex_angles(prep, min_segment_len=m, pixel_size=px)[0]) for m in (8, 16, 32)
@@ -56,7 +54,7 @@ print(counts)
 # ``combra.angles.output_directory`` builds the folder the parquets are
 # kept in:
 
-print(angles.output_directory("./data/angles", "./data/h5/gen_san_N10000.h5", 14.1))
+print(angles.output_directory("./data/angles", "./data/h5/gen_san_N10000.h5", 8.1))
 
 # %%
 # A dataset

@@ -15,13 +15,14 @@ from combra import angles
 
 ## Extraction
 
-One pipeline: the binary {py:func}`preprocess_image` returns (an optional
-enlargement, a median filter, Otsu), then {py:func}`vertex_angles`: the boundary of
-every cobalt region, Douglas-Peucker, short-side pruning, spike removal, chord angles. Every setting is a length on the
-sample, turned into pixels by {py:func}`angle_settings` from the image's
-`pixel_size`, which the pipeline requires: a median of 0.1 µm, a tolerance of
-0.4 µm and a shortest side of 0.7 µm, with the image enlarged twice when its pixel
-is coarser than 0.15 µm. {py:func}`extract_polygons` returns the cobalt mask and the
+One pipeline: the filtered image {py:func}`preprocess_image` returns (an optional
+enlargement and a median filter), then {py:func}`vertex_angles`: the sub-pixel
+boundary of every cobalt region at the Otsu level, Douglas-Peucker, removal of nearly
+straight vertices, rebuilding of short sides into corners, spike removal, chord
+angles. Every setting is a length on the sample, turned into pixels by
+{py:func}`angle_settings` from the image's `pixel_size`, which the pipeline requires:
+a median of 0.1 µm, a tolerance of 0.15 µm and a rebuilt side of 0.4 µm, with the
+image enlarged twice when its pixel is coarser than 0.15 µm. {py:func}`extract_polygons` returns the cobalt mask and the
 polygons in pixels of the image, the form {py:func}`combra.synth.benchmark` scores.
 
 ```{eval-rst}
