@@ -65,9 +65,9 @@ from functools import partial
 from combra import angles
 
 methods = {
-    # the settings of angle_settings: 0.1 um median, 0.15 um tolerance, 0.4 um rebuilt sides
+    # the settings of angle_settings: 0.1 um median, 0.15 um tolerance
     "angles": partial(angles.extract_polygons, pixel_size=synth.PIXEL_SIZE),
-    # pixel settings: 3 px median, tolerance 3 px, sides under 5 px rebuilt
+    # pixel settings: 3 px median, tolerance 3 px
     "3 px median": partial(angles.extract_polygons, disk=3),
 }
 results = {name: synth.benchmark(m, seeds=[0]) for name, m in methods.items()}

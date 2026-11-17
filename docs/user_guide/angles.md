@@ -31,7 +31,7 @@ is why the fitted model is not wrapped around it.
 
 The angle pipeline follows Straumal et al., *Materials* 16, 5560 (2023) — median
 filter, Otsu, contours, Douglas–Peucker, chord angles — with the boundary traced
-between the pixels, the corner rebuilding and the spike removal of the steps below, and
+between the pixels and the spike removal of the steps below, and
 every setting a length on the sample (see {ref}`pixel-size`).
 {py:func}`combra.angles.vertex_angles` measures the angles of one image in two calls.
 
@@ -63,6 +63,13 @@ sides under 0.7 µm were cut off with a chord, and triangles and regions at the 
 were dropped. Densities of 0.35 and of earlier versions are not comparable.
 ```
 
+```{versionchanged} 0.36.0
+No side is rebuilt: 0.35 replaced a side under 0.4 µm by the point where its two
+neighbours meet, and removed the vertices within 12° of 180°. The rebuilt corners could
+stick out past the region, and their angles put a kink near 50° on the first mode.
+Densities of 0.36 and 0.35 are not comparable.
+```
+
 (pixel-size)=
 ### Pixel size
 
@@ -78,7 +85,7 @@ turned into pixels by {py:func}`~combra.angles.angle_settings`:
 | enlargement | above 0.15 µm/px | 2× | — | — |
 | median radius | 0.1 µm | 1 px | 1 px | 2 px |
 | Douglas–Peucker `tol` | 0.15 µm | 1.5 px | 1.5 px | 3.0 px |
-| rebuilt side `min_segment_len` | 0.4 µm | 4.0 px | 4.0 px | 8.1 px |
+| rebuilt side `min_segment_len` | none | 0 | 0 | 0 |
 | spike width (4/3 `tol`) | 0.2 µm | 2.0 px | 2.0 px | 4.0 px |
 | cobalt-mask median | 0.4 µm | 2 px | 4 px | 8 px |
 
@@ -87,7 +94,7 @@ size in pixels acts on different features at different resolutions: the 3 px
 tolerance of combra before 0.31 is 0.6 µm of the sample at 256 px but 0.15 µm at
 1024 px. With all lengths fixed on the sample the same field gives close angle
 distributions at different sizes: on the real crops the Wasserstein-1 distance between
-the 256 and 512 px distributions of the same fields is 1.3–1.7° (0.2–0.4° with the
+the 256 and 512 px distributions of the same fields is 1.9–3.5° (0.2–0.4° with the
 coarser polygons of 0.33–0.34, 37.5° between 256 and 1024 px with the settings of
 0.30).
 
@@ -101,8 +108,7 @@ cobalt areas and the semi-axes keep 0.4 µm.
 Every extraction therefore needs the pixel size: {py:func}`~combra.angles.preprocess_image`,
 {py:func}`~combra.angles.vertex_angles`, {py:func}`combra.contours.areas` and every
 metric take `pixel_size` and raise `ValueError` without it. An explicit `disk` gives
-the image of that median without enlargement, with a tolerance of 3 px and a rebuilt
-side of 5 px. The dataset class and the h5 comparisons read the pixel size from the file's
+the image of that median without enlargement, with a tolerance of 3 px. The dataset class and the h5 comparisons read the pixel size from the file's
 `pixel_size_um` attribute.
 
 ```pycon
@@ -110,9 +116,9 @@ side of 5 px. The dataset class and the h5 comparisons read the pixel size from 
 >>> for w in (256, 512, 1024):
 ...     s = angles.angle_settings(data.SEM_PIXEL_SIZE * 1024 / w)
 ...     print(w, s.scale, s.disk, round(s.tol, 1), round(s.min_segment_len, 1))
-256 2 1 1.5 4.0
-512 1 1 1.5 4.0
-1024 1 2 3.0 8.1
+256 2 1 1.5 0.0
+512 1 1 1.5 0.0
+1024 1 2 3.0 0.0
 ```
 
 **Angles.** {py:func}`~combra.angles.vertex_angles` then takes that image:
@@ -122,19 +128,15 @@ side of 5 px. The dataset class and the h5 comparisons read the pixel size from 
    A chain of whole boundary pixels would put the angles of small regions on the pixel
    grid, at 45°, 63°, 72° and 90°. A region clipped by the frame is closed along it;
 2. each boundary is simplified with Douglas–Peucker at `tol` (0.15 µm), so no boundary
-   point is further than that from the polygon. Vertices within 12° of 180° are then
-   removed, flattest first: at this tolerance they are boundary noise on a straight
-   side;
-3. a side shorter than `min_segment_len` (0.4 µm) is a corner the median has rounded.
-   Its two neighbouring sides are extended past it, and the point where they meet
-   replaces the side if it lies within 1.5 `min_segment_len` (0.6 µm) of the side's
-   middle; otherwise the side stays. Shortest side first, then the nearly straight
-   vertices are removed again;
-4. spikes narrower than 4/3 `tol` (0.2 µm) are removed: a vertex whose neighbour lies
+   point is further than that from the polygon. A vertex that is nearly straight lies
+   within the tolerance of the line through its neighbours, so almost no angle between
+   168° and 192° is left;
+3. spikes narrower than 4/3 `tol` (0.2 µm) are removed: a vertex whose neighbour lies
    closer than that to the side on its other hand is dropped and the polygon closed
    across it, narrowest first, and a polygon that is all spike is dropped. A cobalt
    film that thin has its two sides on one line: its tip would read as an angle near
-   0° and its folds near 360°. Polygons of three or more vertices are kept;
+   0° and its folds near 360°;
+4. polygons of three or more vertices are kept;
 5. the angle at every remaining vertex $V_k$ is measured between the chords
    $\mathbf{a} = V_{k-1} - V_k$ and $\mathbf{b} = V_{k+1} - V_k$,
 
@@ -166,41 +168,45 @@ reflex share in one named tuple.
 
 ### Choosing `tol` and `min_segment_len`
 
-Both settings decide which bends of the boundary become vertices. `tol` is how far
-the polygon may leave the boundary. `min_segment_len` is the length under which a
-side is read as a rounded corner rather than as a side of the region.
+`tol` is how far the polygon may leave the boundary.
 
 - **A coarse tolerance** (0.4 µm in 0.31–0.34) lets the sides leave the outline, turns
   small regions into needle triangles and loses the short sides of large ones.
-- **A fine tolerance** follows the outline but also its noise, which is why the nearly
-  straight vertices are removed after it.
-- **A long `min_segment_len`** rebuilds real short sides into corners; a short one
-  leaves each rounded corner as two blunt vertices.
+- **A fine tolerance** follows the outline. Douglas–Peucker keeps a vertex only if it
+  stands out of the line through its neighbours by more than the tolerance, so the
+  noise of a straight side adds almost no vertices.
 
-The values 0.15 µm and 0.4 µm were chosen on the real WC-Co crops at 256 and 512 px
-and on synthetic micrographs with exact angles, for how closely the polygons follow the
-outline, the share of regions that get a polygon, the distance to the true angle
-distribution and the absence of pixel-grid spikes. On the 360 crops per class at
-512 px (small, medium and large grains):
+`min_segment_len` is the length under which a side is read as a corner the median has
+rounded and is rebuilt: its two neighbours are extended past it, and the point where
+they meet replaces the side if it lies within 1.5 `min_segment_len` of the side's
+middle. It is 0 by default, so no side is rebuilt. Rebuilding at 0.4 µm (the default of
+0.35) brings the angles of synthetic micrographs closer to the true ones, because a
+rounded sharp corner then reads as one corner and not as two blunt ones. On real crops
+the rebuilt corners can stick out past the region, and their angles put a kink near 50°
+on the first mode.
 
-| | 0.33–0.34 | 0.35 |
-|---|---|---|
-| polygons | 33k / 14k / 9k | 127k / 47k / 27k |
-| angles | 194k / 85k / 62k | 754k / 280k / 166k |
-| first mode $\mu_1$ | 77 / 82 / 80° | 90 / 89 / 83° |
-| second mode $\mu_2$ | 256 / 242 / 245° | 241 / 223 / 228° |
-| first-peak residual of the bimodal fit | 0.10 / 0.07 / 0.06 | 0.10 / 0.09 / 0.09 |
-| 256 against 512 px, W1 | 0.2–0.4° | 1.3–1.7° |
+The settings were compared on the real WC-Co crops at 256 and 512 px and on synthetic
+micrographs with exact angles. On the 360 crops per class at 512 px (small, medium and
+large grains):
 
-With 0.35, 0.2–1.1 % of the cobalt area is left without a polygon. On 200 synthetic
-canvases the Wasserstein-1 distance to the true angles is 29.5° (33.6° with 0.33–0.34).
+| | 0.33–0.34 | 0.35 | 0.36 |
+|---|---|---|---|
+| polygons | 33k / 14k / 9k | 126k / 47k / 26k | 126k / 47k / 26k |
+| angles | 194k / 85k / 62k | 751k / 279k / 165k | 805k / 299k / 176k |
+| first mode $\mu_1$ | 77 / 82 / 80° | 90 / 89 / 83° | 100 / 99 / 93° |
+| second mode $\mu_2$ | 256 / 242 / 245° | 241 / 223 / 228° | 239 / 224 / 227° |
+| residual of the bimodal fit, all bins | 0.074 / 0.058 / 0.048 | 0.077 / 0.080 / 0.085 | 0.074 / 0.067 / 0.080 |
+| density at 50° over 100° | | 0.76 / 0.83 / 0.98 | 0.53 / 0.56 / 0.71 |
+| 256 against 512 px, W1 | 0.2–0.4° | 1.3–1.7° | 1.9–3.5° |
+| synthetic, W1 to the true angles | 33.6° | 29.5° | 33.9° |
 
-The finer polygons cost the bimodal model some of its fit. The density has a shoulder
-at 140–165° and, because of the 12° rule, no angle between 168° and 192° in a polygon
-of more than three vertices; two Gaussians describe neither, so the fitted widths and
-amplitudes are less stable than the positions. Every method measured underestimates
-the share of reflex vertices, because a pixel image does not resolve the short notches
-of the boundary.
+With 0.35 and 0.36, 0.2–1.1 % of the cobalt area is left without a polygon.
+
+The fine polygons cost the bimodal model some of its fit. The valley around 180° is
+empty and the second mode starts abruptly near 192°, where two Gaussians overlap; the
+fitted widths and amplitudes are therefore less stable than the positions. Every
+method measured underestimates the share of reflex vertices, because a pixel image
+does not resolve the short notches of the boundary.
 
 Densities extracted at different values are different measurements, so the value is
 **part of a result's identity**: `combra.angles.output_directory` writes

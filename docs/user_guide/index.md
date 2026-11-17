@@ -13,7 +13,7 @@ SEM image
    ▼
 filtered image (cobalt dark, carbide bright)
    │  cobalt boundaries at the Otsu level,        combra.angles
-   │  Douglas–Peucker, corner rebuilding, spike removal
+   │  Douglas–Peucker, spike removal
    ▼
 grain contours
    ├─ angle at every vertex                      combra.angles
@@ -47,9 +47,8 @@ on the sample, set from the image's pixel size
 
 **Contours.** {py:func}`combra.angles.vertex_angles` traces the boundary of every
 cobalt region of that image between the pixels, at its Otsu level, simplifies each
-with Douglas–Peucker, rebuilds the sides shorter than `min_segment_len` into corners
-and removes the thin spikes.
-Simplification is not cosmetic: the tolerance and the rebuilding set how many vertices
+with Douglas–Peucker and removes the thin spikes.
+Simplification is not cosmetic: the tolerance sets how many vertices
 survive, and therefore how many angles the next stage measures. `combra.contours`
 provides the Canny-and-Suzuki contour extraction, which the beam fit and the crack
 graph use.

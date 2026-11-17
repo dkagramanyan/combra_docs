@@ -41,8 +41,9 @@ print(angles_deg.min(), angles_deg.max())
 print(contours[0].shape[1], contours[0].dtype)
 
 # %%
-# A larger ``min_segment_len`` (in pixels of the image; 0.4 um by default) rebuilds
-# longer sides into corners, so fewer angles survive:
+# By default no side is rebuilt. A positive ``min_segment_len`` (in pixels of the image)
+# replaces the sides shorter than it by the corner their neighbours point to, so fewer
+# angles survive:
 
 counts = {
     m: len(angles.vertex_angles(prep, min_segment_len=m, pixel_size=px)[0]) for m in (8, 16, 32)

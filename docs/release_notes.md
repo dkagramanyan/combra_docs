@@ -7,6 +7,33 @@ combra's changelog, and pointers to the four model repos' own.
 The authoritative copy is `CHANGELOG.md` in the combra repository; the highlights
 below track what changes for a *user* of the library.
 
+### 0.36.0
+
+The angle polygons are what the simplification gives: no side is rebuilt. See
+{doc}`/user_guide/angles`.
+
+**Changed (breaking).** Angle densities of 0.36 and 0.35 are not comparable: regenerate
+the angle parquets and the reference densities.
+
+- {py:func}`combra.angles.vertex_angles` no longer rebuilds short sides: the
+  `min_segment_len` of {py:func}`combra.angles.angle_settings` is 0 (was 0.4 µm). The
+  rebuilt corners could stick out past the region as thin points, and their angles put
+  a kink near 50° on the first mode. A positive `min_segment_len` still rebuilds.
+- The removal of vertices within 12° of 180° is gone: Douglas–Peucker leaves almost no
+  such vertex (0.04–0.36 % of the angles of the training crops).
+- The polygon steps are now: sub-pixel boundary at the Otsu level, Douglas–Peucker at
+  0.15 µm, spikes narrower than 0.2 µm removed, three or more vertices kept.
+
+**Effect.** On the 360 WC-Co training crops per class at 512 px (small / medium / large
+grains) the first mode of the bimodal fit moves from 90 / 89 / 83° to 100 / 99 / 93°,
+the second stays at 239 / 224 / 227°, and the residual of the fit over all bins goes
+from 0.077 / 0.080 / 0.085 to 0.074 / 0.067 / 0.080.
+
+**Costs.** A sharp corner the median has rounded reads as two blunt corners: on 200
+synthetic canvases the Wasserstein-1 distance to the true angles goes from 29.5° back to
+33.9°. The same fields at 256 and 512 px differ by 1.9–3.5° (1.3–1.7° in 0.35). The
+empty valley around 180° and the abrupt start of the second mode stay.
+
 ### 0.35.0
 
 The angle polygons follow the outline of the cobalt regions, and every region is

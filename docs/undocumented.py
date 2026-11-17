@@ -23,7 +23,6 @@ UNDOCUMENTED = frozenset({
     # combra.angles
     "combra.angles.ANGLE_MEDIAN_UM",  # constants, in user_guide/angles (pixel size)
     "combra.angles.ANGLE_MIN_SEGMENT_UM",
-    "combra.angles.ANGLE_STRAIGHT_DEG",
     "combra.angles.ANGLE_TOL_UM",
     "combra.angles.ENLARGE_ABOVE_UM",
     "combra.angles.AngleDensityDisplay",
