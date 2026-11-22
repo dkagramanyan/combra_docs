@@ -7,6 +7,23 @@ combra's changelog, and pointers to the four model repos' own.
 The authoritative copy is `CHANGELOG.md` in the combra repository; the highlights
 below track what changes for a *user* of the library.
 
+### 0.38.0
+
+The two area fits of a comparison start at the same area. See {doc}`/user_guide/metrics`.
+
+**Changed (breaking).** {py:func}`combra.metrics.area_metrics` fits the generated sample
+from the start $S_0$ of the reference, not from its own mode bin. `area_w2`,
+`area_median` and `area_sigma` are not comparable with earlier versions where the two
+modes differ. {py:func}`combra.contours.plot_area_grid` and
+{py:meth}`~combra.data.MicrostructureDataset.generate_areas` still fit each sample from
+its own mode.
+
+**Added.** {py:func}`combra.metrics.fit_area_distribution` takes the start of the fit as
+`start`.
+
+**Effect.** On the SAN 256 px small grains the mode jumped between 1 and 4 px as N grew
+from 100 to 10 000, and |`area_median`| between 2 and 16 %; it is now 2.0–2.9 % at every N.
+
 ### 0.37.0
 
 The mean-free-path metrics also compare the mean of the chord-length distribution. See

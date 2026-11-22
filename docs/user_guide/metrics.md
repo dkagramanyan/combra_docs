@@ -66,9 +66,9 @@ and $a$.
 fraction ({py:mod}`combra.contours`). A region is an 8-connected component of the
 cobalt side of the Otsu binary, its area $S$ its pixel count; the cobalt fraction
 $\varphi$ of an image is its share of cobalt pixels. The area histogram peaks at a
-few pixels and has a long tail. From the lower edge $S_0$ of the mode bin on, the
-areas are fitted by maximum likelihood with a lognormal distribution truncated at
-$S_0$,
+few pixels and has a long tail. The areas of both samples at or past $S_0$, the lower
+edge of the mode bin of the reference, are fitted by maximum likelihood with a
+lognormal distribution truncated at $S_0$,
 
 $$p(S) = \frac{1}{S \sigma \sqrt{2 \pi}}
 \exp\left[ -\frac{(\ln S - \mu)^2}{2 \sigma^2} \right], \qquad S \ge S_0,$$
@@ -87,6 +87,11 @@ would change with the unit of area) and the relative error of the mean cobalt fr
 alloys (10, 6 and 6.2 wt.% Co: 16.3, 10.1 and 10.4 vol.%) on the 256, 512 and 1024 px
 training crops. The metric is the relative error of two samples processed the same
 way, so the remaining offset cancels.
+
+```{versionchanged} 0.38.0
+The generated sample is fitted from the $S_0$ of the reference. Before, each sample
+started at its own mode, which can jump between close peaks as the sample grows.
+```
 
 **Mean-free-path errors** compare the chord lengths $\ell = \pi S / P$ of the same
 regions, off the image frame and of at least 0.16 µm² ({doc}`areas`). Past

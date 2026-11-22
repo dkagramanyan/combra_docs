@@ -30,8 +30,9 @@ keep their ellipses.
 ## The distribution
 
 Past a peak at a few pixels the areas follow a lognormal distribution.
-{py:func}`combra.metrics.fit_area_distribution` fits it from the mode on, and
-{py:func}`combra.metrics.area_metrics` compares two samples; see {doc}`metrics`.
+{py:func}`combra.metrics.fit_area_distribution` fits it from the mode or a given start
+on, and {py:func}`combra.metrics.area_metrics` compares two samples, both fitted from
+the mode of the reference; see {doc}`metrics`.
 {py:func}`combra.contours.plot_area_grid` draws the distributions of several sources
 in a grid, as {py:func}`~combra.angles.plot_density_grid` draws the angles.
 

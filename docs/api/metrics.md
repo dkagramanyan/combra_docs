@@ -58,6 +58,10 @@ The lognormal fit of the cobalt-region area distribution, and the comparison of 
 areas and the cobalt fraction between two samples; {py:func}`compute_all_metrics`
 reports these for image batches.
 
+```{versionchanged} 0.38.0
+Both fits of a comparison start at the mode of the reference.
+```
+
 ```{eval-rst}
 .. autosummary::
    :toctree: generated/
