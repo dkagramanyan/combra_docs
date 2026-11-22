@@ -7,6 +7,26 @@ combra's changelog, and pointers to the four model repos' own.
 The authoritative copy is `CHANGELOG.md` in the combra repository; the highlights
 below track what changes for a *user* of the library.
 
+### 0.37.0
+
+The mean-free-path metrics also compare the mean of the chord-length distribution. See
+{doc}`/user_guide/metrics`.
+
+**Added.** {py:func}`combra.metrics.free_path_metrics` returns `mfp_mean`, the relative
+error of the mean $\langle \ell \rangle$ of the Weibull fit past 0.5 µm (`nan` when
+either fit fails), and {py:func}`combra.metrics.plot_convergence_table` labels it
+δ⟨ℓ⟩. It is not `mfp_lambda`, the error of $\lambda_{\mathrm{Co}} = \pi \sum S / \sum P$.
+
+**Changed.** `combra.metrics.FREE_PATH_KEYS` has five keys, with `mfp_mean` before
+`mfp_lambda`, and {py:func}`combra.metrics.compute_all_metrics` returns all five: a model
+repo that logs every key gets one more series after the bump. The values of the other
+four are unchanged.
+
+**Evidence.** On the WC-Co training crops at 256 and 512 px the mean of the fit equals
+the sample mean of the lengths past 0.5 µm to 0.02 %. Against those crops the class mean
+of |`mfp_mean`| at N = 10³ is 1.2 / 0.8 % for SAN and 5.9 / 4.4 % for DiffiT at
+256 / 512 px.
+
 ### 0.36.0
 
 The angle polygons are what the simplification gives: no side is rebuilt. See

@@ -76,6 +76,10 @@ chord lengths and the mean free path between two samples;
 ```{versionadded} 0.34.0
 ```
 
+```{versionchanged} 0.37.0
+The relative error of the mean of the fit, `mfp_mean`.
+```
+
 ```{eval-rst}
 .. autosummary::
    :toctree: generated/

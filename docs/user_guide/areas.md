@@ -67,7 +67,10 @@ below it the area cut and the median shape the histogram.
 shape $k$ by maximum likelihood, and {py:func}`combra.metrics.free_path_metrics`
 compares two samples; see {doc}`metrics`. On the WC-Co training crops the fit keeps 79–91 %
 of the regions, with $\lambda$ = 0.77 / 0.86 / 1.05 µm and $k$ = 2.3 / 1.8 / 1.8 for
-small / medium / large grains, the same at 256 and 512 px within 2.4 %.
+small / medium / large grains, the same at 256 and 512 px within 2.4 %. The mean
+$\langle \ell \rangle$ of the fit, compared as `mfp_mean`, is 0.84 / 0.97 / 1.14 µm at
+256 px and 0.83 / 0.97 / 1.13 µm at 512 px, and equals the sample mean of the lengths
+past 0.5 µm to 0.02 %.
 
 ## A whole dataset
 

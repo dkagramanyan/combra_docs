@@ -95,9 +95,22 @@ truncated at $\ell_0$, of scale $\lambda$ and shape $k$. On the WC-Co training c
 its KS distance to the data is 0.006 - 0.019, as close as a Weibull times a smooth
 step fitted to all lengths, and closer than a lognormal (0.029 - 0.038).
 {py:func}`~combra.metrics.free_path_metrics` reports the 2-Wasserstein distance
-between the two fits (`mfp_w2`), the relative errors of $\lambda$ and $k$
-(`mfp_scale`, `mfp_shape`) and the relative error of the mean over the images of their
-mean free path $\lambda_{\mathrm{Co}} = \pi \sum S / \sum P$ (`mfp_lambda`).
+between the two fits (`mfp_w2`), the relative errors of $\lambda$, $k$ and the mean
+of the fit (`mfp_scale`, `mfp_shape`, `mfp_mean`) and the relative error of the mean
+over the images of their mean free path $\lambda_{\mathrm{Co}} = \pi \sum S / \sum P$
+(`mfp_lambda`). The mean of the fit is that of the truncated distribution,
+
+$$\langle \ell \rangle = \lambda \, e^{(\ell_0 / \lambda)^k} \,
+\Gamma\left( 1 + \frac{1}{k}, \left( \frac{\ell_0}{\lambda} \right)^k \right),$$
+
+with $\Gamma(s, x)$ the upper incomplete gamma function. It describes the regions with
+$\ell \ge \ell_0$, each counted once, and is neither the untruncated
+$\lambda \Gamma(1 + 1/k)$ nor $\lambda_{\mathrm{Co}}$, which weights each kept region by
+its boundary length.
+
+```{versionchanged} 0.37.0
+Added `mfp_mean`.
+```
 
 {py:func}`~combra.metrics.compute_all_metrics` runs the first two families, the
 semi-axis errors, the cobalt-area errors and the mean-free-path errors always, and
