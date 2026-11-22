@@ -81,7 +81,9 @@ spaced.
 :::{note}
 $y_k$ is a **bin probability, not a density per degree**. Its scale therefore
 depends on $h$: the density per degree is $y_k / h$, and
-$\sum_k y_k h = h$ is the "area" the fitted curve of §3 matches.
+$\sum_k y_k h = h$ is the area under it. The fit of §4 has its own 2° histogram:
+this one is for drawing (a fitted density times $h$ lies over it) and for the
+screen of §5.
 :::
 
 Bin occupancy sets the noise floor. With $n_k \approx n h / 360$ counts in a bin,
@@ -94,8 +96,8 @@ $$
 
 so halving $h$ costs a factor $\sqrt{2}$ in per-bin noise. At $h = 0.1^\circ$ a
 class holds about $50\times$ fewer counts per bin than at $h = 5^\circ$, hence
-about $7\times$ the relative noise — which is why the finest bin width is where
-the estimator of §4 is most fragile.
+about $7\times$ the relative noise of the drawn histogram. The fit of §4 is
+unaffected.
 
 ## 3. The model
 
@@ -106,12 +108,12 @@ sum of two normals,
 $$
 p(x; \boldsymbol{\theta}) =
 a_1\, \varphi(x; \mu_1, \sigma_1) + a_2\, \varphi(x; \mu_2, \sigma_2),
+\qquad a_1 + a_2 = 1,
 $$
 
 with parameter vector
-$\boldsymbol{\theta} = (\mu_1, \mu_2, \sigma_1, \sigma_2, a_1, a_2)$. It is
-the model combra fitted when the training-time metrics of June 2026 were
-logged, and the default again since 0.23.0.
+$\boldsymbol{\theta} = (\mu_1, \mu_2, \sigma_1, \sigma_2, a_1)$: the
+amplitudes $a_i$ are the weights of the modes.
 
 $a_i$ is the integral of mode $i$ over the whole real line,
 $\int_{\mathbb{R}} p\,\mathrm{d}x = a_1 + a_2$. The model is **not truncated**
@@ -126,86 +128,68 @@ Z_i = \Phi\!\left(\frac{360 - \mu_i}{\sigma_i}\right)
     - \Phi\!\left(\frac{0 - \mu_i}{\sigma_i}\right),
 $$
 
-with $\Phi$ the standard normal CDF, reached 99.75% on real reference sets.
-Holding a wide pedestal at a fixed height $h_\ast$ forces
-$a = h_\ast \sigma \sqrt{2\pi}$ to grow with $\sigma$: fitted
-$\sigma = 10^5$ degrees with $a = 2 \times 10^3$ against an expected 5 have
-been observed. Both are why §5 screens every fit before it is read.
+with $\Phi$ the standard normal CDF, is small on the WC-Co sets: fitting the
+truncated model by the same likelihood moves the means of the six real
+resolution-class sets by less than $1^\circ$.
 
 `combra.fitting.fit_bimodal_share` fits the truncated variant, each mode
 divided by its $Z_i$ and the two amplitudes replaced by one mass share.
 
 ## 4. The estimator
 
-Given $(x_k, y_k)$, {py:func}`combra.fitting.fit_bimodal_gaussian` solves the
-nonlinear least-squares problem
+{py:func}`combra.fitting.fit_angle_distribution` maximizes the likelihood of the
+histogram of the angles in bins $[b_j, b_{j+1})$ of $2^\circ$, centred on even degrees
+(since 0.39.0; before, least squares on the histogram of §2). With $c_j$ angles in bin
+$j$,
 
 $$
 \hat{\boldsymbol{\theta}}
-= \arg\min_{\boldsymbol{\theta} \in \Theta}
-\sum_k \bigl( y_k - p(x_k; \boldsymbol{\theta}) \bigr)^2 ,
+= \arg\max_{\boldsymbol{\theta}} \sum_j c_j \ln P_j,
 \qquad
-\Theta = \mathbb{R}^2 \times [10^{-6}, \infty)^2 \times [0, \infty)^2 ,
+P_j = \int_{b_j}^{b_{j+1}} p(x; \boldsymbol{\theta})\,\mathrm{d}x,
+\qquad
+\sigma_i \ge 1^\circ,\quad a_i \ge 0,\quad a_1 + a_2 = 1 .
 $$
 
-by Levenberg–Marquardt (`scipy.optimize.leastsq`), the bounds applied by the
-Minuit-style transform $v = \ell - 1 + \sqrt{u^2 + 1}$ of each bounded
-parameter $v \ge \ell$ to a free one $u$. The transform and the solver
-settings are those of lmfit's `Model.fit`, which combra used in June 2026, so
-the result is that fit's bit for bit. The objective is fitted to $y_k$ on the
-bin-probability scale of §2, so $a_1 + a_2 \approx h$ for a fit that reproduces
-the data.
+The model is integrated over each bin rather than read at its centre, which would
+widen each mode by $h^2 / 12$ in $\sigma^2$. The two edge bins are open, as the model
+is not truncated, so the $P_j$ sum to 1. The maximum is found by
+expectation-maximization. With $r_j = a_1 P_{1j} / P_j$ the share of bin $j$ that
+belongs to mode 1, $P_{1j}$ the mass of $\varphi(x; \mu_1, \sigma_1)$ in it and
+$E_j$, $E^{(2)}_j$ the means of $x$ and $(x - \mu_1)^2$ of that normal within it,
+each iteration sets
 
-### Why least squares on the histogram, and not maximum likelihood
+$$
+a_1 = \frac{\sum_j c_j r_j}{\sum_j c_j}, \qquad
+\mu_1' = \frac{\sum_j c_j r_j E_j}{\sum_j c_j r_j}, \qquad
+\sigma_1'^2 = \frac{\sum_j c_j r_j E^{(2)}_j}{\sum_j c_j r_j} - (\mu_1' - \mu_1)^2,
+$$
 
-Measured in September 2026 with the truncated model of combra 0.12 – 0.22.
-Maximum likelihood on the raw angles, or equivalently on the grouped counts at
-any $h \le 5^\circ$ (the two agree to $0.1^\circ$), was tried on the nine
-reference class-sets (three resolutions, three classes, $n$ from
-$7 \times 10^4$ to $2 \times 10^6$) and rejected. Both estimators converge
-from every start and neither degenerates, but with *this* model the likelihood
-moves $\mu_2$ up by $7$–$16^\circ$, widens $\sigma_2$ by 30–80% and halves the
-reflex peak, and its histogram residual is $1.2$–$2\times$ that of least
-squares. The gain in log-likelihood comes almost entirely from the edge tails:
-1–8% of the vertices lie below $60^\circ$ or above $300^\circ$, where two
-Gaussians centred on the modes leave essentially no mass, and a likelihood cannot
-leave data uncovered. The histogram objective leaves that mass *unclaimed*
-instead ($a_1 + a_2$ runs 0.8% over to 2.4% under $h$ on the reference sets)
-and describes the peaks. Adding a uniform background component brings the
-likelihood's $\mu_2$ back to within $1$–$3^\circ$ of the least-squares value at
-512 and 1024 px but is not identifiable at 256 px, where the reflex mode is
-itself $47^\circ$ wide. The fitted $\mu_i, \sigma_i$ are therefore peak
-descriptors, not the parameters of a generative model of the whole density,
-and should be read as such. The size of the model's tail deficit is visible
-without any refit as the gap between the fit's mass above $180^\circ$ and the
-density's own share: at most $0.027$ (median $0.010$) over the 231 stored fits
-of real angle densities.
+and mode 2 likewise with $1 - r_j$, until the means and widths move by less than
+$10^{-4}$ degrees (and $a_1$ by less than $10^{-6}$), at most 1000 times.
 
-### Constraints and start
+The start is fixed, $(\mu_1, \mu_2, \sigma_1, \sigma_2, a_1)^{(0)} =
+(100, 240, 30, 30, 0.5)$. The width floor keeps a mode off a single repeated angle,
+where the likelihood rises as the mode narrows. With fewer than six
+occupied bins every parameter is returned as $\text{nan}$.
 
-| bound | reason |
-|---|---|
-| $\sigma_i \ge 10^{-6}$ | excludes the sign-flipped minimum $\sigma_2 < 0$ that weakly bimodal data invites |
-| $a_i \ge 0$ | a mode cannot carry negative mass |
+One fit serves every stored bin width: the curve stored beside a histogram of bin width
+$h$ is $h\,p(x; \hat{\boldsymbol{\theta}})$.
 
-The means and the upper end of the widths are free. Left free, the solver can
-walk a mode out of the domain — means of $648^\circ$ and $-167^\circ$ have been
-observed — and §5 rejects such a fit.
+A caller that holds only a histogram gets the same likelihood on its own bins:
+{py:func}`combra.metrics.gauss_density_metrics` and a precomputed `(x, y)` passed
+to the metrics.
 
-The start is fixed, $(\mu_1, \mu_2, \sigma_1, \sigma_2, a_1, a_2)^{(0)} =
-(100, 240, 30, 30, 1, 1)$, and assumes the density is on the bin-probability
-scale of §2. From it a curve that does not sum to one (raw counts, or peak
-heights of one) can send the means thousands of degrees out of the domain. On a
-density with a weak reflex mode over a heavy baseline, a broad pedestal is a
-genuine competing minimum from this start; the mass-share variant reads its
-start off the data instead. With fewer than six bins the problem is
-undetermined, and every parameter is returned as $\text{nan}$.
+### Means are not peaks
 
-Each bin width is fitted independently. Warm-starting each $h$ from the previous
-one's solution — as
-{py:meth}`~combra.data.MicrostructureDataset.generate_angles` once did — makes
-the whole sweep inherit the failure of its noisiest member (§2), turning one bad
-fit into seven.
+Two normals do not describe all of the angle density: the reflex mode is
+asymmetric and the tails are heavier than normal. On the six real
+resolution-class sets $\mu_2$ lies about $12^\circ$ from the top of the smoothed
+histogram, where least squares on the histogram put it about $7^\circ$ away.
+Read $\mu_i$ as the mean of a component, not as the position of a peak. Against
+least squares the likelihood fit of these sets has $\mu_1$ lower by $1$–$4^\circ$,
+$\mu_2$ higher by $3$–$5^\circ$ and $\sigma_2$ of $22$–$24^\circ$ instead of
+$17$–$22^\circ$, so fits of the two estimators must not be compared.
 
 ### Mode ordering
 
@@ -234,16 +218,24 @@ $$
   \max_i \mu_i > 360 - \delta & \delta = 5^\circ \\[6pt]
 \text{pedestal} & \max_i \sigma_i > \sigma_{\max} & 120^\circ \\[6pt]
 \text{unresolved} & |\mu_1 - \mu_2| < \max_i \sigma_i & — \\[6pt]
+\text{no reflex mode} & \text{not } \min_i \mu_i < 180^\circ < \max_i \mu_i & — \\[6pt]
+\text{one peak} & p(x; \hat{\boldsymbol{\theta}}) \text{ has one maximum on } D & — \\[6pt]
 \text{no support} & \displaystyle\sum_{|x_k - \mu_i| \le w_i} y_k
   < \tau_{\text{sup}} & 0.05
 \end{array}
 $$
 
-The last test needs the density, not just the parameters, and uses the widened
+The last test (no support) needs the density, not just the parameters, and uses the widened
 window $w_i = \max(\sigma_i, h)$ so that a mode narrower than the bin spacing
 cannot claim the mass of a bin it never covers. It is the only criterion that
 catches a *spike* phantom — a very narrow mode parked where there is no data —
 because a spike's amplitude is an integral and therefore not small.
+
+The no-reflex and one-peak tests exist for the likelihood fit, which describes
+convex angles alone with two convex normals, and covers a single wide or
+skewed mode with two overlapping normals instead of parking a phantom. It cannot
+work on a handful of angles, so the parametric errors also need at least 100
+angles per sample (`MIN_FIT_ANGLES`) where the angles themselves are given.
 
 A returned $\mu$ outside $[0, 360]$ is the free mean walking out of the
 domain, not a measured angle; the boundary test above rejects it.
@@ -274,8 +266,9 @@ six are returned as $\text{nan}$ with the reason logged. Undefined rather than
 wrong.
 
 Because both sides are divided by the same reference, $\varepsilon$ is invariant
-to any common rescaling of the amplitudes, but the amplitudes themselves scale
-with $h$ (§4), so two fits compare only at the same bin width.
+to any common rescaling of the amplitudes. As $a_1 + a_2 = 1$, the two amplitude
+errors are one measurement:
+$\hat a_1^{\text{ref}} \varepsilon^a_1 = -\hat a_2^{\text{ref}} \varepsilon^a_2$.
 
 :::{warning}
 $a_2 / (a_1 + a_2)$ is **not** the reflex-vertex fraction. The amplitudes include
@@ -309,7 +302,7 @@ points. On the 1024-point grid a smooth two-mode pair $8.35^\circ$ apart reads
 is affected; a circular value above $180^\circ$ is this fault, not a distance.
 ::: Four keys result: `w1`, `w2`,
 `circular_w1`, `circular_w2`. They need both fitted curves, so they are `nan` when
-a fit fails outright (fewer bins than parameters), but not when a fit is only
+a fit fails outright (fewer than six occupied bins), but not when a fit is only
 screened as degenerate: while a generator still produces near-convex grains they
 stay defined where the parametric errors do not.
 
@@ -334,8 +327,9 @@ $B = 0$, $A = \operatorname{mean}|m|$.
 | $h$ | histogram bin width, the {term}`step` | §2 |
 | $x_k, y_k$ | occupied bin centres and bin probabilities, $\sum_k y_k = 1$ | §2 |
 | $n, n_k$ | pooled angle count; count in bin $k$ | §2 |
-| $\mu_i, \sigma_i, a_i$ | mode mean, width, amplitude (integral over the real line) | §3 |
+| $\mu_i, \sigma_i, a_i$ | mode mean, width, weight ($a_1 + a_2 = 1$) | §3 |
 | $Z_i$ | mass of normal $i$ inside $[0, 360]$, used for the leak | §3 |
-| $\Theta$ | the set the fit is constrained to | §4 |
+| $c_j, P_j$ | count and model mass of bin $j$ of the fit | §4 |
+| $r_j$ | share of bin $j$ that belongs to mode 1 | §4 |
 | $\varepsilon^{\theta}_i$ | signed relative error of parameter $\theta$, mode $i$ | §6 |
 | $A, B$ | convergence plateau and decay coefficients | §6 |

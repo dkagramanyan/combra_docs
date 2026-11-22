@@ -25,9 +25,14 @@ from combra import ellipse
 
 ## Semi-axes
 
-The big and small semi-axes of the ellipses {py:func}`fit_mvee` fits to the cobalt
-regions of an image: the regions of {py:func}`combra.contours.cobalt_mask`, the
-0.4 µm-median mask whose area is the cobalt fraction, as the beam datasets use.
+The big and small semi-axes of the minimum-area ellipses around the vertices of the
+angle polygons ({py:func}`combra.angles.vertex_angles`) of the cobalt regions that do
+not touch the image frame. {py:func}`fit_mvee` and the beam datasets are a separate
+pipeline, on the contours of the three-level map.
+
+```{versionchanged} 0.39.0
+The ellipses were fitted to the Canny contours of the 0.4 µm cobalt mask.
+```
 
 ```{eval-rst}
 .. autosummary::

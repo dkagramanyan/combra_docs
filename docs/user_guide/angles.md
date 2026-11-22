@@ -101,9 +101,10 @@ coarser polygons of 0.33–0.34, 37.5° between 256 and 1024 px with the setting
 The angles and the cobalt fraction use different medians. A median rounds the
 corners it filters: the 0.4 µm median keeps the cobalt fraction of the training crops
 within 2.4 % of the alloys' cobalt volume fraction at all three sizes, but blunts the
-sharp corners, which then read as 100–130°. The angles use 0.1 µm; the cobalt mask
+sharp corners, which then read as 100–130°. The angles and the semi-axes, which share
+their polygons, use 0.1 µm; the cobalt mask
 ({py:func}`combra.contours.cobalt_mask`, {py:func}`combra.contours.median_radius`), the
-cobalt areas and the semi-axes keep 0.4 µm.
+cobalt areas and the free paths use 0.4 µm.
 
 Every extraction therefore needs the pixel size: {py:func}`~combra.angles.preprocess_image`,
 {py:func}`~combra.angles.vertex_angles`, {py:func}`combra.contours.areas` and every
@@ -237,18 +238,13 @@ Raw angles are reduced to a density by
 ```
 
 Note that `y` sums to 1 over *bins*: these are bin probabilities, not a density
-per degree, so their scale depends on `step`. The bimodal fit takes them in
-exactly this form, and the Wasserstein distances compare the fitted curves.
+per degree, so their scale depends on `step`. The bimodal fit does not read them:
+since 0.39.0 it is fitted to a 2° histogram of its own, once for every width, and the
+Wasserstein distances compare the fitted curves.
 
-Each bin width is then fitted independently by
-{py:func}`~combra.fitting.fit_bimodal_gaussian`, from the same fixed start at
-every width. Earlier versions warm-started each width from the previous
-one's solution; that made a bad fit at the finest, noisiest width propagate to
-every coarser one, so it was removed.
-
-Like `min_segment_len`, {term}`step` is part of a metric's identity: two runs are
-comparable only when reduced at the same bin width. It is stored on every parquet
-row and checked by {py:func}`combra.metrics.parquet_has_step`. The default is
+{term}`step` sets only the stored histogram and the one the degeneracy screen
+reads. It is stored on every parquet row and checked by
+{py:func}`combra.metrics.parquet_has_step`. The default is
 {py:data}`~combra.metrics.training.DEFAULT_ANGLE_STEP` (5.0°).
 
 ## The bimodal model
@@ -266,38 +262,32 @@ $a_i$ the position, width and amplitude of mode $i$, and
 $\boldsymbol{\theta} = (\mu_1, \mu_2, \sigma_1, \sigma_2, a_1, a_2)$. The modes
 are not truncated to the angle domain $D = [0^\circ, 360^\circ]$: $a_i$ is the
 integral of mode $i$ over the whole real line, part of which may lie outside
-$D$. Mode 1 is normally the convex mode and mode 2 the reflex one. This is the
-model combra fitted when the training-time metrics of June 2026 were logged.
+$D$. Mode 1 is normally the convex mode and mode 2 the reflex one, and
+$a_1 + a_2 = 1$: the amplitudes are the weights of the modes.
 
-Given the histogram $(x_k, y_k)$ of bin width $h$,
-{py:func}`~combra.fitting.fit_bimodal_gaussian` solves
+Given the counts $c_j$ of the angles in bins of $2^\circ$,
+{py:func}`~combra.fitting.fit_angle_distribution` maximizes
 
 $$
-\hat{\boldsymbol{\theta}}
-= \arg\min_{\boldsymbol{\theta}}
-\sum_k \bigl( y_k - p(x_k; \boldsymbol{\theta}) \bigr)^2,
+\sum_j c_j \ln P_j, \qquad P_j = \int_{\text{bin } j} p(x; \boldsymbol{\theta})\,\mathrm{d}x,
 \qquad
-\sigma_i \ge 10^{-6},\; a_i \ge 0,
+\sigma_i \ge 1^\circ,\; a_i \ge 0,
 $$
 
-by Levenberg–Marquardt from the fixed start
-$(\mu_1, \mu_2, \sigma_1, \sigma_2, a_1, a_2)^{(0)} = (100, 240, 30, 30, 1, 1)$,
-with the means free. The start assumes a histogram that sums to one, as
-{py:func}`combra.stats.density_histogram` returns it, and then
-$a_1 + a_2 \approx h$, so amplitudes compare only at one bin width. The result
-is ordered so that $\mu_1 \le \mu_2$.
+by expectation-maximization from the fixed start
+$(\mu_1, \mu_2, \sigma_1, \sigma_2, a_1)^{(0)} = (100, 240, 30, 30, 0.5)$. The
+result does not depend on the stored `step` and is ordered so that $\mu_1 \le \mu_2$.
 
 The fit always returns two modes, whether or not the data has two, so
 $\hat{\boldsymbol{\theta}}$ is screened by
 {py:func}`combra.metrics.degenerate_fit_reason` before it is read as a
 measurement. {py:func}`~combra.angles.angle_summary` reports it together with
 the relative residual
-$\sum_k (p(x_k; \hat{\boldsymbol{\theta}}) - y_k)^2 / \sum_k y_k^2$ and the
+$\sum_k (h\,p(x_k; \hat{\boldsymbol{\theta}}) - y_k)^2 / \sum_k y_k^2$ and the
 model-free reflex share $\#\{\alpha_j > 180^\circ\} / n$, which is the one to
 quote for the physical fraction of reflex vertices rather than the fitted
-$\hat a_2 / (\hat a_1 + \hat a_2)$. Why least squares and not maximum
-likelihood, and the screening criteria, are derived in {doc}`angle_fit`,
-§3–§5.
+$\hat a_2$. The estimator and the screening criteria are derived in
+{doc}`angle_fit`, §3–§5.
 
 `combra.fitting.fit_bimodal_share` fits a five-parameter variant of the model,
 truncated to $D$, in which the two amplitudes are replaced by one mass share

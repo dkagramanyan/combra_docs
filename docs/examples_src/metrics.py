@@ -99,7 +99,7 @@ print(round(distances["w1"], 3))
 
 from combra import fitting
 
-_, mus, sigmas, amps = fitting.fit_bimodal_gaussian(*unimodal)
+_, mus, sigmas, amps = fitting.fit_angle_distribution(*unimodal)
 print(metrics.degenerate_fit_reason(mus, sigmas, amps, density=unimodal))
 
 # %%

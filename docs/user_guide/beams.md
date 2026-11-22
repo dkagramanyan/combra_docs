@@ -89,18 +89,26 @@ See {py:mod}`combra.ellipse` for the plotting functions and
 ## Semi-axes as a metric
 
 {py:func}`combra.ellipse.semiaxes` returns the big ($A$) and small ($B$) semi-axis of
-every ellipse in an image. The ellipses are fitted to the regions of the cobalt mask
-({py:func}`combra.contours.cobalt_mask`, a 0.4 µm median), as `generate_beams` does:
-the mask whose area is the cobalt fraction, not the angle binary, whose smaller median
-keeps sharp corners but also small noise specks.
+every ellipse in an image. It takes the polygons of the angle pipeline
+({py:func}`combra.angles.vertex_angles`: a 0.1 µm median, the boundary at the Otsu
+level, simplified within 0.15 µm), leaves out those with a vertex on the image frame,
+whose size the field of view limits, and finds the ellipse of least area around the
+vertices of each. There is no edge detector. The semi-axes are then rounded to whole
+pixels. This is not the pipeline of `generate_beams`, which fits the Canny contours of
+the three-level map.
 
-At the resolution of training images the grains are a few pixels wide, and the
-histogram of a semi-axis rises to a peak at 2 – 4 px before the exponential decay
-sets in: an ellipse around a contour of a few pixels cannot have a semi-axis near
-zero. {py:func}`~combra.metrics.fit_exponential_tail` therefore starts the line at
-the mode rather than at a fixed bin, and weights each bin by its count: the
-inverse variance of $\log p$, which keeps the sparse far-tail bins from setting the
-slope. {py:func}`~combra.metrics.semiaxis_metrics` compares two such fits (see
+```{versionchanged} 0.39.0
+The ellipses were fitted by {py:func}`~combra.ellipse.fit_mvee` to the contours of
+the 0.4 µm cobalt mask, and regions on the frame were kept.
+```
+
+At the resolution of training images the regions are a few pixels wide, and the
+histogram of a semi-axis has a peak at a few pixels, which can be 1 px for the small
+semi-axis at 256 px; the exponential decay follows it.
+{py:func}`~combra.metrics.fit_exponential_tail` therefore starts the line at
+the mode rather than at a fixed bin, and fits it by maximum likelihood to the 1 px
+histogram from there on. These are whole pixels, so the likelihood is that of a geometric
+distribution, and $k = -\ln(1 + 1/m)$ with $m$ the mean of $x - x_0$. {py:func}`~combra.metrics.semiaxis_metrics` compares two such fits (see
 {doc}`metrics`).
 
 The semi-axes are lengths in pixels, so two sets compare only at the same physical
@@ -118,9 +126,9 @@ The trace key `scale` (the length of one pixel) puts the axis in physical units,
 big and the small semi-axis of each source share a cell:
 
 ```python
-from combra import ellipse
+from combra import data, ellipse
 
-um_per_px = 0.0499 * 1024 / 256  # native 0.0499 um/px, 1024 px crops at 256 px
+um_per_px = data.SEM_PIXEL_SIZE * 1024 / 256  # 1024 native px across a 256 px image
 cell = [dict(values=values[source][axis], scale=um_per_px, label=source,
              color=color, marker=marker + ('' if axis == 'A' else '-open'),
              dash='solid' if axis == 'A' else 'dash', tag=axis)

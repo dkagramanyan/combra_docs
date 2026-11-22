@@ -7,6 +7,45 @@ combra's changelog, and pointers to the four model repos' own.
 The authoritative copy is `CHANGELOG.md` in the combra repository; the highlights
 below track what changes for a *user* of the library.
 
+### 0.39.0
+
+The angles, semi-axes, areas and free paths are fitted one way: maximum likelihood of
+the histogram, with the model integrated over each bin (2°, 1 px, 1 px² and 0.001 µm).
+The semi-axes come from the angle polygons. See {doc}`/user_guide/metrics`.
+
+**Changed (breaking).** {py:func}`combra.ellipse.semiaxes` fits the minimum-area ellipse
+around the vertices of each angle polygon ({py:func}`combra.angles.vertex_angles`: 0.1 µm
+median, no Canny) and leaves out the regions that touch the image frame. The `tol`
+argument is gone. The `semi_*` metrics and any saved semi-axes are not comparable with
+earlier versions: extract them again.
+{py:func}`combra.metrics.fit_exponential_tail` is now the maximum likelihood fit to the
+rounded values from their mode on, $k = -\ln(1 + 1/m) / h$ with $m$ the mean excess
+over the mode in steps of $h$. It was least squares on $\ln p$ weighted by the counts.
+
+**Fixed.** The ellipse solve of `semiaxes` stopped before its first update and returned
+1.2 times the second-moment ellipse of a Canny contour, which is not the minimum-area
+ellipse. It now iterates to a relative gap of 10⁻⁶.
+
+**Effect.** On the real WC-Co crops the mean semi-axes of the same fields at 256 and
+512 px differ by 1–3 % (11–15 % before). Collapsed generated images no longer add
+frame-sized ellipses.
+
+**Known issue.** {py:func}`combra.ellipse.fit_mvee` and
+{py:meth}`~combra.data.MicrostructureDataset.generate_beams` still use the old solve.
+
+**Changed (breaking).** {py:func}`combra.metrics.fit_area_distribution` integrates the
+lognormal over each bin (it took the density at whole-pixel areas, up to 0.7 % away) and
+{py:func}`combra.metrics.fit_free_path_distribution` fits the histogram of the lengths
+(within 0.01 % of the unbinned fit). The `area_*` and `mfp_*` fit metrics are not
+comparable with earlier versions.
+
+**Changed (breaking).** The angle distribution is fitted by maximum likelihood of its 2°
+histogram (`fitting.fit_angle_distribution`) instead of least squares; see
+{doc}`/user_guide/angle_fit`. The mode weights sum to 1 and one fit serves every stored
+histogram step. The angle metrics and the fits stored in angle parquets are not comparable
+with earlier versions: refit both sides. The parametric errors are `nan` when the fit
+has no convex and reflex pair of peaks or a sample has fewer than 100 angles.
+
 ### 0.38.0
 
 The two area fits of a comparison start at the same area. See {doc}`/user_guide/metrics`.

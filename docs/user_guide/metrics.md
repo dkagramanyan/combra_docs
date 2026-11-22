@@ -48,8 +48,8 @@ distances need at least two images per side,
 since each estimates a per-side covariance; the angle-based families are defined
 on a single image.
 
-**Semi-axis tail errors** compare the grains' minimum-volume enclosing ellipses
-({doc}`beams`). Past its mode, the distribution of a semi-axis $x$ decays
+**Semi-axis tail errors** compare the minimum-area ellipses around the polygons of
+the cobalt regions off the image frame ({doc}`beams`). Past its mode, the distribution of a semi-axis $x$ decays
 exponentially, so its tail is fitted as
 
 $$p(x) = a \, e^{k (x - x_0)}, \qquad x \ge x_0,$$
@@ -57,7 +57,10 @@ $$p(x) = a \, e^{k (x - x_0)}, \qquad x \ge x_0,$$
 for the big semi-axis $A$ and the small semi-axis $B$ of each side, with $x_0$ the
 mode of the histogram, $k < 0$ the decay rate and $a = p(x_0)$ the density where the
 tail starts. Written as $a \, e^{kx + b}$, the shift is $b = -k x_0$, fixed by $x_0$:
-$a$ and $b$ are not separately determined by the data.
+$a$ and $b$ are not separately determined by the data. $k$ and $a$ are the maximum
+likelihood estimates for the 1 px histogram of the semi-axes $x \ge x_0$:
+$k = -\ln(1 + 1/m)$ and $a = (n_0 / n) / (1 + m)$, with $m$ the mean of $x - x_0$ over
+the $n_0$ of the $n$ values in the tail.
 {py:func}`~combra.metrics.semiaxis_metrics` reports, per semi-axis, the
 2-Wasserstein distance between the two fitted tails and the relative errors of $k$
 and $a$.
@@ -67,15 +70,16 @@ fraction ({py:mod}`combra.contours`). A region is an 8-connected component of th
 cobalt side of the Otsu binary, its area $S$ its pixel count; the cobalt fraction
 $\varphi$ of an image is its share of cobalt pixels. The area histogram peaks at a
 few pixels and has a long tail. The areas of both samples at or past $S_0$, the lower
-edge of the mode bin of the reference, are fitted by maximum likelihood with a
-lognormal distribution truncated at $S_0$,
+edge of the mode bin of the reference, are binned by 1 px and fitted by maximum
+likelihood with a lognormal distribution truncated at $S_0$ and integrated over each bin,
 
 $$p(S) = \frac{1}{S \sigma \sqrt{2 \pi}}
 \exp\left[ -\frac{(\ln S - \mu)^2}{2 \sigma^2} \right], \qquad S \ge S_0,$$
 
 the distribution materials science uses for grain and particle sizes: $\ln S$ is
-normal with mean $\mu$ and standard deviation $\sigma$, and $S_m = e^\mu$ is the
-median area. On the WC-Co training crops its KS distance to the data is 0.02 - 0.06,
+normal with mean $\mu$ and standard deviation $\sigma$ before the truncation, and
+$S_m = e^\mu$ is the median of that untruncated lognormal, not the median of the
+measured areas. On the WC-Co training crops its KS distance to the data is 0.02 - 0.06,
 as close as a Weibull and far closer than an exponential (0.09 - 0.19).
 {py:func}`~combra.metrics.area_metrics` reports the 2-Wasserstein distance between
 the two fits (`area_w2`), the relative errors of $S_m$ and $\sigma$
@@ -95,8 +99,9 @@ started at its own mode, which can jump between close peaks as the sample grows.
 
 **Mean-free-path errors** compare the chord lengths $\ell = \pi S / P$ of the same
 regions, off the image frame and of at least 0.16 µm² ({doc}`areas`). Past
-$\ell_0$ = 0.5 µm they are fitted by maximum likelihood with a Weibull distribution
-truncated at $\ell_0$, of scale $\lambda$ and shape $k$. On the WC-Co training crops
+$\ell_0$ = 0.5 µm they are binned by 0.001 µm and fitted by maximum likelihood with a
+Weibull distribution truncated at $\ell_0$ and integrated over each bin, of scale
+$\lambda$ and shape $k$. On the WC-Co training crops
 its KS distance to the data is 0.006 - 0.019, as close as a Weibull times a smooth
 step fitted to all lengths, and closer than a lognormal (0.029 - 0.038).
 {py:func}`~combra.metrics.free_path_metrics` reports the 2-Wasserstein distance
@@ -131,18 +136,13 @@ size of a pixel ({doc}`beams`).
 
 ## Undefined rather than wrong
 
-{py:func}`~combra.fitting.fit_bimodal_gaussian` always returns two modes, because
-the model has two. When an angle density has only one, the solver must still put
-the second somewhere, and it parks a **phantom** — either a flat pedestal or a
-narrow spike at a position with no data under it.
-
-A phantom can also appear on genuinely *bimodal* densities when the reflex mode
-is weak over a heavy baseline: a wide pedestal is a competing least-squares
-minimum, and the fit, which starts from a fixed point and leaves the means and
-the widths free, can reach it — fitted $\sigma$ of $3.3 \times 10^4$ degrees has
-been observed. On the 1083 stored real angle densities the screening below
-accepts 1035 fits; the 48 it rejects all have a reflex mode just under the 5%
-floors. The relative errors above divide by the
+{py:func}`~combra.fitting.fit_angle_distribution` always returns two modes, because
+the model has two. When an angle density has only one, the maximum-likelihood fit
+covers it with two overlapping normals, or puts the second on a few stray angles
+as a **phantom**. The screening therefore requires a mean on each side of 180°, two peaks,
+enough mass and support in each mode and at least 100 angles; on the six real
+WC-Co resolution-class sets it accepts every fit down to single images (255
+angles and more). The relative errors above divide by the
 reference fit, so a phantom denominator produces numbers that look like
 measurements and are not: two densities differing by 2° once scored
 $\varepsilon_{\sigma_1} = 1357$ and $\varepsilon_{\mathrm{amp}_2} = 3050$.
@@ -158,6 +158,8 @@ reason at warning level, when a fit is:
 - wider than 120° in one mode, which is a pedestal rather than a peak (the widths
   are not bounded above);
 - unresolved, with the two means closer together than one $\sigma$;
+- without a convex and a reflex mode, both means on one side of 180°;
+- one-peaked, when the two fitted normals add up to a single maximum;
 - placed where the density carries under 5% of its mass. This is checked only
   when the density is supplied, and it is the criterion that catches a spike,
   whose amplitude is an integral and therefore not small.

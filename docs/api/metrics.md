@@ -43,6 +43,12 @@ from combra import metrics
 The exponential tail of the MVEE semi-axis distribution, and its comparison between
 two samples; {py:func}`compute_all_metrics` reports these for image batches.
 
+```{versionchanged} 0.39.0
+The semi-axes are those of the angle polygons off the frame
+({py:func}`combra.ellipse.semiaxes`), and the tail is fitted by maximum likelihood
+(it was weighted least squares).
+```
+
 ```{eval-rst}
 .. autosummary::
    :toctree: generated/
@@ -60,6 +66,10 @@ reports these for image batches.
 
 ```{versionchanged} 0.38.0
 Both fits of a comparison start at the mode of the reference.
+```
+
+```{versionchanged} 0.39.0
+The fit is the likelihood of the histogram, the lognormal integrated over each bin.
 ```
 
 ```{eval-rst}
@@ -82,6 +92,10 @@ chord lengths and the mean free path between two samples;
 
 ```{versionchanged} 0.37.0
 The relative error of the mean of the fit, `mfp_mean`.
+```
+
+```{versionchanged} 0.39.0
+The fit is the likelihood of the 0.001 µm histogram of the lengths.
 ```
 
 ```{eval-rst}

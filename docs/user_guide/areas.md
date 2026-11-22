@@ -24,14 +24,14 @@ A region is an 8-connected component of the mask and its area is its pixel count
 >>> r.fraction  # share of cobalt pixels
 ```
 
-Regions cut by the image frame are kept with their visible area, as the semi-axes
-keep their ellipses.
+Regions cut by the image frame are kept with their visible area. The semi-axes and
+the free paths leave those regions out.
 
 ## The distribution
 
 Past a peak at a few pixels the areas follow a lognormal distribution.
-{py:func}`combra.metrics.fit_area_distribution` fits it from the mode or a given start
-on, and {py:func}`combra.metrics.area_metrics` compares two samples, both fitted from
+{py:func}`combra.metrics.fit_area_distribution` fits it to their 1 px histogram by maximum
+likelihood from the mode or a given start on, and {py:func}`combra.metrics.area_metrics` compares two samples, both fitted from
 the mode of the reference; see {doc}`metrics`.
 {py:func}`combra.contours.plot_area_grid` draws the distributions of several sources
 in a grid, as {py:func}`~combra.angles.plot_density_grid` draws the angles.
@@ -65,7 +65,7 @@ $$p(\ell) = \frac{k}{\lambda} \left( \frac{\ell}{\lambda} \right)^{k-1}
 
 below it the area cut and the median shape the histogram.
 {py:func}`combra.metrics.fit_free_path_distribution` fits the scale $\lambda$ and the
-shape $k$ by maximum likelihood, and {py:func}`combra.metrics.free_path_metrics`
+shape $k$ to the 0.001 µm histogram of the lengths by maximum likelihood, and {py:func}`combra.metrics.free_path_metrics`
 compares two samples; see {doc}`metrics`. On the WC-Co training crops the fit keeps 79–91 %
 of the regions, with $\lambda$ = 0.77 / 0.86 / 1.05 µm and $k$ = 2.3 / 1.8 / 1.8 for
 small / medium / large grains, the same at 256 and 512 px within 2.4 %. The mean

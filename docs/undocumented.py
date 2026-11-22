@@ -59,6 +59,7 @@ UNDOCUMENTED = frozenset({
     "combra.fitting.BimodalGaussianFit",
     "combra.fitting.BimodalShareFit",
     "combra.fitting.DistributionFit",
+    "combra.fitting.fit_angle_distribution",
     "combra.fitting.fit_bimodal_gaussian",
     "combra.fitting.fit_bimodal_share",
     "combra.fitting.fit_distribution",
